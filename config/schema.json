@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Furuta workbench profile v1",
+  "type": "object",
+  "required": ["schema", "maxDuty", "travelCounts", "maxDuration", "slewPerSecond"],
+  "properties": {
+    "schema": {"const": 1},
+    "maxDuty": {"type": "number", "minimum": 0, "maximum": 1},
+    "slewPerSecond": {"type": "number", "exclusiveMinimum": 0, "maximum": 100},
+    "maxDuration": {"type": "number", "exclusiveMinimum": 0, "maximum": 120},
+    "travelCounts": {"type": "number", "minimum": 0, "maximum": 1000000000},
+    "velocityCountsPerSecond": {"type": "number", "minimum": 0},
+    "currentTripA": {"type": "number", "minimum": 0, "maximum": 5},
+    "currentTripMs": {"type": "number", "minimum": 0, "maximum": 1000},
+    "currentZeroMv": {"type": ["number", "null"], "minimum": 1800, "maximum": 3000},
+    "sensitivityMvA": {"type": "number", "exclusiveMinimum": 0},
+    "countsPerRev": {"type": ["number", "null"], "exclusiveMinimum": 0},
+    "armSign": {"enum": [-1, 1]},
+    "pendSign": {"enum": [-1, 1]},
+    "pendDownRaw": {"type": ["integer", "null"], "minimum": 0, "maximum": 4095},
+    "assumedBusV": {"type": "number", "exclusiveMinimum": 0, "maximum": 13.5},
+    "heartbeatMs": {"type": "integer", "minimum": 100, "maximum": 2000},
+    "streamHz": {"enum": [50, 100, 250]},
+    "adcHz": {"type": "integer", "minimum": 100, "maximum": 2000, "description": "Must divide 1000000 exactly"},
+    "pwmHz": {"type": "integer", "minimum": 1000, "maximum": 30000},
+    "filter": {
+      "type": "object",
+      "properties": {
+        "type": {"enum": ["bypass", "ema", "moving", "biquad"]},
+        "alpha": {"type": "number", "exclusiveMinimum": 0, "maximum": 1},
+        "window": {"type": "integer", "minimum": 1, "maximum": 256},
+        "sos": {"type": "array", "minItems": 6, "maxItems": 6, "items": {"type": "number"}}
+      },
+      "additionalProperties": false
+    },
+    "geometry": {"type": "object"},
+    "notes": {"type": "string"}
+  },
+  "additionalProperties": false
+}

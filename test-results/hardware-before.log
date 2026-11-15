@@ -1,0 +1,17 @@
+       Connected: 1
+           Ready: 1
+          Status: [1x1 struct]
+          Config: [1x1 struct]
+         Samples: 4900
+         Elapsed: 20.0388
+      LoopMedian: 0.2547
+         LoopMax: 9.5204
+      DeviceSpan: 20.3320
+      SampleRate: 240.9502
+      MaxApplied: 0
+      CountRange: 0
+    PendRawRange: [2984 2984]
+           AdcMv: [2.5099e+03 63.9954]
+           Drops: 0
+    ParserErrors: 170
+

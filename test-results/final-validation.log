@@ -1,0 +1,55 @@
+Running WorkbenchTests
+.......... ...
+Done WorkbenchTests
+__________
+
+                           Name                            Passed    Failed    Incomplete    Duration      Details   
+    ___________________________________________________    ______    ______    __________    ________    ____________
+
+    {'WorkbenchTests/wireGoldenVectors'               }    true      false       false         1.1919    {1x1 struct}
+    {'WorkbenchTests/waveformGolden'                  }    true      false       false        0.19095    {1x1 struct}
+    {'WorkbenchTests/calibrationAndFilters'           }    true      false       false        0.36702    {1x1 struct}
+    {'WorkbenchTests/spectraAndSampling'              }    true      false       false        0.11372    {1x1 struct}
+    {'WorkbenchTests/arxHeldOutRecovery'              }    true      false       false        0.20809    {1x1 struct}
+    {'WorkbenchTests/physicalPendulumDecay'           }    true      false       false        0.16548    {1x1 struct}
+    {'WorkbenchTests/physicalDynamicsEnergy'          }    true      false       false        0.18758    {1x1 struct}
+    {'WorkbenchTests/simulatorWorkflowAndBurst'       }    true      false       false        0.77746    {1x1 struct}
+    {'WorkbenchTests/recordingRoundTrip'              }    true      false       false        0.41505    {1x1 struct}
+    {'WorkbenchTests/guiConstructsDisconnected'       }    true      false       false         12.402    {1x1 struct}
+    {'WorkbenchTests/batchedReceptionAndFraming'      }    true      false       false        0.22338    {1x1 struct}
+    {'WorkbenchTests/twinPreviewAndMeasuredAngles'    }    true      false       false       0.090335    {1x1 struct}
+    {'WorkbenchTests/contiguousSelectionPreservesLoss'}    true      false       false       0.038094    {1x1 struct}
+
+            Connected: 1
+                Ready: 1
+               Status: [1x1 struct]
+               Config: [1x1 struct]
+              Samples: 11340
+              Elapsed: 45.0310
+           LoopMedian: 0.0568
+              LoopP95: 0.1840
+              LoopMax: 0.9771
+           DeviceSpan: 45.3720
+           SampleRate: 249.9119
+           MaxApplied: 0
+           CountRange: 0
+         PendRawRange: [2983 2983]
+                AdcMv: [2.5086e+03 63.8999]
+                Drops: 0
+         ParserErrors: 2
+      ParserLastError: 'Length mismatch'
+     MaxSerialBacklog: 21632
+    MaxRefreshSeconds: 0.3834
+             BurstADC: 1000
+            BurstCore: 250
+         AnalysisSpan: [9.0400e-04 0.4510]
+           SpectrumOK: 1
+      FilterPreviewOK: 1
+
+           State: 'DISARMED'
+         Samples: 963
+             ADC: 599
+       CoreBurst: 150
+    RunDirectory: 'test-results\final-simulator\20261020_234958_964_Simulator'
+            Mode: 'Simulator'
+

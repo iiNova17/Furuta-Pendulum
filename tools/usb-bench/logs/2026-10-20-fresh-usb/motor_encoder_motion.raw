@@ -1,0 +1,810 @@
+MAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angle not validated
+
+[379952 ms] STBMAG=1718 | CHECK MAGNET; angl0.0 A/B=0/0 maxPollGap=22016 us
+ACS: 2515.4 mV SD=67.2 span=2334..2697 mV raw=2773..3275 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+STOP: direction/PWM LOW; STBY commanded LOW.
+
+[380452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22016 us
+ACS: 2519.2 mV SD=65.2 span=2359..2715 mV raw=2715..3291 N=238 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[380952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22014 us
+ACS: 2506.2 mV SD=65.6 span=2333..2673 mV raw=2828..3208 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+Motor count zeroed in RAM.
+
+[381452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.5 mV SD=56.8 span=2364..2665 mV raw=2777..3262 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[381952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22016 us
+ACS: 2512.9 mV SD=63.6 span=2287..2717 mV raw=2792..3206 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[382452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2499.1 mV SD=68.1 span=2351..2671 mV raw=2824..3340 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[382952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2510.0 mV SD=60.7 span=2356..2695 mV raw=2821..3425 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[383452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2502.2 mV SD=58.9 span=2314..2717 mV raw=2747..3301 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[383952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2515.5 mV SD=62.9 span=2351..2697 mV raw=2759..3227 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[384452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2506.1 mV SD=60.0 span=2362..2710 mV raw=2809..3277 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[384952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2515.7 mV SD=58.7 span=2344..2711 mV raw=2797..3295 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[385452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.6 mV SD=62.7 span=2370..2707 mV raw=2827..3224 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[385952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2512.0 mV SD=62.4 span=2347..2695 mV raw=2827..3262 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1720 | CHECK MAGNET; angle not validated
+
+[386452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.6 mV SD=66.8 span=2312..2677 mV raw=2725..3311 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[386952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.2 mV SD=61.6 span=2339..2677 mV raw=2797..3251 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[387452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2510.0 mV SD=60.3 span=2324..2663 mV raw=2787..3196 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[387952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.9 mV SD=64.9 span=2337..2753 mV raw=2787..3211 N=239 | zero unset; send z
+AS5600: raw=2974 angle=261.39 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[388452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2510.7 mV SD=59.6 span=2341..2674 mV raw=2751..3291 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[388952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2505.2 mV SD=61.0 span=2356..2669 mV raw=2807..3301 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[389452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2506.2 mV SD=69.2 span=2309..2651 mV raw=2777..3231 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[389952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2503.8 mV SD=64.4 span=2344..2686 mV raw=2789..3207 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1720 | CHECK MAGNET; angle not validated
+
+[390452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2503.4 mV SD=65.6 span=2364..2683 mV raw=2764..3302 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[390952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2498.1 mV SD=64.7 span=2324..2665 mV raw=2775..3187 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[391452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2512.2 mV SD=64.5 span=2316..2704 mV raw=2825..3221 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[391952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.4 mV SD=64.0 span=2339..2695 mV raw=2777..3241 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[392452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2514.2 mV SD=62.2 span=2347..2695 mV raw=2759..3228 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[392952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.5 mV SD=64.7 span=2311..2683 mV raw=2793..3223 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[393452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2504.8 mV SD=61.8 span=2272..2669 mV raw=2805..3207 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[393952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2499.4 mV SD=58.8 span=2324..2651 mV raw=2791..3259 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[394452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.2 mV SD=62.1 span=2330..2691 mV raw=2735..3196 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[394952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2504.2 mV SD=60.7 span=2334..2707 mV raw=2778..3253 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[395452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2506.1 mV SD=65.3 span=2308..2688 mV raw=2715..3183 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[395952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.0 mV SD=62.7 span=2356..2669 mV raw=2787..3257 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[396452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.2 mV SD=60.8 span=2347..2711 mV raw=2747..3293 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[396952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2513.4 mV SD=64.6 span=2308..2677 mV raw=2799..3242 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[397452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2504.0 mV SD=58.8 span=2339..2673 mV raw=2707..3293 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[397952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2506.4 mV SD=68.0 span=2311..2688 mV raw=2764..3263 N=239 | zero unset; send z
+AS5600: raw=2972 angle=261.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[398452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.4 mV SD=67.8 span=2278..2674 mV raw=2777..3320 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[398952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2517.6 mV SD=63.2 span=2259..2691 mV raw=2767..3271 N=239 | zero unset; send z
+AS5600: raw=2972 angle=261.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[399452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.1 mV SD=71.0 span=2310..2699 mV raw=2779..3316 N=239 | zero unset; send z
+AS5600: raw=2974 angle=261.39 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[399952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2511.4 mV SD=68.3 span=2347..2704 mV raw=2788..3293 N=239 | zero unset; send z
+AS5600: raw=2967 angle=260.77 deg MD=1 ML=1 MH=0 AGC=128 MAG=1798 | CHECK MAGNET; angle not validated
+
+[400452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2497.5 mV SD=61.4 span=2334..2673 mV raw=2813..3211 N=239 | zero unset; send z
+AS5600: raw=2916 angle=256.29 deg MD=1 ML=1 MH=0 AGC=128 MAG=1809 | CHECK MAGNET; angle not validated
+
+[400952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.4 mV SD=64.1 span=2288..2651 mV raw=2761..3227 N=239 | zero unset; send z
+AS5600: raw=2909 angle=255.67 deg MD=1 ML=1 MH=0 AGC=128 MAG=1808 | CHECK MAGNET; angle not validated
+
+[401452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.2 mV SD=62.8 span=2321..2677 mV raw=2783..3171 N=239 | zero unset; send z
+AS5600: raw=2896 angle=254.53 deg MD=1 ML=1 MH=0 AGC=128 MAG=1794 | CHECK MAGNET; angle not validated
+
+[401952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2505.8 mV SD=64.6 span=2325..2683 mV raw=2718..3285 N=239 | zero unset; send z
+AS5600: raw=2881 angle=253.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1795 | CHECK MAGNET; angle not validated
+
+[402452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.9 mV SD=60.1 span=2337..2674 mV raw=2732..3240 N=239 | zero unset; send z
+AS5600: raw=2890 angle=254.00 deg MD=1 ML=1 MH=0 AGC=128 MAG=1811 | CHECK MAGNET; angle not validated
+
+[402952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2511.5 mV SD=61.4 span=2328..2738 mV raw=2779..3284 N=239 | zero unset; send z
+AS5600: raw=2936 angle=258.05 deg MD=1 ML=1 MH=0 AGC=128 MAG=1813 | CHECK MAGNET; angle not validated
+
+[403452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2499.0 mV SD=65.1 span=2288..2663 mV raw=2793..3227 N=239 | zero unset; send z
+AS5600: raw=2929 angle=257.43 deg MD=1 ML=1 MH=0 AGC=128 MAG=1772 | CHECK MAGNET; angle not validated
+
+[403952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2504.9 mV SD=64.6 span=2339..2691 mV raw=2771..3244 N=239 | zero unset; send z
+AS5600: raw=2920 angle=256.64 deg MD=1 ML=1 MH=0 AGC=128 MAG=1772 | CHECK MAGNET; angle not validated
+
+[404452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2500.3 mV SD=63.1 span=2339..2695 mV raw=2836..3207 N=239 | zero unset; send z
+AS5600: raw=2916 angle=256.29 deg MD=1 ML=1 MH=0 AGC=128 MAG=1795 | CHECK MAGNET; angle not validated
+
+[404952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2512.6 mV SD=63.1 span=2347..2671 mV raw=2807..3226 N=239 | zero unset; send z
+AS5600: raw=2912 angle=255.94 deg MD=1 ML=1 MH=0 AGC=128 MAG=1785 | CHECK MAGNET; angle not validated
+
+[405452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2504.9 mV SD=64.0 span=2311..2687 mV raw=2759..3260 N=239 | zero unset; send z
+AS5600: raw=2909 angle=255.67 deg MD=1 ML=1 MH=0 AGC=128 MAG=1779 | CHECK MAGNET; angle not validated
+
+[405952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.5 mV SD=64.3 span=2339..2677 mV raw=2759..3240 N=239 | zero unset; send z
+AS5600: raw=2879 angle=253.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1749 | CHECK MAGNET; angle not validated
+
+[406452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2500.3 mV SD=62.4 span=2359..2647 mV raw=2800..3293 N=239 | zero unset; send z
+AS5600: raw=2896 angle=254.53 deg MD=1 ML=1 MH=0 AGC=128 MAG=1733 | CHECK MAGNET; angle not validated
+
+[406952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2505.3 mV SD=64.0 span=2324..2710 mV raw=2749..3246 N=239 | zero unset; send z
+AS5600: raw=2864 angle=251.72 deg MD=1 ML=1 MH=0 AGC=128 MAG=1709 | CHECK MAGNET; angle not validated
+
+[407452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2503.3 mV SD=59.4 span=2324..2681 mV raw=2787..3327 N=239 | zero unset; send z
+AS5600: raw=2892 angle=254.18 deg MD=1 ML=1 MH=0 AGC=128 MAG=1713 | CHECK MAGNET; angle not validated
+
+[407952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2512.3 mV SD=61.8 span=2376..2660 mV raw=2811..3195 N=239 | zero unset; send z
+AS5600: raw=2949 angle=259.19 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[408452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.1 mV SD=64.1 span=2345..2663 mV raw=2761..3229 N=239 | zero unset; send z
+AS5600: raw=2974 angle=261.39 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[408952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2515.5 mV SD=59.2 span=2335..2696 mV raw=2825..3283 N=239 | zero unset; send z
+AS5600: raw=2974 angle=261.39 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[409452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2513.8 mV SD=67.5 span=2284..2695 mV raw=2776..3237 N=239 | zero unset; send z
+AS5600: raw=2969 angle=260.95 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[409952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2513.3 mV SD=64.3 span=2374..2724 mV raw=2798..3230 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[410452 ms] STBY_cmd=0 logic=IDLE ENC=-29 cps=-58.0 A/B=0/1 maxPollGap=22017 us
+ACS: 2507.6 mV SD=65.0 span=2333..2671 mV raw=2797..3375 N=239 | zero unset; send z
+AS5600: raw=3002 angle=263.85 deg MD=1 ML=1 MH=0 AGC=128 MAG=1720 | CHECK MAGNET; angle not validated
+
+[410952 ms] STBY_cmd=0 logic=IDLE ENC=-62 cps=-66.0 A/B=1/1 maxPollGap=22017 us
+ACS: 2518.5 mV SD=62.0 span=2330..2710 mV raw=2813..3270 N=239 | zero unset; send z
+AS5600: raw=3012 angle=264.73 deg MD=1 ML=1 MH=0 AGC=128 MAG=1723 | CHECK MAGNET; angle not validated
+
+[411452 ms] STBY_cmd=0 logic=IDLE ENC=-104 cps=-84.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.1 mV SD=65.3 span=2321..2669 mV raw=2758..3278 N=239 | zero unset; send z
+AS5600: raw=2996 angle=263.32 deg MD=1 ML=1 MH=0 AGC=128 MAG=1721 | CHECK MAGNET; angle not validated
+
+[411952 ms] STBY_cmd=0 logic=IDLE ENC=-126 cps=-44.0 A/B=1/1 maxPollGap=22017 us
+ACS: 2505.6 mV SD=63.3 span=2335..2667 mV raw=2794..3274 N=239 | zero unset; send z
+AS5600: raw=2983 angle=262.18 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[412452 ms] STBY_cmd=0 logic=IDLE ENC=-130 cps=-8.0 A/B=1/1 maxPollGap=22017 us
+ACS: 2509.3 mV SD=61.0 span=2359..2651 mV raw=2775..3289 N=239 | zero unset; send z
+AS5600: raw=2974 angle=261.39 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[412952 ms] STBY_cmd=0 logic=IDLE ENC=-130 cps=0.0 A/B=1/1 maxPollGap=22017 us
+ACS: 2511.3 mV SD=59.8 span=2376..2688 mV raw=2746..3219 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[413452 ms] STBY_cmd=0 logic=IDLE ENC=-81 cps=98.0 A/B=0/1 maxPollGap=22017 us
+ACS: 2511.8 mV SD=66.9 span=2374..2676 mV raw=2765..3289 N=239 | zero unset; send z
+AS5600: raw=2948 angle=259.10 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[413952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=162.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.3 mV SD=67.1 span=2310..2707 mV raw=2771..3193 N=239 | zero unset; send z
+AS5600: raw=2900 angle=254.88 deg MD=1 ML=1 MH=0 AGC=128 MAG=1720 | CHECK MAGNET; angle not validated
+
+[414452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2505.5 mV SD=61.0 span=2325..2740 mV raw=2809..3225 N=239 | zero unset; send z
+AS5600: raw=3208 angle=281.95 deg MD=1 ML=1 MH=0 AGC=128 MAG=1710 | CHECK MAGNET; angle not validated
+
+[414952 ms] STBY_cmd=0 logic=IDLE ENC=106 cps=212.0 A/B=1/1 maxPollGap=22017 us
+ACS: 2512.8 mV SD=58.9 span=2381..2663 mV raw=2794..3191 N=239 | zero unset; send z
+AS5600: raw=2942 angle=258.57 deg MD=1 ML=1 MH=0 AGC=128 MAG=1726 | CHECK MAGNET; angle not validated
+
+[415452 ms] STBY_cmd=0 logic=IDLE ENC=147 cps=82.0 A/B=0/1 maxPollGap=22017 us
+ACS: 2499.6 mV SD=65.2 span=2333..2674 mV raw=2804..3209 N=239 | zero unset; send z
+AS5600: raw=2959 angle=260.07 deg MD=1 ML=1 MH=0 AGC=128 MAG=1797 | CHECK MAGNET; angle not validated
+
+[415952 ms] STBY_cmd=0 logic=IDLE ENC=182 cps=70.0 A/B=1/1 maxPollGap=22017 us
+ACS: 2513.2 mV SD=62.1 span=2347..2696 mV raw=2771..3220 N=239 | zero unset; send z
+AS5600: raw=2922 angle=256.82 deg MD=1 ML=1 MH=0 AGC=128 MAG=1785 | CHECK MAGNET; angle not validated
+
+[416452 ms] STBY_cmd=0 logic=IDLE ENC=188 cps=12.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.3 mV SD=69.2 span=2352..2781 mV raw=2759..3199 N=239 | zero unset; send z
+AS5600: raw=2936 angle=258.05 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated
+
+[416952 ms] STBY_cmd=0 logic=IDLE ENC=64 cps=-248.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.0 mV SD=64.6 span=2348..2707 mV raw=2804..3253 N=239 | zero unset; send z
+AS5600: raw=2977 angle=261.65 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[417452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=-176.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2511.6 mV SD=68.1 span=2272..2654 mV raw=2767..3257 N=239 | zero unset; send z
+AS5600: raw=2926 angle=257.17 deg MD=1 ML=1 MH=0 AGC=128 MAG=1715 | CHECK MAGNET; angle not validated
+
+[417952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.7 mV SD=64.1 span=2288..2753 mV raw=2775..3311 N=239 | zero unset; send z
+AS5600: raw=2944 angle=258.75 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[418452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2502.7 mV SD=60.2 span=2344..2663 mV raw=2791..3263 N=239 | zero unset; send z
+AS5600: raw=2973 angle=261.30 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[418952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2511.6 mV SD=67.3 span=2352..2691 mV raw=2793..3283 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[419452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2503.4 mV SD=66.3 span=2311..2704 mV raw=2777..3247 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1715 | CHECK MAGNET; angle not validated
+
+[419952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2505.3 mV SD=59.9 span=2372..2707 mV raw=2747..3183 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[420452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2503.7 mV SD=64.1 span=2337..2759 mV raw=2787..3175 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[420952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2510.8 mV SD=64.7 span=2334..2683 mV raw=2824..3230 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[421452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2512.3 mV SD=64.0 span=2339..2707 mV raw=2773..3237 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[421952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2505.0 mV SD=60.6 span=2348..2659 mV raw=2787..3223 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[422452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.6 mV SD=68.2 span=2345..2685 mV raw=2781..3211 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[422952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.3 mV SD=61.7 span=2361..2683 mV raw=2789..3215 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[423452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.7 mV SD=64.8 span=2352..2722 mV raw=2774..3273 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[423952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2504.4 mV SD=61.5 span=2308..2728 mV raw=2813..3225 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[424452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.0 mV SD=65.1 span=2293..2677 mV raw=2777..3223 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[424952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2510.2 mV SD=61.0 span=2337..2683 mV raw=2777..3247 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1715 | CHECK MAGNET; angle not validated
+
+[425452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.3 mV SD=69.0 span=2310..2695 mV raw=2829..3223 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[425952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.1 mV SD=66.0 span=2326..2713 mV raw=2760..3295 N=239 | zero unset; send z
+AS5600: raw=2970 angle=261.04 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[426452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2510.2 mV SD=58.5 span=2348..2669 mV raw=2739..3208 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[426952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2511.4 mV SD=63.2 span=2357..2685 mV raw=2713..3236 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[427452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2500.5 mV SD=59.5 span=2333..2685 mV raw=2771..3231 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[427952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2511.6 mV SD=63.6 span=2334..2733 mV raw=2746..3223 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[428452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2500.9 mV SD=64.2 span=2335..2665 mV raw=2771..3235 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[428952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2511.6 mV SD=62.2 span=2350..2762 mV raw=2790..3214 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[429452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2503.1 mV SD=66.8 span=2335..2785 mV raw=2765..3205 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[429952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2505.0 mV SD=61.8 span=2272..2631 mV raw=2743..3281 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[430452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2511.8 mV SD=64.0 span=2337..2683 mV raw=2739..3308 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[430952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2513.4 mV SD=60.8 span=2333..2683 mV raw=2803..3245 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[431452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.5 mV SD=62.9 span=2345..2677 mV raw=2733..3299 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[431952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2502.4 mV SD=66.1 span=2295..2639 mV raw=2761..3271 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[432452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2503.5 mV SD=69.1 span=2344..2720 mV raw=2811..3228 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[432952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.9 mV SD=63.8 span=2345..2681 mV raw=2777..3226 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[433452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.3 mV SD=61.3 span=2339..2674 mV raw=2797..3227 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[433952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2504.1 mV SD=64.6 span=2296..2685 mV raw=2777..3283 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[434452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2513.0 mV SD=55.6 span=2334..2681 mV raw=2791..3253 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[434952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.4 mV SD=62.1 span=2337..2686 mV raw=2799..3244 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[435452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.8 mV SD=62.8 span=2347..2700 mV raw=2779..3299 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[435952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2503.2 mV SD=66.6 span=2334..2662 mV raw=2791..3253 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[436452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.4 mV SD=63.9 span=2322..2652 mV raw=2761..3359 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[436952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2505.8 mV SD=64.1 span=2311..2667 mV raw=2725..3257 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[437452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.2 mV SD=65.7 span=2328..2665 mV raw=2781..3221 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[437952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2506.5 mV SD=66.3 span=2337..2683 mV raw=2775..3287 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[438452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2512.5 mV SD=62.1 span=2352..2695 mV raw=2773..3244 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[438952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.8 mV SD=62.0 span=2296..2695 mV raw=2805..3277 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[439452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2510.3 mV SD=65.6 span=2333..2695 mV raw=2777..3245 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[439952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.7 mV SD=64.9 span=2361..2683 mV raw=2781..3229 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1715 | CHECK MAGNET; angle not validated
+
+[440452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2504.6 mV SD=60.5 span=2339..2677 mV raw=2792..3316 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[440952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2503.6 mV SD=61.5 span=2328..2760 mV raw=2786..3263 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[441452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2512.0 mV SD=60.6 span=2364..2687 mV raw=2771..3269 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[441952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2512.0 mV SD=64.7 span=2334..2677 mV raw=2795..3233 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[442452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.2 mV SD=56.8 span=2362..2671 mV raw=2752..3269 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[442952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.0 mV SD=68.5 span=2321..2753 mV raw=2823..3277 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[443452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2513.4 mV SD=71.0 span=2364..2728 mV raw=2791..3240 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[443952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.3 mV SD=62.3 span=2348..2782 mV raw=2806..3219 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[444452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.9 mV SD=62.8 span=2295..2695 mV raw=2781..3214 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[444952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2512.6 mV SD=62.5 span=2334..2677 mV raw=2745..3247 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[445452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2513.4 mV SD=65.8 span=2339..2685 mV raw=2712..3291 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[445952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.3 mV SD=64.1 span=2290..2700 mV raw=2743..3227 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[446452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2513.0 mV SD=63.4 span=2339..2688 mV raw=2824..3263 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[446952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2504.6 mV SD=64.2 span=2350..2673 mV raw=2774..3287 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[447452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2503.8 mV SD=66.8 span=2301..2651 mV raw=2821..3245 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1715 | CHECK MAGNET; angle not validated
+
+[447952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2511.1 mV SD=66.0 span=2372..2688 mV raw=2774..3258 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[448452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2510.6 mV SD=65.7 span=2281..2700 mV raw=2845..3228 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[448952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.5 mV SD=62.0 span=2360..2677 mV raw=2781..3235 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[449452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2504.9 mV SD=59.2 span=2348..2656 mV raw=2777..3239 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[449952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2499.3 mV SD=66.6 span=2337..2722 mV raw=2793..3285 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[450452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2518.7 mV SD=67.3 span=2321..2793 mV raw=2808..3208 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[450952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2503.1 mV SD=60.7 span=2345..2641 mV raw=2793..3257 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[451452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.7 mV SD=65.6 span=2348..2710 mV raw=2789..3294 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[451952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.4 mV SD=66.3 span=2321..2688 mV raw=2799..3229 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[452452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2504.3 mV SD=63.9 span=2312..2688 mV raw=2825..3254 N=239 | zero unset; send z
+AS5600: raw=2972 angle=261.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[452952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.3 mV SD=66.0 span=2316..2712 mV raw=2771..3231 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1715 | CHECK MAGNET; angle not validated
+
+[453452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2511.9 mV SD=64.7 span=2364..2688 mV raw=2805..3243 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[453952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2512.6 mV SD=65.4 span=2345..2685 mV raw=2795..3251 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[454452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.9 mV SD=60.7 span=2340..2665 mV raw=2767..3247 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[454952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2506.2 mV SD=67.3 span=2310..2659 mV raw=2756..3225 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[455452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2505.4 mV SD=66.3 span=2324..2725 mV raw=2770..3245 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[455952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.6 mV SD=65.3 span=2352..2707 mV raw=2759..3287 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[456452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.1 mV SD=67.0 span=2325..2683 mV raw=2839..3207 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[456952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2512.8 mV SD=62.8 span=2364..2663 mV raw=2767..3299 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[457452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2516.4 mV SD=65.8 span=2334..2739 mV raw=2751..3226 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[457952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.9 mV SD=60.1 span=2359..2683 mV raw=2815..3235 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[458452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2514.5 mV SD=64.4 span=2347..2696 mV raw=2775..3223 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[458952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.4 mV SD=62.0 span=2330..2684 mV raw=2731..3291 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[459452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2510.9 mV SD=68.7 span=2323..2749 mV raw=2766..3229 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[459952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2512.0 mV SD=66.7 span=2347..2710 mV raw=2798..3247 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[460452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2518.9 mV SD=65.6 span=2362..2744 mV raw=2797..3212 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[460952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2513.6 mV SD=68.2 span=2339..2712 mV raw=2723..3337 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[461452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2498.3 mV SD=60.1 span=2364..2677 mV raw=2771..3301 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[461952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2508.8 mV SD=65.6 span=2337..2729 mV raw=2771..3297 N=239 | zero unset; send z
+AS5600: raw=2972 angle=261.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[462452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2501.4 mV SD=60.1 span=2352..2696 mV raw=2810..3255 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[462952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.4 mV SD=67.7 span=2339..2733 mV raw=2745..3234 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[463452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2510.4 mV SD=66.9 span=2333..2696 mV raw=2788..3247 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[463952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.6 mV SD=65.8 span=2347..2736 mV raw=2697..3228 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[464452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2509.8 mV SD=68.2 span=2314..2665 mV raw=2783..3283 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[464952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2517.3 mV SD=64.6 span=2364..2695 mV raw=2794..3277 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[465452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2515.3 mV SD=61.7 span=2362..2683 mV raw=2781..3192 N=239 | zero unset; send z
+AS5600: raw=2972 angle=261.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[465952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2517.9 mV SD=62.1 span=2352..2707 mV raw=2783..3255 N=239 | zero unset; send z
+AS5600: raw=2972 angle=261.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[466452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2505.5 mV SD=73.1 span=2333..2699 mV raw=2631..3211 N=239 | zero unset; send z
+AS5600: raw=2972 angle=261.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[466952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2506.4 mV SD=63.4 span=2287..2691 mV raw=2815..3229 N=239 | zero unset; send z
+AS5600: raw=2972 angle=261.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[467452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2519.8 mV SD=65.6 span=2339..2664 mV raw=2775..3245 N=239 | zero unset; send z
+AS5600: raw=2972 angle=261.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[467952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2514.0 mV SD=69.2 span=2349..2725 mV raw=2765..3223 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[468452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2503.6 mV SD=61.1 span=2339..2685 mV raw=2744..3237 N=239 | zero unset; send z
+AS5600: raw=2972 angle=261.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1718 | CHECK MAGNET; angle not validated
+
+[468952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2511.3 mV SD=64.5 span=2337..2710 mV raw=2799..3239 N=239 | zero unset; send z
+AS5600: raw=2972 angle=261.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+
+[469452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2507.9 mV SD=60.7 span=2350..2674 mV raw=2777..3258 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[469952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2506.0 mV SD=62.9 span=2303..2681 mV raw=2793..3325 N=239 | zero unset; send z
+AS5600: raw=2972 angle=261.21 deg MD=1 ML=1 MH=0 AGC=128 MAG=1717 | CHECK MAGNET; angle not validated
+STOP: direction/PWM LOW; STBY commanded LOW.
+
+[470452 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxPollGap=22017 us
+ACS: 2506.0 mV SD=60.6 span=2316..2665 mV raw=2789..3252 N=239 | zero unset; send z
+AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1716 | CHECK MAGNET; angle not validated
+
+[470952 ms] STBY_cmd=0 logic=IDLE ENC=-24 cps=0.0 A/B=0/0 maxP

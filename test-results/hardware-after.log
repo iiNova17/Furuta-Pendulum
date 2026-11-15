@@ -1,0 +1,47 @@
+Running WorkbenchTests
+.......... ..
+Done WorkbenchTests
+__________
+
+                         Name                          Passed    Failed    Incomplete    Duration      Details   
+    _______________________________________________    ______    ______    __________    ________    ____________
+
+    {'WorkbenchTests/wireGoldenVectors'           }    true      false       false        1.3367     {1x1 struct}
+    {'WorkbenchTests/waveformGolden'              }    true      false       false        0.2339     {1x1 struct}
+    {'WorkbenchTests/calibrationAndFilters'       }    true      false       false       0.39876     {1x1 struct}
+    {'WorkbenchTests/spectraAndSampling'          }    true      false       false       0.14177     {1x1 struct}
+    {'WorkbenchTests/arxHeldOutRecovery'          }    true      false       false       0.20733     {1x1 struct}
+    {'WorkbenchTests/physicalPendulumDecay'       }    true      false       false       0.16533     {1x1 struct}
+    {'WorkbenchTests/physicalDynamicsEnergy'      }    true      false       false       0.18157     {1x1 struct}
+    {'WorkbenchTests/simulatorWorkflowAndBurst'   }    true      false       false        0.7744     {1x1 struct}
+    {'WorkbenchTests/recordingRoundTrip'          }    true      false       false       0.40652     {1x1 struct}
+    {'WorkbenchTests/guiConstructsDisconnected'   }    true      false       false        12.715     {1x1 struct}
+    {'WorkbenchTests/batchedReceptionAndFraming'  }    true      false       false       0.15876     {1x1 struct}
+    {'WorkbenchTests/twinPreviewAndMeasuredAngles'}    true      false       false       0.10513     {1x1 struct}
+
+             Connected: 1
+                 Ready: 1
+                Status: [1x1 struct]
+                Config: [1x1 struct]
+               Samples: 15008
+               Elapsed: 60.0755
+            LoopMedian: 0.0561
+               LoopMax: 1.2168
+            DeviceSpan: 60.1080
+            SampleRate: 249.6673
+            MaxApplied: 0
+            CountRange: 0
+          PendRawRange: [2281 2990]
+                 AdcMv: [2.5099e+03 63.4125]
+                 Drops: 0
+          ParserErrors: 8
+       ParserLastError: 'Invalid version/length'
+      MaxSerialBacklog: 27117
+     MaxRefreshSeconds: 0.3359
+              BurstADC: 1000
+             BurstCore: 251
+            SpectrumOK: 0
+         SpectrumError: 'Nonuniform/gapped data: select a contiguous interval or explicitly resample small jitter'
+       FilterPreviewOK: 0
+    FilterPreviewError: 'Filtering needs uniform finite samples'
+

@@ -1,0 +1,57 @@
+{
+  "stationary_baseline": {
+    "fresh_stop_ack_elapsed_s": 0.406,
+    "encoder_complete_reports": 29,
+    "encoder_count_range": [
+      0,
+      0
+    ],
+    "encoder_levels": [
+      "0/0"
+    ],
+    "current_reports": 29,
+    "mean_mv": 2505.875862068966,
+    "sample_sd_mv_range": [
+      57.7,
+      67.6
+    ],
+    "pendulum_reports": 29,
+    "pendulum_raw_range": [
+      2659,
+      2972
+    ],
+    "magnet_md_ml_mh": [
+      "1/1/0"
+    ],
+    "calibration_messages": []
+  },
+  "zero_attempt": {
+    "fresh_stop_ack_elapsed_s": 0.422,
+    "encoder_complete_reports": 25,
+    "encoder_count_range": [
+      0,
+      0
+    ],
+    "encoder_levels": [
+      "0/0"
+    ],
+    "current_reports": 25,
+    "mean_mv": 2507.06,
+    "sample_sd_mv_range": [
+      57.0,
+      67.7
+    ],
+    "pendulum_reports": 25,
+    "pendulum_raw_range": [
+      2971,
+      2971
+    ],
+    "magnet_md_ml_mh": [
+      "1/1/0"
+    ],
+    "calibration_messages": [
+      "ZERO collecting 1 s. Motor unpowered/stationary. 5V required.",
+      "ZERO rejected: N=463 mean=2506.5 mV SD=63.0 mV raw=2740..3303."
+    ]
+  }
+}

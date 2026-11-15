@@ -1,0 +1,11 @@
+{"utc":"2026-10-20T22:24:54.265Z","event":{"command":"UPLOAD_BEGIN","id":26,"arguments":{}}}
+{"utc":"2026-10-20T22:24:57.145Z","event":{"command":"SET_SEGMENT","id":27,"arguments":{"index":0,"segment":{"kind":"hold","duration":0.5,"amplitude":0,"offset":0,"f0":1,"f1":2,"phase":0,"duty":0.5,"end":0,"bitPeriod":0.05,"seed":1,"logarithmic":false,"linear":false,"tablePeriod":0.01,"frequencies":[],"amplitudes":[],"phases":[],"table":[]}}}}
+{"utc":"2026-10-20T22:24:57.173Z","event":{"command":"SET_SEGMENT","id":28,"arguments":{"index":1,"segment":{"kind":"sine","duration":2,"amplitude":0.08,"offset":0,"f0":2,"f1":2,"phase":0,"duty":0.5,"end":0,"bitPeriod":0.05,"seed":1,"logarithmic":false,"linear":false,"tablePeriod":0.01,"frequencies":[],"amplitudes":[],"phases":[],"table":[]}}}}
+{"utc":"2026-10-20T22:24:57.187Z","event":{"command":"SET_SEGMENT","id":29,"arguments":{"index":2,"segment":{"kind":"hold","duration":0.5,"amplitude":0,"offset":0,"f0":1,"f1":2,"phase":0,"duty":0.5,"end":0,"bitPeriod":0.05,"seed":1,"logarithmic":false,"linear":false,"tablePeriod":0.01,"frequencies":[],"amplitudes":[],"phases":[],"table":[]}}}}
+{"utc":"2026-10-20T22:24:57.223Z","event":{"command":"VALIDATE","id":30,"arguments":{}}}
+{"utc":"2026-10-20T22:24:57.243Z","event":{"command":"ARM","id":31,"arguments":{}}}
+{"utc":"2026-10-20T22:24:57.255Z","event":{"command":"START","id":32,"arguments":{}}}
+{"utc":"2026-10-20T22:24:57.270Z","event":{"command":"STATUS","id":34,"arguments":{}}}
+{"utc":"2026-10-20T22:24:58.910Z","event":{"event":"HEARTBEAT_TIMEOUT","status":{"state":"FAULT","fault":"HEARTBEAT_TIMEOUT","centered":true,"configId":3,"runId":1,"bootId":"11262507320051744194","deviceUs":"19768827","dropped":0,"adcOverruns":0,"controlOverruns":0,"encoderOk":true,"pendStatus":48,"pendValid":true,"currentMv":2500,"centerCount":"0","burstActive":false,"burstPending":false,"burstAdcCount":0,"burstCoreCount":0,"burstOverflow":false,"adcCalibrationSource":-1}}}
+{"utc":"2026-10-20T22:24:59.599Z","event":{"command":"STATUS","id":36,"arguments":{}}}
+{"utc":"2026-10-20T22:25:00.771Z","event":{"command":"STATUS","id":38,"arguments":{}}}

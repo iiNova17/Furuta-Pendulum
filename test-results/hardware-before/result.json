@@ -1,0 +1,288 @@
+{
+  "Connected": true,
+  "Ready": true,
+  "Status": {
+    "state": "DISARMED",
+    "fault": "",
+    "centered": false,
+    "configId": 1,
+    "runId": 0,
+    "bootId": "5803752817682872804",
+    "deviceUs": "30788673",
+    "dropped": 0,
+    "adcOverruns": 6,
+    "controlOverruns": 0,
+    "encoderOk": true,
+    "pendStatus": 51,
+    "pendValid": true,
+    "currentMv": 2581,
+    "centerCount": "0",
+    "burstActive": false,
+    "burstPending": false,
+    "burstAdcCount": 0,
+    "burstCoreCount": 0,
+    "burstOverflow": false,
+    "adcCalibrationSource": 3
+  },
+  "Config": {
+    "schema": 1,
+    "maxDuty": 0,
+    "slewPerSecond": 0.5,
+    "maxDuration": 10,
+    "travelCounts": 0,
+    "velocityCountsPerSecond": 0,
+    "currentTripA": 0,
+    "currentTripMs": 10,
+    "currentZeroMv": null,
+    "sensitivityMvA": 185,
+    "countsPerRev": null,
+    "armSign": 1,
+    "pendSign": 1,
+    "pendDownRaw": null,
+    "assumedBusV": 12,
+    "heartbeatMs": 300,
+    "streamHz": 250,
+    "adcHz": 2000,
+    "pwmHz": 20000,
+    "filter": {
+      "type": "bypass",
+      "alpha": 0.1,
+      "window": 8,
+      "sos": [
+        1,
+        0,
+        0,
+        1,
+        0,
+        0
+      ]
+    }
+  },
+  "Samples": 4900,
+  "Elapsed": 20.0388203,
+  "LoopMedian": 0.2547332,
+  "LoopMax": 9.5204148,
+  "Events": [
+    {
+      "command": "HELLO",
+      "id": 1,
+      "arguments": {}
+    },
+    {
+      "command": "SESSION_OPEN",
+      "id": 2,
+      "arguments": {
+        "bootId": "5803752817682872804",
+        "challenge": "4347945343524115749"
+      }
+    },
+    {
+      "command": "GET_CONFIG",
+      "id": 3,
+      "arguments": {}
+    },
+    {
+      "command": "START_STREAM",
+      "id": 4,
+      "arguments": {}
+    },
+    {
+      "configSnapshot": {
+        "schema": 1,
+        "maxDuty": 0,
+        "slewPerSecond": 0.5,
+        "maxDuration": 10,
+        "travelCounts": 0,
+        "velocityCountsPerSecond": 0,
+        "currentTripA": 0,
+        "currentTripMs": 10,
+        "currentZeroMv": null,
+        "sensitivityMvA": 185,
+        "countsPerRev": null,
+        "armSign": 1,
+        "pendSign": 1,
+        "pendDownRaw": null,
+        "assumedBusV": 12,
+        "heartbeatMs": 300,
+        "streamHz": 250,
+        "adcHz": 2000,
+        "pwmHz": 20000,
+        "filter": {
+          "type": "bypass",
+          "alpha": 0.1,
+          "window": 8,
+          "sos": [
+            1,
+            0,
+            0,
+            1,
+            0,
+            0
+          ]
+        }
+      },
+      "status": {
+        "state": "DISARMED",
+        "fault": "",
+        "centered": false,
+        "configId": 1,
+        "runId": 0,
+        "bootId": "5803752817682872804",
+        "deviceUs": "7477768",
+        "dropped": 0,
+        "adcOverruns": 3,
+        "controlOverruns": 0,
+        "encoderOk": true,
+        "pendStatus": 51,
+        "pendValid": true,
+        "currentMv": 2598,
+        "centerCount": "0",
+        "burstActive": false,
+        "burstPending": false,
+        "burstAdcCount": 0,
+        "burstCoreCount": 0,
+        "burstOverflow": false,
+        "adcCalibrationSource": 3
+      }
+    },
+    {
+      "command": "STATUS",
+      "id": 6,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 9,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 11,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 14,
+      "arguments": {}
+    },
+    {
+      "command": "STOP",
+      "id": 18,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 19,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 20,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 21,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 22,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 23,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 24,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 25,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 26,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 27,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 28,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 29,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 30,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 31,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 32,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 33,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 34,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 35,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 36,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 37,
+      "arguments": {}
+    },
+    {
+      "command": "STATUS",
+      "id": 38,
+      "arguments": {}
+    }
+  ],
+  "DeviceSpan": 20.332005,
+  "SampleRate": 240.95016699041733,
+  "MaxApplied": 0,
+  "CountRange": 0,
+  "PendRawRange": [
+    2984,
+    2984
+  ],
+  "AdcMv": [
+    2509.85888671875,
+    63.995376586914062
+  ],
+  "Drops": 0,
+  "ParserErrors": 170
+}

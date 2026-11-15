@@ -1,0 +1,61 @@
+{
+  "label": "zero_attempt",
+  "port": "COM11",
+  "encoder_reports": 113,
+  "encoder_counts": {
+    "min": 0,
+    "max": 0,
+    "mean": 0.0
+  },
+  "encoder_cps": {
+    "min": 0.0,
+    "max": 0.0,
+    "mean": 0.0
+  },
+  "encoder_levels": [
+    "0/0"
+  ],
+  "acs_reports": 25,
+  "acs_report_mean_mv": {
+    "min": 2496.2,
+    "max": 2520.0,
+    "mean": 2507.06
+  },
+  "acs_sample_sd_mv": {
+    "min": 57.0,
+    "max": 67.7,
+    "mean": 63.38000000000001
+  },
+  "acs_raw_min": 2697.0,
+  "acs_raw_max": 3303.0,
+  "estimated_current_a": null,
+  "pendulum_reports": 26,
+  "pendulum_raw": {
+    "min": 2971.0,
+    "max": 2971.0,
+    "mean": 2971.0
+  },
+  "magnet_statuses_md_ml_mh": [
+    [
+      1.0,
+      1.0,
+      0.0
+    ]
+  ],
+  "pendulum_read_error_lines": 0,
+  "events": [
+    "STOP: direction/PWM LOW; STBY commanded LOW.",
+    "Motor count zeroed in RAM.",
+    "ZERO collecting 1 s. Motor unpowered/stationary. 5V required.",
+    "ZERO rejected: N=463 mean=2506.5 mV SD=63.0 mV raw=2740..3303.",
+    "STOP: direction/PWM LOW; STBY commanded LOW."
+  ],
+  "last_telemetry": [
+    "[101952 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22017 us",
+    "ACS: 2509.5 mV SD=63.3 span=2376..2738 mV raw=2789..3263 N=238 | zero unset; send z",
+    "AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1720 | CHECK MAGNET; angle not validated",
+    "[102452 ms] STBY_cmd=0 logic=IDLE ENC=0 cps=0.0 A/B=0/0 maxPollGap=22013 us",
+    "ACS: 2503.4 mV SD=57.4 span=2312..2645 mV raw=2766..3199 N=239 | zero unset; send z",
+    "AS5600: raw=2971 angle=261.12 deg MD=1 ML=1 MH=0 AGC=128 MAG=1719 | CHECK MAGNET; angle not validated"
+  ]
+}

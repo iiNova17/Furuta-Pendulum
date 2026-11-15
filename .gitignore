@@ -1,0 +1,30 @@
+# Python environment and caches
+.venv/
+__pycache__/
+*.pyc
+
+# PlatformIO build output and editor state (machine-specific paths)
+.pio/
+.vscode/
+
+# MATLAB / Simulink generated files
+*.asv
+*.slxc
+*.mexw64
+slprj/
+
+# LaTeX build files (the compiled report PDF is tracked)
+report/*.aux
+report/*.log
+report/*.out
+report/*.fls
+report/*.fdb_latexmk
+report/*.synctex.gz
+report/*.toc
+
+# Per-machine settings
+local_profile.json
+.claude/settings.local.json
+
+# SolidWorks lock/temp files
+~$*
