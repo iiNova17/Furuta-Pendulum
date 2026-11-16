@@ -39,3 +39,21 @@ See README.md for the folder map.
 - Report figures and numbers: `python report/figures/make_report_data.py` (needs numpy, scipy,
   matplotlib), then `latexmk -pdf furuta_model.tex` in `report/`.
 - Recorded hardware runs live in `data/runs/` and are committed; do not delete or rewrite them.
+
+## Simulation harness and controllers (matlab/harness)
+
+- The plant is the report's model, never re-derived: `matlab/model/furuta_rhs.m` + `furuta_params.m`
+  (Table 6). The Simscape plant uses bodies from `lib/plant_bodies.m` whose equations are exactly
+  eq. 89; `tests/test_harness.m` checks Simscape against `furuta_rhs` to round-off. Run the tests after
+  any change to the plant, the rig blocks or the builders.
+- `furuta_harness.slx` and the hybrid template files are generated (`build_harness.m`,
+  `new_hybrid_controller.m`). Rebuild `furuta_harness.slx` instead of hand-editing it. The hybrid
+  template files are hand-edited by their owners after generation: never regenerate them with
+  'Overwrite' unless asked.
+- Controller design is the team's work: do not fill in or tune gains in
+  `controllers/hybrid/ctrl_hybrid_design.m` unless asked; harness changes only.
+- All settings are parameters: rig/rates/limits in `harness_config.m`, controller knobs in the
+  design file. Keep it that way (no constants buried in blocks).
+- The digital twin (`twin/`) only renders; packet format and conventions in `twin/README.md`
+  (q_pend = theta1 - pi).
+

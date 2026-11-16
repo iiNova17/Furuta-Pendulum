@@ -8,6 +8,8 @@ Rotary inverted pendulum: hardware, firmware, lab software, identified model and
 |---|---|
 | `report/` | LaTeX report `furuta_model.tex` and its compiled PDF; `figures/make_report_data.py` regenerates all figures and numbers from `data/runs`; `archive/` holds earlier versions |
 | `matlab/model/` | **Final identified model for MATLAB/Simulink**: `furuta_params.m` (parameters, linear models) and `furuta_rhs.m` (nonlinear model). See its README |
+| `matlab/harness/` | **Simulation + controller harness** (Simulink/Simscape/Stateflow): the identified model as a Simscape plant, the rig's firmware and sensors, the hybrid controller template (`controllers/hybrid/`: Stateflow supervisor + PID / pole placement / LQR / swing-up, one file per owner), scenarios, brief-4.7 metrics, Phase-1 validation. See its README |
+| `twin/` | **Digital twin** (Unreal Engine 5.3, C++): renders the rig posed from UDP packets (real rig solid, model as a ghost); MATLAB senders in `twin/matlab/`. See its README |
 | `data/runs/` | Raw hardware recordings (one folder per run) |
 | `data/estimation/` | Furuta Lab estimation sessions; `claude_loop` is the final model, `claude_loop/export` its MATLAB/LaTeX export |
 | `data/captures`, `data/logs`, `data/matlab-jobs` | Passive captures, app logs and MATLAB backend jobs |
@@ -29,8 +31,11 @@ Rotary inverted pendulum: hardware, firmware, lab software, identified model and
 1. Clone: `git clone https://github.com/iiNova17/Furuta-Pendulum.git`
 2. Python app: install Python 3.12, run `Setup-Furuta-Lab.ps1` once, then `Start-Furuta-Lab.cmd`.
 3. Model in MATLAB/Simulink: `cd matlab/model`, `run furuta_params.m`, then follow `matlab/model/README.md`.
-4. Report: build `report/furuta_model.tex` with `latexmk -pdf` (MiKTeX or TeX Live).
-5. Firmware: open `firmware/` in VS Code with PlatformIO.
+4. Controllers / simulation: `cd matlab/harness`, `harness_setup`, then `run_sim('ctrl_hybrid.slx', 'swingup', 'Plot', true)`;
+   fill in your section of `controllers/hybrid/ctrl_hybrid_design.m` (see `matlab/harness/README.md`).
+5. Digital twin: `powershell -File twinun_twin.ps1` (Unreal Engine 5.3), then `twin/matlab/twin_demo.m`.
+6. Report: build `report/furuta_model.tex` with `latexmk -pdf` (MiKTeX or TeX Live).
+7. Firmware: open `firmware/` in VS Code with PlatformIO.
 
 Motor safety: never command motor motion unless the person at the rig has confirmed that the center rod
 is removed, 12 V is on and the area is clear.
