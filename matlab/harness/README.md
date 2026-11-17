@@ -13,6 +13,11 @@ Rig (Variant Subsystem):  Simulation = HIL link -> firmware -> plant (report mod
                           Hardware   = USB link to the ESP32 (placeholder until the bridge is built)
 ```
 
+> **Branch `harness-r2023a`:** the same as `sim-harness`, but every `.slx` is saved in the R2023a format
+> (made with `export_release`), so this branch opens in R2023a and newer. Opening a model in a newer
+> MATLAB and saving it upgrades the file, so don't commit re-saved `.slx` files from R2024+ here.
+> Changes are made on `sim-harness`, then re-exported here.
+
 ## Where to edit what (everything is a parameter)
 
 | What | File | Examples |
