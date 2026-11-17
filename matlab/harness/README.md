@@ -89,6 +89,22 @@ has exactly eq. 89 as its equations of motion (`lib/plant_bodies.m`; Larm comes 
 identified 68.1 mm, ~3 mm beyond the arm mesh's hinge hole (CAD 65 mm).
 3D view: `run_sim(..., 'Show3D', true)`.
 
+## Simulation vs measured (real rig recordings)
+
+```matlab
+% once, in a shell:  python matlab/harness/replay/export_runs.py
+addpath replay
+compare_to_run('20261115_100519_238300')              % validation run 1: plot + fit %
+compare_to_run('20261115_101315_017000', 'Resync', 2) % restart from the measured state every 2 s
+```
+
+`export_runs.py` converts the recordings in `data/runs` (read-only) with the team's own code and the
+final estimation session's settings (`data/estimation/claude_loop`). `compare_to_run` drives the
+Simscape plant with the duty the real firmware applied, from the measured state, and plots measured vs
+simulated theta0, theta1 and current with the report's fit %. It reproduces Table 4 (validation runs 1-3,
+open loop: arm 89 / -3 / 42 %, pendulum 90 / 84 / 85 %, current 88 / 89 / 88 %); a test checks run 1.
+Runs available: 2 free swings, 6 fit runs, 3 validation runs, 1 stall test (roles in each .mat).
+
 ## Running
 
 ```matlab
@@ -115,6 +131,20 @@ sequence. `LqrBalance` / `EnergySwingup` are early sketches from setting the har
 | `'Plant', struct(...)` | specific plant parameters (model mismatch on purpose) |
 | `'Cfg', cfg` | any `harness_config` change for this run |
 | `'Show3D', true` | Mechanics Explorer |
+
+## Sharing with older MATLAB (R2023a / R2023b)
+
+```matlab
+export_release()            % -> dist/furuta_harness_R2023a.zip   (or export_release('R2023b'))
+```
+
+Copies `matlab/harness` + `matlab/model` (same layout), re-saves every `.slx` in the R2023a format
+(`Simulink.exportToVersion`, no blocks replaced), and zips it; the repo files are not touched. The zip
+includes the exported rig recordings, so `compare_to_run` works without the repo. Recipient: unzip,
+`cd harness`, `harness_setup`, then as in Running. Needs Simulink, Simscape, Simscape Multibody and the
+Control System Toolbox. The package passes `tests/test_harness.m` unzipped on its own (checked in
+R2026a; not yet run in an actual R2023 install). Re-export after changing controllers or the harness.
+If a recipient runs `build_harness` themselves, it regenerates `furuta_harness.slx` in their release.
 
 ## Assumptions to replace with measurements
 

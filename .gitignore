@@ -39,3 +39,6 @@ twin/RIPTwin/*.sln
 
 # MATLAB workspace dumps
 matlab.mat
+
+# Packaged harness releases (matlab/harness/export_release.m)
+dist/

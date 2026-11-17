@@ -131,3 +131,15 @@ tc.verifyEqual(m.th1_tsettle, 0.2*log(10/cfg.metrics.band_th1), 'AbsTol', 2e-3);
 tc.verifyEqual(m.IAE, deg2rad(10)*0.2, 'RelTol', 1e-2);                           % integral of exp
 tc.verifyEqual(m.u_peak, 0.1, 'AbsTol', 1e-12);
 end
+
+function test_replay_matches_report_table4(tc)
+% Simulation vs measured: validation run 1 replayed through the harness plant reproduces the report's
+% Table 4 open-loop fits (arm 89, pendulum 90, arm speed 92, current 88 %). Needs the export:
+%   python matlab/harness/replay/export_runs.py
+f = fullfile(tc.TestData.root, 'replay', 'runs', '20261115_100519_238300.mat');
+tc.assumeTrue(isfile(f), 'recording not exported (run replay/export_runs.py)');
+addpath(fullfile(tc.TestData.root, 'replay'));
+C = compare_to_run('20261115_100519_238300', 'Plot', false);
+tc.verifyEqual([C.fit.arm_angle C.fit.pendulum_angle C.fit.arm_speed C.fit.current], ...
+    [89.0 89.6 92.0 88.3], 'AbsTol', 0.5);
+end

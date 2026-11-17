@@ -138,7 +138,7 @@ area(S, 'ESP32 sensors (fw.Ts)', [830 10 1150 330], [0.92 0.97 0.92]);
 % measurements back to the controller (top row)
 tag('From', 'y_fw to link', 'y_fw', 45, 20);
 B('simulink/Signal Attributes/Rate Transition', 'to controller rate', [110 30 150 60], ...
-    'OutPortSampleTime', 'hcfg.Ts');
+    'OutPortSampleTime', 'hcfg.Ts', 'Integrity', 'off', 'Deterministic', 'off');
 B('simulink/Discrete/Delay', 'measurement delay', [190 30 230 60], 'DelayLength', 'hcfg.link.y_delay', ...
     'SampleTime', 'hcfg.Ts');
 B('simulink/Sinks/Out1', 'y', [280 38 310 52]);
@@ -151,7 +151,9 @@ B('simulink/Sources/In1', 'duty', [20 115 50 129]);
 B('simulink/Discrete/Delay', 'command delay', [110 107 150 137], 'DelayLength', 'hcfg.link.u_delay', ...
     'SampleTime', 'hcfg.Ts');
 B('simulink/Signal Attributes/Rate Transition', 'to firmware rate', [190 107 230 137], ...
-    'OutPortSampleTime', 'hcfg.fw.Ts');
+    'OutPortSampleTime', 'hcfg.fw.Ts', 'Integrity', 'off', 'Deterministic', 'off');
+% Rate Transitions as plain holds: in 'deterministic' mode Simulink delays slow-to-fast data by one
+% controller period (4 ms) that the rig does not have. Real link delays go in hcfg.link instead.
 W('duty', 1, 'command delay', 1);
 W('command delay', 1, 'to firmware rate', 1);
 

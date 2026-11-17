@@ -52,6 +52,7 @@ a.duty_levels = 1023;      % 10-bit PWM
 a.travel = deg2rad(120);   % ARM_TRAVEL trip, measured arm angle from centre
 a.i_trip = 1.5;            % OVERCURRENT trip on the filtered current [A]
 a.i_trip_time = 10e-3;     % ... after this long above it [s]
+a.reverse_through_zero = true;   % false only to replay a recorded applied duty unchanged
 cfg.act = a;
 
 if strcmp(mode, 'ideal')

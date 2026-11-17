@@ -11,7 +11,7 @@ classdef FirmwareActuator < matlab.System
     properties (Nontunable)
         Ts = 1e-3
         A = struct('max_duty', 0.5, 'slew', 100, 'standby', 1e-3, 'duty_levels', 1023, ...
-                   'travel', 2*pi/3, 'i_trip', 1.5, 'i_trip_time', 10e-3)
+                   'travel', 2*pi/3, 'i_trip', 1.5, 'i_trip_time', 10e-3, 'reverse_through_zero', true)
     end
 
     properties (Access = private)
@@ -59,7 +59,7 @@ classdef FirmwareActuator < matlab.System
                 return
             end
             target = min(max(cmd, -A.max_duty), A.max_duty);
-            if obj.applied*target < 0
+            if A.reverse_through_zero && obj.applied*target < 0
                 target = 0;                       % go to zero before reversing
             end
             rate = A.slew*obj.Ts;
