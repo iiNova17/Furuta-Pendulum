@@ -35,16 +35,20 @@ D.pid = struct('Kp', 0, 'Ki', 0, 'Kd', 0, 'N', 50, 'Kp0', 0, 'Kd0', 0);   % TODO
 D.pp.poles = [];                     % TODO 4 poles from your specs; empty = K = 0
 
 % ---- LQR owner (stab_lqr.slx) -------------------------------------------------------------------
-% K = dlqr(Ad, Bd, Q, R)
-D.lqr.Q = [];                        % TODO 4x4 weights on x; empty = K = 0
-D.lqr.R = [];                        % TODO weight on duty
+% K = dlqr(Ad, Bd, Q, R). Bryson's rule: Q = diag(1/max_x^2), R = 1/max_duty^2 (report section 8).
+% Largest acceptable theta0 30 deg, theta1 8 deg, w0 20 rad/s, w1 30 rad/s, duty 0.10:
+% K = [-0.1795 -2.155 -0.1256 -0.1586]. Chosen for tolerance to delay (lqr_corner_test).
+D.lqr.Q = diag(1./[deg2rad(30) deg2rad(8) 20 30].^2);
+D.lqr.R = 1/0.10^2;
 
 % ---- swing-up owner (swingup_energy.slx) --------------------------------------------------------
 % Put your knobs in D.swing; the block reads ctrlP.swing.<name>.
 D.swing.k = 0;                       % TODO example knob used by the template block (u = 0 until set)
 
 % ---- friction compensation (ctrl_hybrid.slx), applied to the stabilizer output -----------------
-D.fric.gain = 0;                     % TODO fraction of the identified Coulomb friction cancelled
+D.fric.gain = 0;                     % fraction of the identified Coulomb friction cancelled. 0 for the
+                                     % first hardware tests; 1 once the measured loop delay is known to
+                                     % stay within one extra controller period (report section 8.9)
 D.fric.band = 0.02;                  % width of the smooth sign [duty]
 
 P = merge(D, P);

@@ -1388,4 +1388,245 @@ The models also neglect the inductance. With an electrical time constant of the 
 
 Thus, the four-state models of section~\ref{sec:ssmodels} are suitable for controller design as long as the closed-loop poles remain well below this value.
 
+%======================================================================
+\section{LQR Controller Design}
+\label{sec:lqr}
+%======================================================================
+Since the upright equilibrium is unstable (see section~\ref{sec:stability}) and our system is controllable from the duty cycle, the pendulum can be held upright by feeding back all four states. The objective of this section is to find a state-feedback gain that catches the pendulum quickly after a disturbance, while staying inside the limits of the real rig: the 50\,\% duty limit, the 1.5\,A current trip of the firmware and the timing of the sensors. The gain is found with the linear quadratic regulator (LQR), and the choice of its weights is then checked in simulation against the uncertainty of the identified model and of the loop delay.
+
+\subsection{Discrete Model}
+\label{sec:lqr_disc}
+The controller period follows from the hardware-in-the-loop arrangement. Since the controller and its Stateflow supervisor run in Simulink on the computer, they can only act when a new measurement arrives over USB. The firmware runs its own loop at 1\,kHz, stores a record every 2\,ms and streams every second record, so the angles reach the computer at 250\,Hz (see Table~\ref{tab:setup}). Thus, the controller runs every $T_s = 4\,\mathrm{ms}$, the shortest period at which a fresh measurement is available, assuming that the USB link delivers every record without further delay (this assumption is tested in section~\ref{sec:lqr_corners}), and holds the duty cycle constant in between, while the firmware keeps applying its limits every millisecond. This period is about twenty times shorter than the 82\,ms time constant of the falling pendulum (see Table~\ref{tab:poles_up}), so the pendulum moves only slightly between two corrections.
+
+Since $T_s$ is not negligible compared with the closed-loop dynamics, it is desired to design the gain directly for the sampled system, so that the zero-order hold is part of the model instead of an approximation. Discretizing the upright model with the duty-cycle input, $\dot{\mathbf{x}} = A_4\mathbf{x} + B_d\, d$ (see equation~\ref{eq:ss_up_num}), with a zero-order hold gives
+\begin{equation}
+  \mathbf{x}[k+1] = \Phi\,\mathbf{x}[k] + \Gamma\, d[k], \qquad
+  \Phi = e^{A_4 T_s}, \qquad \Gamma = \int_0^{T_s} e^{A_4 \tau}\, d\tau\; B_d ,
+  \label{eq:lqr_disc}
+\end{equation}
+where $\mathbf{x}[k]$ is the state at the $k$-th controller period. Evaluating equation~\ref{eq:lqr_disc} (using MATLAB's \texttt{c2d}) yields
+\begin{equation}
+  \Phi = \begin{bmatrix}
+  1 & -4.47\times10^{-5} & 3.777\times10^{-3} & 1.26\times10^{-7}\\
+  0 & 1.0013 & 2.42\times10^{-4} & 3.996\times10^{-3}\\
+  0 & -0.02193 & 0.8907 & 4.67\times10^{-5}\\
+  0 & 0.6489 & 0.1185 & 0.9986
+  \end{bmatrix}, \qquad
+  \Gamma = \begin{bmatrix} 4.981\times10^{-3} \\ -5.405\times10^{-3} \\ 2.443 \\ -2.651 \end{bmatrix}.
+  \label{eq:lqr_disc_num}
+\end{equation}
+The element $\Phi_{42} = 0.6489$ is the effect of gravity over one period, and the opposite signs of the last two elements of $\Gamma$ show that a positive duty cycle accelerates the arm forward while kicking the pendulum backward, which is the mechanism the controller uses to correct a lean.
+
+\subsection{Control Law and Cost Function}
+The duty cycle is computed as a linear function of the error between the state and its reference:
+\begin{equation}
+  d[k] = -K\left(\mathbf{x}[k] - \mathbf{x}_r\right), \qquad \mathbf{x}_r = \begin{bmatrix} r & 0 & 0 & 0 \end{bmatrix}^T ,
+  \label{eq:lqr_law}
+\end{equation}
+where $K$ is a $1\times4$ gain and $r$ is the desired arm angle (zero in this work). The LQR chooses the gain that minimizes the quadratic cost
+\begin{equation}
+  J = \sum_{k=0}^{\infty} \left( \mathbf{x}[k]^T Q\, \mathbf{x}[k] + R\, d[k]^2 \right),
+  \label{eq:lqr_cost}
+\end{equation}
+where $Q$ is a $4\times4$ positive semi-definite matrix weighting the state errors and $R > 0$ weights the duty cycle. The first term penalizes being away from upright, while the second penalizes using the motor. Thus, a large $Q$ relative to $R$ gives a stiff controller that reacts strongly, and a large $R$ relative to $Q$ gives a soft controller that uses little duty cycle. Since multiplying $Q$ and $R$ by the same factor does not change the minimizer of equation~\ref{eq:lqr_cost}, only their ratio matters.
+
+\subsection{Solving for the Gain}
+The minimum of equation~\ref{eq:lqr_cost} is $\mathbf{x}[0]^T P\, \mathbf{x}[0]$, where the symmetric matrix $P$ (the cost-to-go of a state) satisfies the discrete algebraic Riccati equation
+\begin{equation}
+  P = Q + \Phi^T P\, \Phi - \Phi^T P\, \Gamma \left(R + \Gamma^T P\, \Gamma\right)^{-1} \Gamma^T P\, \Phi .
+  \label{eq:dare}
+\end{equation}
+Once $P$ is known, the optimal gain follows in one step:
+\begin{equation}
+  \therefore\; K = \left(R + \Gamma^T P\, \Gamma\right)^{-1} \Gamma^T P\, \Phi .
+  \label{eq:lqr_K}
+\end{equation}
+Equation~\ref{eq:dare} can be solved by starting from $P = Q$ and repeating the right-hand side until $P$ stops changing, which is the same as optimizing one more period of the future at every repetition. For the weights of section~\ref{sec:lqr_bryson} with $\theta_{1,\max} = 5^\circ$ and $d_{\max} = 0.15$, this iteration converged (relative change below $10^{-12}$) after 794 repetitions to $K = \begin{bmatrix} -0.2644 & -2.9969 & -0.1536 & -0.1964 \end{bmatrix}$, identical to the result of MATLAB's \texttt{dlqr}, which solves equation~\ref{eq:dare} directly. All later gains were computed with \texttt{dlqr}.
+
+The closed loop $\mathbf{x}[k+1] = (\Phi - \Gamma K)\,\mathbf{x}[k]$ is stable if every eigenvalue $z_i$ of $\Phi - \Gamma K$ lies inside the unit circle. For comparison with the open-loop poles of Table~\ref{tab:poles_up}, each discrete pole is converted to an equivalent continuous pole by
+\begin{equation}
+  s_i = \frac{\ln z_i}{T_s} .
+  \label{eq:lqr_s}
+\end{equation}
+
+\subsection{Choice of the Weights}
+\label{sec:lqr_bryson}
+Since the four states have different units (radians and radians per second), weights chosen by hand would mix incomparable numbers. Bryson's rule removes this problem by dividing every quantity by the largest value that is still acceptable for it:
+\begin{equation}
+  Q = \operatorname{diag}\!\left( \frac{1}{\theta_{0,\max}^2},\ \frac{1}{\theta_{1,\max}^2},\ \frac{1}{\dot\theta_{0,\max}^2},\ \frac{1}{\dot\theta_{1,\max}^2} \right), \qquad R = \frac{1}{d_{\max}^2} ,
+  \label{eq:bryson}
+\end{equation}
+where the angles are in radians. With this choice, every state at its acceptable maximum and the duty cycle at $d_{\max}$ each contribute exactly 1 to the cost, so the design is expressed in physical tolerances instead of abstract weights. Since only the ratio of $Q$ and $R$ matters, the five tolerances form four independent design variables.
+
+The arm tolerance was kept at $\theta_{0,\max} = 30^\circ$, well inside the $\pm 100^\circ$ safety stop of the supervisor. The design of this section is implemented in the MATLAB script \nolinkurl{matlab/harness/controllers/hybrid/lqr_gains.m}, which evaluates equations~\ref{eq:lqr_disc}, \ref{eq:bryson} and~\ref{eq:lqr_K} for a given set of tolerances.
+
+\subsection{Simulation Environment and Constraints of the Rig}
+\label{sec:lqr_sim}
+Every candidate gain was tested in the Simulink controller harness, in which the plant is the Simscape model of equation~\ref{eq:nl_num} with the parameters of Table~\ref{tab:params}. The harness also reproduces what the controller sees and what the firmware does:
+\begin{enumerate}
+  \item the arm encoder quantization of 1496 counts/rev and the 12-bit AS5600, read at 500\,Hz with the 7\,ms lag of section~\ref{sec:processing};
+  \item the velocities computed by the controller as finite differences low-pass filtered at 40\,Hz;
+  \item the firmware loop at 1\,kHz, with the duty limit of 0.5, the duty slew limit, and the overcurrent trip, which stops the motor once the filtered current stays above 1.5\,A for 10\,ms.
+\end{enumerate}
+Two standard tests were used. In the balance test, the pendulum starts $5^\circ$ from upright and must stay within $3^\circ$ after 2\,s. In the push test, the pendulum starts $2^\circ$ from upright, receives an impulse of $+1.5\,\mathrm{rad/s}$ at $t = 2\,\mathrm{s}$, and must stay within $3^\circ$ after 4\,s. The recovery from the push is measured by
+\begin{equation}
+  \mathrm{ITAE} = \int_{t_e}^{t_f} (t - t_e)\, \left|\theta_1(t)\right| dt ,
+  \label{eq:itae}
+\end{equation}
+where $t_e = 2\,\mathrm{s}$ is the time of the push, $t_f = 6\,\mathrm{s}$ is the end of the test and $\theta_1$ is in radians, so that the ITAE has the unit rad\,s$^2$. Weighting the error by time penalizes a slow recovery more than a large but short deviation.
+
+The first gains tried were stiff. For example, $\theta_{1,\max} = 4^\circ$, $\dot\theta_{0,\max} = 15\,\mathrm{rad/s}$, $\dot\theta_{1,\max} = 25\,\mathrm{rad/s}$ and $d_{\max} = 0.4$ gave fast closed-loop poles at $-49.4 \pm 40.7j\,\mathrm{rad/s}$, but the firmware tripped 56\,ms after the start of the push test, before the push was applied. The commanded duty cycle swung from $+0.5$ to its negative limit within a few periods, while the arm was still moving forward at about $2\,\mathrm{rad/s}$. According to equation~\ref{eq:nl_current}, the back-EMF then adds to the reversed voltage:
+\begin{equation}
+  \because\; i = \frac{12\,(-0.5) - 0.4814\,(2)}{3.425} = -2.03\,\mathrm{A} ,
+\end{equation}
+which is well beyond the trip level; the simulated current reached 1.80\,A before the trip. Thus, the binding limit of our system is the armature current and not the duty cycle, and any useful gain has to avoid hard reversals of the duty cycle while the arm moves.
+
+\subsection{Design Space}
+\label{sec:lqr_space}
+To find which tolerances matter, each was varied alone around the starting point $\theta_{1,\max} = 5^\circ$, $\dot\theta_{0,\max} = 20\,\mathrm{rad/s}$, $\dot\theta_{1,\max} = 30\,\mathrm{rad/s}$, $d_{\max} = 0.15$. Changing $\dot\theta_{0,\max}$ between 12 and 32\,rad/s or $\dot\theta_{1,\max}$ between 18 and 48\,rad/s changed the ITAE only between 0.147 and 0.169\,rad\,s$^2$, with peak currents between 1.28 and 1.41\,A and no trip. On the other hand, $\theta_{1,\max} = 3^\circ$ and every $d_{\max} \ge 0.1875$ tripped the firmware. Therefore, the two speed tolerances were fixed at 20 and 30\,rad/s, which reduces the design to the two variables $\theta_{1,\max}$ and $d_{\max}$, both of which set how aggressively the pendulum lean is corrected.
+
+This two-dimensional space was then sampled on a grid of 10 values of $\theta_{1,\max}$ (3.5 to $8^\circ$) and 11 values of $d_{\max}$ (0.09 to 0.19), with one push test per point (see Figure~\ref{fig:lqr_map}). Of the 110 designs, 99 passed. The ITAE decreases toward small $\theta_{1,\max}$ and large $d_{\max}$, as expected for a stiffer controller, but the peak current rises in the same direction and crosses 1.5\,A along the edge of the tripped region. The fastest passing design ($3.5^\circ$, 0.15) reached an ITAE of 0.096\,rad\,s$^2$ but a peak current of 1.53\,A, so it survived only because the trip requires 10\,ms above the limit.
+
+Since one simulation per point is affected by the sensor noise, a margin of 0.15\,A below the trip level was required, and the best design with a peak current of at most 1.35\,A was $\theta_{1,\max} = 4.5^\circ$, $d_{\max} = 0.16$, with \textbf{\boldmath ITAE $= 0.139\,\mathrm{rad\,s^2}$ at 1.34\,A}. This is the fastest design within the current margin, and it is referred to as the stiff design below.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_lqr_map.pdf}
+\caption{ITAE after the push (left) and peak armature current (right) over the two remaining design variables, nominal model and timing. Gray crosses mark designs that failed the push test, and the dashed line is the 1.5\,A trip level. The square is the starting point and the circle the fastest design with a peak current below 1.35\,A.}
+\label{fig:lqr_map}
+\end{figure}
+
+Figure~\ref{fig:lqr_surface} shows the same data as a surface, where the height is the ITAE and the color is the peak current, which makes the trade-off of the design visible at once. The surface falls toward the stiff corner (small $\theta_{1,\max}$ and large $d_{\max}$), and the lowest points lie right next to the tripped designs on the floor, while their color darkens toward the trip level. Thus, the faster a design recovers from the push, the closer it operates to the current trip, and the stiff design of this section lies at the bottom of the valley just inside the 1.35\,A line.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/fig_lqr_surface.pdf}
+\caption{The design space of Figure~\ref{fig:lqr_map} as a surface, with the ITAE after the push as the height and the peak armature current as the color. On the floor, crosses mark the designs that failed, the dashed line is the 1.5\,A trip level and the solid line the 1.35\,A margin.}
+\label{fig:lqr_surface}
+\end{figure}
+
+\subsection{Physically Consistent Worst Cases}
+\label{sec:lqr_corners}
+Since the identified parameters are uncertain (see Table~\ref{tab:params}), the gain must also work for a plant that differs from the model. A first check drew every parameter independently from its standard error, scaled by two. However, the estimation did not measure $\tilde J_p$, $\tilde h$ and $\tilde G$ separately. The free swing measures the ratio $\tilde J_p/\tilde G$ to 0.2\,\% and the pendulum equation measures $\tilde h/\tilde G$ to 0.5\,\%, while the overall scale $\tilde G$ is known only to 9.3\,\%. Thus, the 9\,\% uncertainties of $\tilde J_p$ and $\tilde h$ in Table~\ref{tab:params} come from the same unknown, and an independent draw typically creates plants whose natural frequency differs from the measured one by more than 10\,\%, which the free-swing recordings rule out.
+
+A physically consistent wrong plant therefore scales $\tilde G$, $\tilde J_p$, $\tilde h$, $\tilde b_1$ and $\tilde\tau_p$ by the same factor. The other parameter with a large uncertainty is the arm viscous friction $\tilde B_{eq}$ (6.6\,\%), while $R_m$, $K_b$, $\tilde J_a$ and the Coulomb friction are known to about 1\,\%. Taking two standard errors in each direction gives four corner plants: the pendulum strength scaled by $1 \pm 0.186$ and $\tilde B_{eq}$ by $1 \pm 0.132$.
+
+The loop delay is a second uncertainty that is not covered by the parameters, since the 7\,ms lag of the pendulum sensor was chosen from a fit that changes by less than 0.3\,\% between 6 and 9\,ms (see Figure~\ref{fig:delay}) and the delay of the USB link to the Simulink controller has not been part of the identification. Thus, each corner plant was tested with three timings: the nominal timing, one additional controller period (4\,ms) of delay on the duty cycle, and a pendulum sensor lag of 10\,ms instead of 7\,ms. This gives 12 cases, each run with the balance and the push test (see Figure~\ref{fig:lqr_corners} and Table~\ref{tab:lqr_corners}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_lqr_corners.pdf}
+\caption{Peak armature current of the stiff and the soft design in the 12 worst cases, where $\tilde G$ denotes the scaling of the pendulum parameters and $\tilde B_{eq}$ that of the arm viscous friction. Circles passed both the balance and the push test, and crosses failed at least one of them.}
+\label{fig:lqr_corners}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Results of the 12 physically consistent worst cases, counted over the four corner plants and the two tests (8 tests per timing). The peak current is the worst over all tests, and the ITAE is the range of the push test at nominal timing.}
+\label{tab:lqr_corners}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Design & Nominal timing & $+4$\,ms delay & Lag 10\,ms & Peak current & ITAE [rad\,s$^2$] \\
+\midrule
+Stiff ($4.5^\circ$, 0.16) & 8/8 & 1/8 & 0/8 & 1.96\,A & 0.127--0.148 \\
+Soft ($8^\circ$, 0.10) & 8/8 & 7/8 & 7/8 & 1.45\,A & 0.210--0.247 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The stiff design passed every corner plant with the nominal timing, but every failed push test with a changed timing ended in an overcurrent trip. On the other hand, the soft design $\theta_{1,\max} = 8^\circ$, $d_{\max} = 0.10$ did not trip in any of the 24 tests, and its two failures stayed upright but had not yet returned within $3^\circ$ at the time of the check. Thus, the parameter uncertainty is not what limits our design, the timing is.
+
+\subsection{Tolerance to Delay}
+\label{sec:lqr_delay}
+To see how the tolerance to delay depends on the stiffness, the delay margin of the loop broken at the duty cycle was computed for the whole design space. With the phase margin $\phi_m$ and the gain crossover frequency $\omega_c$ of $K(zI - \Phi)^{-1}\Gamma$, the largest additional delay that keeps the loop stable is
+\begin{equation}
+  \tau_{\max} = \frac{\phi_m}{\omega_c} ,
+  \label{eq:delaymargin}
+\end{equation}
+with $\phi_m$ in radians. Figure~\ref{fig:lqr_delay} (left) shows that $\tau_{\max}$ falls from 37.0\,ms for the soft design to 25.7\,ms for the stiff design, since a stiffer gain raises the crossover frequency (from 28.5 to 43.8\,rad/s) at almost the same phase margin.
+
+Equation~\ref{eq:delaymargin} assumes that the full state is measured without lag and that any current is available. To check it, the pendulum sensor lag was varied from 7 to 13\,ms in the harness for six designs blended linearly between the soft and the stiff tolerances (see Figure~\ref{fig:lqr_delay}, right). The stiff design tripped from a lag of 8\,ms, while the soft design ran without a trip up to 10\,ms, and every design tripped from 11\,ms. This is far below the margins of equation~\ref{eq:delaymargin}, for two reasons:
+\begin{enumerate}
+  \item the velocities are estimated from the angles by a difference over one period and a 40\,Hz low-pass filter, which adds roughly $T_s/2 + 1/(2\pi\cdot 40\,\mathrm{Hz}) \approx 6\,\mathrm{ms}$ of lag to the velocity feedback on top of the sensor lag;
+  \item as the delay grows, the response becomes oscillatory and the current peaks reach the 1.5\,A trip long before the loop itself becomes unstable.
+\end{enumerate}
+Thus, for our rig the usable delay margin is set by the current limit, and a softer gain buys a margin of about 2\,ms of sensor lag over the stiff gain.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_lqr_delay.pdf}
+\caption{Left: delay margin of equation~\ref{eq:delaymargin} over the design space, for an ideally measured state. Right: peak armature current in the harness for designs blended from the soft to the stiff tolerances against the pendulum sensor lag; dots ran without a trip and crosses tripped the firmware.}
+\label{fig:lqr_delay}
+\end{figure}
+
+\subsection{Friction Compensation}
+\label{sec:lqr_fric}
+The soft design passes the tests, but its response does not settle. After the push, the arm keeps swinging by about $\pm 22^\circ$ with a period of about 2\,s, and the pendulum follows by about $\pm 3^\circ$ (see Figure~\ref{fig:lqr_fric}). Since a lean of $1^\circ$ produces only $2.155 \times 0.0175 = 0.038$, or 3.8\,\% duty cycle, through the soft gain, which is about half of the 7.4\,\% needed to overcome the Coulomb friction of the arm (see section~\ref{sec:full}), the arm sticks until the error has grown, then breaks free and overshoots, which is a friction limit cycle.
+
+To compensate for it, a fraction $k_f$ of the identified Coulomb friction is added to the output of the LQR:
+\begin{equation}
+  d = d_{\mathrm{LQR}} + k_f \left( d_{c+} \max(\sigma, 0) + d_{c-} \min(\sigma, 0) \right), \qquad \sigma = \tanh\!\left(\frac{d_{\mathrm{LQR}}}{0.02}\right) ,
+  \label{eq:fric_comp}
+\end{equation}
+where $d_{c\pm} = R_m \tilde\tau_{c\pm}/V_s = 0.0737$ and $0.0733$ are the friction duty cycles of Table~\ref{tab:params}, and the hyperbolic tangent smooths the sign of the LQR output over a band of 2\,\% duty cycle.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_lqr_fric.pdf}
+\caption{Arm and pendulum angles of the soft design in the push test without ($k_f = 0$) and with full ($k_f = 1$) friction compensation, nominal model and timing. The push is applied at 2\,s.}
+\label{fig:lqr_fric}
+\end{figure}
+
+With full compensation ($k_f = 1$), the arm stays within $\pm 3.8^\circ$ and the pendulum within $\pm 1.1^\circ$ after 4\,s, and the ITAE drops from 0.222 to \textbf{\boldmath $0.041\,\mathrm{rad\,s^2}$}, which is more than three times faster than the stiff design, for a peak current of 1.27\,A. Since the compensation does not change $K$, it improves the response without making the controller stiffer.
+
+However, the compensation adds energy to the loop, which reduces its tolerance to delay. Repeating the worst cases for several values of $k_f$ gave the results of Table~\ref{tab:lqr_fric}. With full compensation, all eight tests with nominal timing and all eight with one additional period of delay passed, but every value $k_f \ge 0.5$ tripped the firmware with a pendulum sensor lag of 10\,ms, which the uncompensated design survived.
+
+\begin{table}[h]
+\centering
+\caption{Soft design with friction compensation in the four corner plants (a plant counts as passed if both the balance and the push test passed).}
+\label{tab:lqr_fric}
+\small
+\begin{tabular}{@{}cccc@{}}
+\toprule
+$k_f$ & Nominal timing & Lag 10\,ms & ITAE, nominal timing [rad\,s$^2$] \\
+\midrule
+0 & 4/4 & 3/4, no trip & 0.210--0.247 \\
+0.5 & 4/4 & 0/4, tripped & 0.138--0.168 \\
+0.7 & 4/4 & 0/4, tripped & 0.101--0.113 \\
+0.85 & 4/4 & 0/4, tripped & 0.058--0.088 \\
+1 & 4/4 & 0/4, tripped & 0.039--0.049 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Final Design}
+\label{sec:lqr_final}
+Since the loop delay of the hardware-in-the-loop setup has not yet been measured, and the timing turned out to be the uncertainty that our design is most sensitive to, the soft weighting was selected:
+\begin{equation}
+  \theta_{0,\max} = 30^\circ,\quad \theta_{1,\max} = 8^\circ,\quad \dot\theta_{0,\max} = 20\,\mathrm{rad/s},\quad \dot\theta_{1,\max} = 30\,\mathrm{rad/s},\quad d_{\max} = 0.10 ,
+\end{equation}
+which by equation~\ref{eq:bryson} gives $Q = \operatorname{diag}(3.648,\ 51.29,\ 0.0025,\ 0.00111)$ and $R = 100$, and by equation~\ref{eq:lqr_K}
+\begin{equation}
+  \therefore\;\boxed{K = \begin{bmatrix} -0.1795 & -2.155 & -0.1256 & -0.1586 \end{bmatrix}}
+  \label{eq:K_final}
+\end{equation}
+with the duty cycle as output and the angles in radians. The closed-loop poles are $-5.08 \pm 1.17j$ and $-25.3 \pm 8.50j\,\mathrm{rad/s}$ ($|z| = 0.980$ and $0.904$), so the fast pair reacts about twice as fast as the open-loop pendulum falls ($+12.26\,\mathrm{rad/s}$), and the slow pair returns the arm to the center. The loop has a phase margin of $60.6^\circ$, and the gain can drop by a factor of 2.36 before the pendulum is lost. The fast pair also stays more than thirty times below the neglected electrical pole of about $-1000\,\mathrm{rad/s}$, so the reduced model of section~\ref{sec:ssmodels} remains valid for this design.
+
+The friction compensation is introduced in two stages. The first hardware tests use $k_f = 0$, which passed 22 of the 24 worst-case tests without a single trip. Once the measured loop delay is known to stay within one additional controller period of the nominal timing, $k_f$ is raised to 1, which passed all 16 tests at nominal timing and one additional period and recovers from the push more than five times faster. These values are set in \nolinkurl{matlab/harness/controllers/hybrid/ctrl_hybrid_design.m}, and the worst-case test is implemented in \texttt{lqr\_corner\_test.m} in the same folder, so any later change of the weights can be checked in the same way.
+
+\subsection{Limitations}
+Limitations of the presented design are:
+\begin{enumerate}
+  \item All results are simulations of the identified model; the controller has not yet been run on the hardware.
+  \item The timing uncertainty is represented by two discrete cases:
+  \begin{enumerate}
+    \item the USB delay of the hardware-in-the-loop link is not measured, so the case of one additional controller period is an assumption about its size;
+    \item intermediate lags and a combination of the two delays were not tested in the worst-case set.
+  \end{enumerate}
+  \item The design space was sampled with one simulation per point, so the boundaries of Figure~\ref{fig:lqr_map} are affected by sensor noise, which is why a current margin of 0.15\,A was kept.
+  \item The gearbox play and the flattening of the arm friction at higher speeds (see section~\ref{sec:estimation}) are not modeled. Both affect the friction limit cycle and the friction compensation more than the linear part of the design.
+  \item The velocities are estimated by filtered differences. A model-based observer that removes part of the sensor lag would allow a stiffer gain, which is not covered by this design.
+\end{enumerate}
+
 \end{document}
