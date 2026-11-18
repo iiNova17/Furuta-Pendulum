@@ -37,7 +37,8 @@ for k = 1:numel(slx)
     load_system(src);
     Simulink.exportToVersion(mdl, dst, upper(version), 'AllowPrompt', false);
     close_system(mdl, 0);
-    fprintf('  %-55s -> %s\n', rel, version);
+    n = strip_new_params(dst);
+    fprintf('  %-55s -> %s (%d newer-release block parameters removed)\n', rel, version, n);
 end
 
 zipFile = fullfile(outDir, [name '.zip']);
@@ -45,6 +46,36 @@ if isfile(zipFile), delete(zipFile); end
 zip(zipFile, {'harness', 'model'}, pkg);
 fprintf('Packaged for %s: %s\nUnzip, then in MATLAB: cd harness; harness_setup; run_sim(...) (see harness/README.md)\n', ...
     version, zipFile);
+end
+
+function n = strip_new_params(file)
+% Remove block parameters that exportToVersion keeps although the older release does not know them.
+% R2023b test (docs/TEST_RESULTS_HARNESS_R2023.md): every Simscape Multibody block kept
+% 'SimscapeInstrumentationLogging' (R2026a only), so the first OpenLoopDuty simulation after loading
+% failed with "(mask) does not have a parameter named 'SimscapeInstrumentationLogging'".
+newer = {'SimscapeInstrumentationLogging'};
+tmp = tempname; mkdir(tmp); cleanup = onCleanup(@() rmdir(tmp, 's'));
+names = unzip(file, tmp);
+n = 0;
+for k = 1:numel(names)
+    if ~endsWith(names{k}, '.xml'), continue, end
+    txt = fileread(names{k}, 'Encoding', 'UTF-8');
+    m = 0;
+    for p = newer
+        pat = ['\r?\n[ \t]*<P Name="' p{1} '">[^<]*</P>'];
+        m = m + numel(regexp(txt, pat));
+        txt = regexprep(txt, pat, '');
+    end
+    if m > 0                      % rewrite only the files that changed
+        fid = fopen(names{k}, 'w', 'n', 'UTF-8'); fwrite(fid, txt, 'char'); fclose(fid);
+        n = n + m;
+    end
+end
+% re-pack with the package's own paths ([Content_Types].xml, _rels, metadata, simulink)
+rel = cellfun(@(f) extractAfter(f, numel(tmp) + 1), names, 'UniformOutput', false);
+delete(file);
+zip([file '.zip'], rel, tmp);
+movefile([file '.zip'], file);
 end
 
 function copy_tree(src, dst)
