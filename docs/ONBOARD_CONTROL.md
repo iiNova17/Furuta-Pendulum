@@ -83,7 +83,7 @@ Coulomb-only compensation (7.4 % cannot beat 13 %), **4 %** with the breakaway c
 0.6–1.1° instead of 1.9–2.0°; no saturation. The model has no gearbox play, so it reproduces the sticking but not
 the lurch that followed. C++ law = simulated law to 1.5e-13; 226 µs per controller step on the chip.
 
-**For the next run:** current trip ≤ 2 A (it was off; a clean OVERCURRENT stops earlier than the ADC clip),
+**For the next run:** current trip on (default 4 A; positive currents clip the sensor at about +3.2 A first),
 maxDuty 50 % (what the design assumes), high-rate capture on, and Setup → “Save current profile to device NVS”
 so a reflash does not reset the profile.
 
@@ -159,7 +159,7 @@ on its own gates as well (see above).
    **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.9)”.
 2. Onboard control → **Read from device** (knobs), then **Apply these onboard-run limits to RAM**:
    run length (`maxDuration`, e.g. 20 s), maximum duty 50 %, slew 10000 %/s (= 100 /s; the old default
-   is far too slow for feedback) and current trip 1.5 A. Travel stays as commissioned on Motor tests
+   is far too slow for feedback) and current trip 4 A (the default; A. Note: the current sensor reaches the top of the ESP32 ADC at about +3.2 A, where ADC_INVALID_OR_CLIPPED stops the motor first; the TB6612 is rated 1.2 A continuous / 3.2 A peak.). Travel stays as commissioned on Motor tests
    (≈ 498 counts, 120°). Optionally Setup → “Save current profile to device NVS”.
    **Expected:** no ✗ or ! left in the readiness list except the 12 V box.
 3. Passive sign check (motor unpowered is fine): watch θ0 / θ1 on the Onboard control page and move the

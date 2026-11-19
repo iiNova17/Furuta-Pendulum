@@ -153,10 +153,10 @@ class OnboardPage:
         self.no_limit.toggled.connect(lambda on: self.rec_seconds.setEnabled(not on))
         self.rec_duty = a.number(g, 'Maximum duty (%)', 50, 0, 100, 1)
         self.rec_slew = a.number(g, 'Slew rate (%/s)', 10000, .1, 100000, 0)
-        self.rec_trip = a.number(g, 'Current trip A (0 = off)', 1.5, 0, 50, 2)
+        self.rec_trip = a.number(g, 'Current trip A (0 = off)', 4, 0, 50, 2)
         a.button(g, 'Apply these onboard-run limits to RAM', self.apply_limits)
         a.text(g, 'Designed with 100 /s slew (10000 %/s) and 50 % duty; the firmware warns below 50 /s. '
-                  'Travel stays as commissioned on Motor tests.', small=True)
+                  'Travel stays as commissioned on Motor tests. Current trip: ' + 'Default 4 A. Note: the current sensor reaches the top of the ESP32 ADC at about +3.2 A, where ADC_INVALID_OR_CLIPPED stops the motor first; the TB6612 is rated 1.2 A continuous / 3.2 A peak.', small=True)
         self.sign_button = a.button(g, 'Set profile signs to the model’s (armSign +1, pendSign −1)', self.set_signs)
 
         g = a.group(v, '2 · Run — MOVES MOTOR')
@@ -229,7 +229,7 @@ class OnboardPage:
         slew = c.get('slewPerSecond', 0)
         out.append((True if slew >= 50 else None, f'Slew {slew:g} /s' + ('' if slew >= 50 else ' — below the 100 /s it was designed with')))
         trip = c.get('currentTripA', 0)
-        out.append((True if trip > 0 else None, f'Current trip {trip:g} A' if trip > 0 else 'Current trip OFF (1.5 A recommended)'))
+        out.append((True if trip > 0 else None, f'Current trip {trip:g} A' if trip > 0 else 'Current trip OFF (4 A is the default)'))
         out.append((True, f'Run length {run_length(c)} · heartbeat {c.get("heartbeatMs", "?")} ms'))
         periods = d.identity.get('onboardPeriods') or [0.004]
         ts = self.period.currentData()

@@ -16,7 +16,7 @@ inline const char* stateName(State s) {
 }
 struct Config {
   double maxDuty=0,slewPerSecond=.5,maxDuration=10,travelCounts=0,velocityCountsPerSecond=0;
-  double currentTripA=0,currentTripMs=10,currentZeroMv=NAN,sensitivityMvA=185,countsPerRev=NAN;
+  double currentTripA=4,currentTripMs=10,currentZeroMv=NAN,sensitivityMvA=185,countsPerRev=NAN;
   int armSign=1,pendSign=1,pendDownRaw=-1;
   // Measured breakaway duty (fraction, NaN = unknown). Stored only; not applied to commands.
   double deadzonePos=NAN,deadzoneNeg=NAN;

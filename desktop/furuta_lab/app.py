@@ -223,7 +223,7 @@ class LabApp(W.QMainWindow):
         self.max_duty=self.number(g,'Maximum duty (%)',0,0,100,1)
         self.travel=self.number(g,'Travel each side (counts)',0,0,1e9,0)
         self.max_duration=self.number(g,'Maximum run seconds',10,.1,3600,1)
-        self.current_trip=self.number(g,'Current trip A (0 = off)',0,0,50,3)
+        self.current_trip=self.number(g,'Current trip A (0 = off)',4,0,50,3)
         self.speed_trip=self.number(g,'Speed trip counts/s (0 = off)',0,0,1e7,0)
         self.slew=self.number(g,'Slew rate (%/s) — how fast duty may change',1000,.1,10000,1)
         self.button(g,'Apply these limits to RAM',self.apply_limits)
