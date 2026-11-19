@@ -147,7 +147,31 @@ class Device:
     def apply(self,config):
         if self.status.get('state')!='DISARMED':raise RuntimeError('Disarm before changing settings')
         if self.record:raise RuntimeError('Finish recording before changing its calibration/profile')
-        self.config=self.rpc('SET_CONFIG',config=config)['config']
+        try:self.config=self.rpc('SET_CONFIG',config=config)['config']
+        except RuntimeError as e:
+            # A capture armed for a run that never started stays pending on the MCU and blocks every profile change
+            # ("Capture/calibration in progress" with nothing visible). Drop it and retry once (firmware 1.10+).
+            if 'Capture/calibration in progress' not in str(e):raise
+            info=self.rpc('BURST_INFO')
+            if info.get('pending') and not info.get('active') and self.identity.get('burstCancel'):
+                self.rpc('BURST_CANCEL');self.log('Stale pending capture cancelled')
+                self.config=self.rpc('SET_CONFIG',config=config)['config'];return
+            raise RuntimeError(self.busy_text(info)) from e
+
+    def busy_text(self,info=None):
+        """Why the MCU says 'Capture/calibration in progress', in words."""
+        info=info or self.rpc('BURST_INFO')
+        if info.get('active'):
+            return ('A high-rate capture is still recording on the device (it ends 0.5 s after a run with firmware 1.10, '
+                    'or after its full length with older firmware). Wait a moment, or Setup → “Cancel device capture”.')
+        if info.get('pending'):
+            return 'A high-rate capture is armed for a run that has not started. Setup → “Cancel device capture”.'
+        return 'A current-zero calibration is running (1 s, motor unpowered). Try again in a moment.'
+
+    def cancel_burst(self):
+        """Drop a pending capture or stop a running one (firmware 1.10+). Returns the reply, or None if unsupported."""
+        if not self.identity.get('burstCancel'):return None
+        return self.rpc('BURST_CANCEL')
 
     def run(self,segments,metadata):
         if self.inhibit:raise RuntimeError('Powered motion is not enabled in the interface')

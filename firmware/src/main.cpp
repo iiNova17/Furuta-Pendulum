@@ -46,6 +46,7 @@ uint64_t calibrationStart=0;uint32_t calN=0,calClips=0;double calMean=0,calM2=0;
 struct Notice { char text[96]; };
 struct BurstBuffer {
   hw::AdcRecord* adc=nullptr;hw::Snapshot* core=nullptr;
+  bool withRun=false;uint64_t tailUntil=0;   // 1.10: a capture armed with a run ends 0.5 s after the run ends
   size_t adcCapacity=0,coreCapacity=0,adcCount=0,coreCount=0;
   uint64_t start=0,until=0;bool active=false,pending=false,overflow=false;double duration=0;
 } burst;
@@ -81,7 +82,7 @@ void configJson(JsonObject o,const Config&c) {
   o["armSign"]=c.armSign;o["pendSign"]=c.pendSign;
   if(c.pendDownRaw>=0)o["pendDownRaw"]=c.pendDownRaw;else o["pendDownRaw"]=nullptr;
   o["deadzonePos"]=c.deadzonePos;o["deadzoneNeg"]=c.deadzoneNeg;
-  o["assumedBusV"]=c.assumedBusV;o["heartbeatMs"]=c.heartbeatMs;o["streamHz"]=c.streamHz;
+  o["assumedBusV"]=c.assumedBusV;o["heartbeatMs"]=c.heartbeatMs;o["streamHz"]=c.streamHz;o["currentChecks"]=c.currentChecks;
   o["adcHz"]=c.adcHz;o["pwmHz"]=c.pwmHz;
   auto f=o.createNestedObject("filter");f["type"]=c.filterType;f["alpha"]=c.alpha;f["window"]=c.window;
   auto a=f.createNestedArray("sos");for(double x:c.sos)a.add(x);
@@ -90,7 +91,7 @@ bool parseConfig(JsonObjectConst o,Config&c,std::string&w) {
   if(o.isNull()){w="Config object required";return false;}
   const char* keys[]={"schema","maxDuty","slewPerSecond","maxDuration","travelCounts","velocityCountsPerSecond",
     "currentTripA","currentTripMs","currentZeroMv","sensitivityMvA","countsPerRev","armSign","pendSign","pendDownRaw",
-    "assumedBusV","heartbeatMs","streamHz","adcHz","pwmHz","filter","deadzonePos","deadzoneNeg"};
+    "assumedBusV","heartbeatMs","streamHz","adcHz","pwmHz","filter","deadzonePos","deadzoneNeg","currentChecks"};
   for(auto kv:o){bool known=false;for(auto k:keys)if(!strcmp(k,kv.key().c_str()))known=true;if(!known){w="Unknown config field";return false;}}
   auto number=[&](const char*k,double&v,bool nullable=false){
     if(!o.containsKey(k))return true;
@@ -98,6 +99,7 @@ bool parseConfig(JsonObjectConst o,Config&c,std::string&w) {
     if(!o[k].is<double>())return false;v=o[k].as<double>();return std::isfinite(v);
   };
   if(o.containsKey("schema")&&o["schema"]!=1){w="Unsupported schema";return false;}
+  if(o.containsKey("currentChecks")){if(!o["currentChecks"].is<bool>()){w="currentChecks must be true/false";return false;}c.currentChecks=o["currentChecks"].as<bool>();}
   if(!number("maxDuty",c.maxDuty)||!number("slewPerSecond",c.slewPerSecond)||!number("maxDuration",c.maxDuration)||
      !number("travelCounts",c.travelCounts)||!number("velocityCountsPerSecond",c.velocityCountsPerSecond)||
      !number("currentTripA",c.currentTripA)||!number("currentTripMs",c.currentTripMs)||!number("currentZeroMv",c.currentZeroMv,true)||
@@ -206,7 +208,7 @@ bool sendPacket(uint8_t type,const std::vector<uint8_t>& data,bool critical=fals
   Serial.write(bytes.data(),bytes.size());return true;
 }
 void sendJson(uint8_t type,const std::string&s){std::vector<uint8_t>p(s.begin(),s.end());sendPacket(type,p,true);}
-void startBurst(uint64_t now){burst.start=now;burst.until=now+(uint64_t)(burst.duration*1e6);burst.active=true;burst.pending=false;}
+void startBurst(uint64_t now){burst.start=now;burst.until=now+(uint64_t)(burst.duration*1e6);burst.active=true;burst.pending=false;burst.tailUntil=0;}
 void adcTask(void*) {
   while(true) {
     uint32_t n=ulTaskNotifyTake(pdTRUE,portMAX_DELAY);
@@ -282,6 +284,12 @@ void controlTask(void*) {
     const bool onboardRunning=control.state==State::Running&&control.source==Controller::Source::Onboard;
     sample.ctrl=onboardRunning?(uint8_t)(onboard.mode+1):0;
     if(burst.pending&&control.state==State::Running)startBurst(t);
+    // 1.10: a capture that started with a run stops 0.5 s after the run ends (stop, fault, SafeStop) instead of
+    // recording out its whole length; before, ARM was refused ("Capture/calibration in progress") until it did.
+    if(burst.active&&burst.withRun&&control.state!=State::Running) {
+      if(!burst.tailUntil)burst.tailUntil=t+500000;
+      else if(t>=burst.tailUntil){burst.active=false;notice("BURST_COMPLETE");}
+    }
     hw::output(control.applied);
     esp_task_wdt_reset();
     t=esp_timer_get_time();
@@ -358,7 +366,7 @@ void dispatch(const Packet&p) {
   else if(op=="HELLO"){
     if(id!=lastHelloId||p.session!=lastHelloSession){challenge=((uint64_t)esp_random()<<32)|esp_random();lastHelloId=id;lastHelloSession=p.session;}
     response["challenge"]=std::to_string(challenge);
-    response["firmware"]="FurutaWorkbench/1.9";response["runLengthUnlimited"]=true;response["onboardControl"]=true;response["protocol"]=1;response["coreRecordBytes"]=88;
+    response["firmware"]="FurutaWorkbench/1.10";response["currentChecksOption"]=true;response["burstCancel"]=true;response["runLengthUnlimited"]=true;response["onboardControl"]=true;response["protocol"]=1;response["coreRecordBytes"]=88;
     {JsonArray a=response.createNestedArray("onboardPeriods");for(int i=0;i<rates::count;i++)a.add(rates::Ts[i]);}
     response["pendHz"]=1000/kPendPeriodMs;response["as5600Conf"]=as5600Conf;response["as5600SlowFilter"]=kAs5600SlowFilter;
     response["adcChunkMax"]=64;response["coreChunkMax"]=16;
@@ -406,6 +414,12 @@ void dispatch(const Packet&p) {
         if(c.slewPerSecond<50)response["warning"]="slewPerSecond is below 50/s; the controller was designed with 100/s";
       }
     }
+  }else if(op=="BURST_CANCEL"){
+    // 1.10: drop a pending capture (armed for a run that never started) or stop a running one. Allowed at any
+    // time; the data recorded so far stays readable.
+    response["wasActive"]=burst.active;response["wasPending"]=burst.pending;
+    if(burst.active)notice("BURST_COMPLETE");
+    burst.active=false;burst.pending=false;
   }else if(op=="ONBOARD_GET"){
     onboardJson(response.createNestedObject("params"),onboardParams);
   }else if(op=="ONBOARD_BENCH"){
@@ -476,7 +490,7 @@ void dispatch(const Packet&p) {
         burst.adc=(hw::AdcRecord*)malloc(na*sizeof(hw::AdcRecord));burst.core=(hw::Snapshot*)malloc(nc*sizeof(hw::Snapshot));
       }
       if(!burst.adc||!burst.core){free(burst.adc);free(burst.core);burst={};why="Capture allocation failed: reduce duration";}
-      else{burst.adcCapacity=na;burst.coreCapacity=nc;burst.duration=seconds;burst.pending=pending;if(!pending)startBurst(esp_timer_get_time());}
+      else{burst.adcCapacity=na;burst.coreCapacity=nc;burst.duration=seconds;burst.pending=pending;burst.withRun=pending;if(!pending)startBurst(esp_timer_get_time());}
     }
   }else if(op=="BURST_INFO"){
     response["adcCount"]=burst.adcCount;response["coreCount"]=burst.coreCount;response["active"]=burst.active;response["pending"]=burst.pending;

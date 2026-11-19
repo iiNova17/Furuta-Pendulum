@@ -210,7 +210,7 @@ class LabTests(unittest.TestCase):
         p.start()
         end=_t.monotonic()+5
         while w.busy and _t.monotonic()<end:app.processEvents();_t.sleep(.01)
-        self.assertEqual(ops,['SET_CONFIG','ONBOARD_GET','ONBOARD_CONFIG','CAPTURE_BURST','ARM','START_ONBOARD'])
+        self.assertEqual(ops,['BURST_INFO','SET_CONFIG','ONBOARD_GET','ONBOARD_CONFIG','CAPTURE_BURST','ARM','START_ONBOARD'])
         self.assertTrue((tmp/'runs'/'run1'/'manifest.json').exists())
         meta=json.loads((tmp/'runs'/'run1'/'manifest.json').read_text())['metadata']
         self.assertEqual(meta['controller_period_s'],.001);self.assertEqual(meta['onboard_params']['Ts'],.001)
@@ -222,6 +222,48 @@ class LabTests(unittest.TestCase):
         while w.busy and _t.monotonic()<end:app.processEvents();_t.sleep(.01)
         self.assertTrue((tmp/'runs'/'run1'/'burst'/'capture.npz').exists())
         d.ready=d.connected=False;d.port=None;w.close()
+    def test_capture_busy_handling(self):
+        """'Capture/calibration in progress': a stale pending capture is cancelled and the profile change retried;
+        a running capture gives a clear message; a failed start cancels the capture it armed."""
+        from furuta_lab.device import Device
+        d=Device();d.identity={'burstCancel':True,'onboardControl':True};d.status={'state':'DISARMED'};ops=[];state={'pending':True,'active':False,'busy':True}
+        def rpc(op,**a):
+            ops.append(op)
+            if op=='SET_CONFIG':
+                if state['busy']:raise RuntimeError('Capture/calibration in progress')
+                return {'ok':True,'config':a['config']}
+            if op=='BURST_INFO':return {'ok':True,'pending':state['pending'],'active':state['active']}
+            if op=='BURST_CANCEL':state.update(busy=False,pending=False);return {'ok':True,'wasPending':True}
+            return {'ok':True}
+        d.rpc=rpc;d.apply({'x':1})
+        self.assertEqual(ops,['SET_CONFIG','BURST_INFO','BURST_CANCEL','SET_CONFIG']);self.assertEqual(d.config,{'x':1})
+        state.update(busy=True,pending=False,active=True);ops.clear()
+        with self.assertRaises(RuntimeError) as cm:d.apply({'x':2})
+        self.assertIn('still recording',str(cm.exception));self.assertNotIn('BURST_CANCEL',ops)
+        # failed start: ARM refused after the capture was armed -> capture cancelled
+        import tempfile,time as _t
+        from PySide6.QtWidgets import QApplication
+        from furuta_lab.app import LabApp
+        QApplication.instance() or QApplication([]);w=LabApp();p=w.onboard;dv=w.device;seen=[]
+        tmp=Path(tempfile.mkdtemp());w.new_path=lambda kind:tmp/kind/'run1'
+        def rpc2(op,**a):
+            seen.append(op)
+            if op=='ONBOARD_GET':return {'ok':True,'params':{'Ts':.004}}
+            if op=='BURST_INFO':return {'ok':True,'active':False,'pending':False}
+            if op=='ARM':raise RuntimeError('Arm center required')
+            return {'ok':True,'config':a.get('config',{})}
+        dv.rpc=rpc2;dv.connected=dv.ready=True;dv.port=type('P',(),{'write':lambda s,b:None,'close':lambda s:None})()
+        dv.identity={'onboardControl':True,'onboardPeriods':[.004],'burstCancel':True}
+        dv.status={'state':'DISARMED','centered':True};dv.config={'maxDuty':.5,'travelCounts':498,'maxDuration':20,'streamHz':250,'adcHz':2000}
+        w.power.setChecked(True);p.start();end=_t.monotonic()+5
+        while w.busy and _t.monotonic()<end:QApplication.processEvents();_t.sleep(.01)
+        self.assertIn('CAPTURE_BURST',seen);self.assertEqual(seen[-1],'BURST_CANCEL')
+        self.assertTrue(dv.inhibit)                                           # motion disabled again
+        # a live recording blocks the start without touching it
+        dv.record=object();seen.clear()
+        with self.assertRaises(RuntimeError):p.start()
+        self.assertEqual(seen,[]);dv.record=None
+        dv.ready=dv.connected=False;dv.port=None;w.close()
     def test_breakaway_model_and_unlimited_run(self):
         """Stick-slip arm friction: 11 % duty from rest holds the arm (as on the rig), 20 % breaks it free;
         without tsp/tsn the model is unchanged. Run length 0 = no limit in the onboard page."""

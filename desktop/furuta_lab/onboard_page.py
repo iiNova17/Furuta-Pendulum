@@ -119,7 +119,7 @@ def summary(rows, config, manifest):
         sel = on
     else:
         lines.append('The controller never entered RUNNING in this recording.'); sel = np.arange(len(t))
-    arm = series['arm_deg']; pend = series['pend_deg']; cur = series['current_smooth']
+    arm = series['arm_deg']; cur = series['current_smooth']
     if arm.unit == 'deg' and np.isfinite(arm.values[sel]).any():
         lines.append(f'Arm angle range {np.nanmin(arm.values[sel]):.1f}° to {np.nanmax(arm.values[sel]):.1f}°'
                      + (f' ({arm.note})' if arm.note else '') + '.')
@@ -141,7 +141,7 @@ class OnboardPage:
     # ------------------------------------------------------------------ layout
     def build(self, v):
         a = self.app
-        a.text(v, 'The ESP32 runs the controller itself (firmware 1.9: every 4, 2 or 1 ms, pendulum read at 1 kHz, all firmware trips active). '
+        a.text(v, 'The ESP32 runs the controller itself (firmware 1.10: every 4, 2 or 1 ms, pendulum read at 1 kHz, all firmware trips active). '
                   'This page starts it, keeps the heartbeat, shows its state and records the run. '
                   'STOP / DISABLE, unticking the 12 V box or closing the app stops the motor (heartbeat within 300 ms).', small=True)
 
@@ -154,6 +154,11 @@ class OnboardPage:
         self.rec_duty = a.number(g, 'Maximum duty (%)', 50, 0, 100, 1)
         self.rec_slew = a.number(g, 'Slew rate (%/s)', 10000, .1, 100000, 0)
         self.rec_trip = a.number(g, 'Current trip A (0 = off)', 4, 0, 50, 2)
+        self.ignore_current = W.QCheckBox('Ignore the current sensor during runs (no ADC_INVALID_OR_CLIPPED or overcurrent trip; firmware 1.10)')
+        self.ignore_current.setToolTip('The current is still measured and recorded, but no longer stops a run. Positive currents above about '
+                                       '3.2 A clip the sensor at the top of the ADC; with this ticked nothing limits the current except the '
+                                       'duty limit, so keep max duty moderate (the TB6612 is rated 1.2 A continuous / 3.2 A peak).')
+        g.addWidget(self.ignore_current)
         a.button(g, 'Apply these onboard-run limits to RAM', self.apply_limits)
         a.text(g, 'Designed with 100 /s slew (10000 %/s) and 50 % duty; the firmware warns below 50 /s. '
                   'Travel stays as commissioned on Motor tests. Current trip: ' + 'Default 4 A. Note: the current sensor reaches the top of the ESP32 ADC at about +3.2 A, where ADC_INVALID_OR_CLIPPED stops the motor first; the TB6612 is rated 1.2 A continuous / 3.2 A peak.', small=True)
@@ -171,6 +176,8 @@ class OnboardPage:
         self.burst.setChecked(True); g.addWidget(self.burst)
         self.start_button = a.button(g, 'Start onboard controller — MOVES MOTOR', self.start)
         self.start_button.setStyleSheet('font-weight:700;'); self.start_button.setEnabled(False)
+        self.clear_button = a.button(g, 'Clear fault', lambda: a.submit(lambda: a.device.rpc('CLEAR_FAULT'),
+                                                                        lambda r: a.report('Fault cleared', 'The device is DISARMED again.')))
         row = W.QHBoxLayout(); g.addLayout(row)
         self.state_pill = W.QLabel(); self.state_pill.setAlignment(QtCore.Qt.AlignCenter); self.state_pill.setMinimumWidth(130); row.addWidget(self.state_pill)
         self.catch_light = W.QLabel(); self.catch_light.setAlignment(QtCore.Qt.AlignCenter); row.addWidget(self.catch_light)
@@ -229,7 +236,15 @@ class OnboardPage:
         slew = c.get('slewPerSecond', 0)
         out.append((True if slew >= 50 else None, f'Slew {slew:g} /s' + ('' if slew >= 50 else ' — below the 100 /s it was designed with')))
         trip = c.get('currentTripA', 0)
-        out.append((True if trip > 0 else None, f'Current trip {trip:g} A' if trip > 0 else 'Current trip OFF (4 A is the default)'))
+        if c.get('currentChecks') is False:
+            out.append((None, 'Current sensor IGNORED in runs: no ADC clipping or overcurrent trip (only the duty limit bounds the current)'))
+        else:
+            out.append((True if trip > 0 else None, f'Current trip {trip:g} A' if trip > 0 else 'Current trip OFF (4 A is the default)'))
+        if s.get('burstActive') or s.get('burstPending'):
+            out.append((None, 'A high-rate capture is ' + ('recording' if s.get('burstActive') else 'armed') + ' on the device'
+                        + ('' if self.pending_burst or self.active else ' (Setup → “Cancel device capture” if it is left over)')))
+        if s.get('state') == 'FAULT':
+            out.append((False, f'FAULT {s.get("fault", "")}: press “Clear fault” below'))
         out.append((True, f'Run length {run_length(c)} · heartbeat {c.get("heartbeatMs", "?")} ms'))
         periods = d.identity.get('onboardPeriods') or [0.004]
         ts = self.period.currentData()
@@ -278,6 +293,7 @@ class OnboardPage:
                 a.failed(f'High-rate capture not downloaded: {e}', release=False)
         if not a.busy:
             self.start_button.setEnabled(self.supported() and a.power.isChecked() and state == 'DISARMED')
+            self.clear_button.setEnabled(d.ready and state == 'FAULT')
             c = d.config if d.ready else {}
             self.sign_button.setVisible(bool(p) and (c.get('armSign') != p.get('modelArmSign') or c.get('pendSign') != p.get('modelPendSign')))
 
@@ -318,9 +334,14 @@ class OnboardPage:
         a = self.app; a.require_disarmed(); c = copy.deepcopy(a.device.config)
         if self.no_limit.isChecked() and not a.device.identity.get('runLengthUnlimited'):
             raise RuntimeError('“No run-length limit” needs firmware 1.8 or newer')
+        if self.ignore_current.isChecked() and not a.device.identity.get('currentChecksOption'):
+            raise RuntimeError('“Ignore the current sensor” needs firmware 1.10 or newer')
+        if a.device.identity.get('currentChecksOption'):
+            c['currentChecks'] = not self.ignore_current.isChecked()
         c.update(maxDuration=0. if self.no_limit.isChecked() else self.rec_seconds.value(), maxDuty=self.rec_duty.value() / 100,
                  slewPerSecond=self.rec_slew.value() / 100, currentTripA=self.rec_trip.value())
         a.submit(lambda: a.device.apply(c), lambda r: a.report('Onboard-run limits applied to RAM',
+                 ('⚠ current sensor ignored in runs (no clipping or overcurrent trip) · ' if c.get('currentChecks') is False else '') +
                  f'run length {run_length(c)} · maxDuty {c["maxDuty"] * 100:g} % · slew {c["slewPerSecond"]:g} /s · '
                  f'current trip {c["currentTripA"]:g} A. Use “Save current profile to device NVS” (Setup) to keep them after a restart.'))
 
@@ -404,13 +425,20 @@ class OnboardPage:
         ts = self.period.currentData()
         if not any(abs(ts - p) < 1e-9 for p in periods):
             d.inhibit = True; raise ValueError(f'This firmware supports only {", ".join(f"{p * 1e3:g} ms" for p in periods)}; flash 1.7 for faster periods')
+        if d.record:
+            d.inhibit = True; raise RuntimeError('Finish the live recording (Live tab) before starting an onboard run')
+        if self.pending_burst:
+            d.inhibit = True; raise RuntimeError('The previous run’s high-rate capture has not been downloaded yet; wait a moment')
         record = self.record.isChecked(); burst = self.burst.isChecked()
         path = a.new_path('runs') if record else None
         self.event_mark = d.event_count; self.burst_armed = None; self.run_path = path
 
         def run():
-            notes = []
+            notes = []; armed = False
             try:
+                info = d.rpc('BURST_INFO')
+                if (info.get('active') or info.get('pending')) and d.cancel_burst() is not None:
+                    notes.append('a left-over device capture was cancelled')
                 # Profile changes must happen before recording starts (the MCU refuses them while recording).
                 if record and d.config.get('streamHz') != STREAM_HZ:
                     c = copy.deepcopy(d.config); c['streamHz'] = STREAM_HZ; d.apply(c); notes.append(f'stream {STREAM_HZ} Hz')
@@ -422,7 +450,7 @@ class OnboardPage:
                     c = d.config; per_s = c.get('adcHz', 2000) * 24 + 500 * 128     # bytes per second (record sizes rounded up)
                     limit = c.get('maxDuration', 20) + .5 if c.get('maxDuration', 0) > 0 else math.inf
                     armed_s = round(min(limit, .95 * BURST_BUDGET / per_s), 1)
-                    d.arm_burst(armed_s); notes.append(f'high-rate capture armed for {armed_s:g} s')
+                    d.arm_burst(armed_s); armed = True; notes.append(f'high-rate capture armed for {armed_s:g} s')
                 meta = a.metadata() | {'purpose': 'onboard', 'controller': entry['key'], 'controller_label': entry['label'],
                                        'start': entry['start'], 'controller_period_s': ts, 'onboard_params': copy.deepcopy(params),
                                        'burst_seconds': armed_s}
@@ -430,8 +458,16 @@ class OnboardPage:
                     d.start_record(path, meta)
                 r = d.run_onboard(**entry['start'])
                 return r, params, meta, armed_s, notes
-            except Exception:
-                d.stop(); d.finish_record(); raise
+            except Exception as e:
+                d.stop(); d.finish_record()
+                if armed:
+                    try:
+                        d.cancel_burst()          # otherwise it stays pending and blocks every profile change
+                    except Exception:
+                        pass
+                if 'Capture/calibration in progress' in str(e):
+                    raise RuntimeError(d.busy_text()) from e
+                raise
 
         def done(result):
             r, params, meta, armed_s, notes = result

@@ -17,7 +17,7 @@ Rig (Variant Subsystem):  Simulation = HIL link -> firmware -> plant (report mod
 
 | | 1. Hardware in the loop | 2. Onboard (product mode) |
 |---|---|---|
-| Controller runs in | Simulink on the laptop, this harness with `cfg.rig = 'Hardware'` | ESP32 firmware 1.9 (`firmware/include/onboard.h`), started from the app's Onboard control tab |
+| Controller runs in | Simulink on the laptop, this harness with `cfg.rig = 'Hardware'` | ESP32 firmware 1.10 (`firmware/include/onboard.h`), started from the app's Onboard control tab |
 | Loop | USB both ways (delay unmeasured) | inside the 1 kHz firmware loop, 4 ms period |
 | Status | not built (Hardware variant + firmware duty message) | built, equal to the harness to 7e-13 with the breakaway terms off; first rig runs 2026-11-19 (caught, balanced, then stuck below the breakaway: fixed in 1.9, `docs/ONBOARD_CONTROL.md`) |
 
