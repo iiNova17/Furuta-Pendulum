@@ -19,7 +19,7 @@ static int replay(const std::string& file) {
   if(!in){std::printf("missing %s\n",file.c_str());return 1;}
   std::string line;std::getline(in,line);
   // The harness runs predate the breakaway feedforward (1.8): replay with it off, i.e. the Simulink law.
-  OnboardController c;c.p.stickGain=0;c.reset();
+  OnboardController c;c.p.stickGain=0;c.p.fricGain=design::fricGain;c.reset();
   double maxErr=0;size_t n=0,modeErr=0,firstBad=0;
   while(std::getline(in,line)) {
     double t,th0,th1,r,duty;int mode;
@@ -65,6 +65,14 @@ int main(int argc,char**argv) {
    // moving fast, the feedforward is gone: same command as the 1.7 law
    OnboardController f;f.reset();f.step(0,2.);OnboardController f0;f0.p.stickGain=0;f0.reset();f0.step(0,2.);
    const double uf=f.step(.02,2.05),uf0=f0.step(.02,2.05);assert(std::abs(uf-uf0)<1e-6);}
+
+  // 1.9 balance compensation: a small LQR request with the arm at rest becomes at least the breakaway duty
+  {OnboardController c;c.p.swingUp=false;c.reset();const double u=c.step(0,.02);   // pendulum 1.15 deg off upright (the smooth sign gives the full breakaway above ~2 % request)
+   OnboardController o;o.p.swingUp=false;o.p.fricGain=0;o.reset();const double u0=o.step(0,.02);
+   std::printf("balance, arm at rest, 1.15 deg lean: %.1f %% duty with compensation, %.1f %% without\n",100*u,100*u0);
+   assert(c.mode==OnboardController::Stabilize&&u>c.p.Rm*c.p.tsp/c.p.Vs&&std::abs(u0)<.05);
+   OnboardController k;k.p.swingUp=false;k.p.fricStick=0;k.reset();const double uc=k.step(0,.02);   // Coulomb only
+   assert(uc<c.p.Rm*c.p.tsp/c.p.Vs&&uc>u0);}
 
   // run control: an onboard run takes the external request, keeps every safety check, ends at maxDuration
   Controller k;std::string why;

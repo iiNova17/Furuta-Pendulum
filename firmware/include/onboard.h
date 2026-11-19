@@ -17,7 +17,7 @@ namespace fw {
 struct OnboardParams {
   double Ts=design::Ts, velFc=design::velFc;
   double K[4]={design::K[0],design::K[1],design::K[2],design::K[3]};
-  double fricGain=design::fricGain, fricBand=design::fricBand, fricDutyPos=design::fricDutyPos, fricDutyNeg=design::fricDutyNeg;
+  double fricGain=stiction::fricGain, fricBand=design::fricBand, fricDutyPos=design::fricDutyPos, fricDutyNeg=design::fricDutyNeg;
   double catchTh1=design::catchTh1, catchW1=design::catchW1, exitTh1=design::exitTh1, safeTh0=design::safeTh0;
   bool rearm=design::rearm!=0;
   double E0=design::sw_E0, kE=design::sw_k_E, aPush=design::sw_a_push, wc=design::sw_wc, zc=design::sw_zc;
@@ -27,6 +27,7 @@ struct OnboardParams {
   double Rm=design::pl_Rm, Kb=design::pl_Kb, Vs=design::pl_Vs;
   // 1.8: arm breakaway friction (measured dead zone) and how the swing-up's motor inverse uses it
   double tsp=stiction::tsp, tsn=stiction::tsn, stickGain=stiction::stickGain, wStick=stiction::wStick, aStick=stiction::aStick;
+  double fricStick=stiction::fricStick;   // 1.9: breakaway part of the balance friction compensation (0 = 1.8)
   double r=0;               // arm reference [rad]
   bool swingUp=true;        // false: balance only (start near upright); losing the pendulum ends the run
   // Supported controller periods and their LQR gains (same Q, R as the design; onboard_rates.h).
@@ -35,11 +36,11 @@ struct OnboardParams {
   bool setPeriod(double ts){const int i=periodIndex(ts);if(i<0)return false;Ts=rates::Ts[i];for(int k=0;k<4;k++)K[k]=rates::K[i][k];return true;}
   bool valid(std::string& why) const {
     const double all[]={Ts,velFc,K[0],K[1],K[2],K[3],fricGain,fricBand,fricDutyPos,fricDutyNeg,catchTh1,catchW1,exitTh1,
-      safeTh0,E0,kE,aPush,wc,zc,aKick,kickE,wSign,wFric,iMax,uMax,Jp,G,Ja,Beq,tcp,tcn,Rm,Kb,Vs,r,tsp,tsn,stickGain,wStick,aStick};
+      safeTh0,E0,kE,aPush,wc,zc,aKick,kickE,wSign,wFric,iMax,uMax,Jp,G,Ja,Beq,tcp,tcn,Rm,Kb,Vs,r,tsp,tsn,stickGain,wStick,aStick,fricStick};
     for(double x:all) if(!std::isfinite(x)){why="Nonfinite onboard parameter";return false;}
     if(periodIndex(Ts)<0){why="Onboard controller period must be 1, 2 or 4 ms (onboard_rates.h)";return false;}
     if(velFc<=0||fricBand<=0||wSign<=0||wFric<=0||Jp<=0||G<=0||Ja<=0||Rm<=0||Vs<=0||iMax<=0||uMax<=0||uMax>1||
-       catchTh1<=0||exitTh1<catchTh1||safeTh0<=0||tsp<0||tsn<0||stickGain<0||wStick<=0||aStick<=0){why="Onboard parameter out of range";return false;}
+       catchTh1<=0||exitTh1<catchTh1||safeTh0<=0||tsp<0||tsn<0||stickGain<0||wStick<=0||aStick<=0||fricStick<0||fricGain<0){why="Onboard parameter out of range";return false;}
     return true;
   }
 };
@@ -78,10 +79,17 @@ struct OnboardController {
     x[0]=th[0];x[1]=th[1];x[2]=w[0];x[3]=w[1];
   }
   // LQR block + friction compensation block
+  // 1.9: the compensation blends from the breakaway duty (arm at rest: Rm tsp / Vs = 13 %, 14 %) to the sliding
+  // Coulomb duty (7.4 %, 7.3 %) as the arm speeds up, in the direction of the LQR request. On the rig (firmware 1.8,
+  // no compensation) the LQR's small corrections were below the breakaway: the arm stuck for 0.4 s, the pendulum
+  // leaned, the arm broke free with a lurch and the LQR saturated. fricStick 0 = the Coulomb-only compensation.
   double lqr() const {
     double u0=-(p.K[0]*(x[0]-p.r)+p.K[1]*x[1]+p.K[2]*x[2]+p.K[3]*x[3]);
     double s=std::tanh(u0/p.fricBand);
-    return u0+p.fricGain*(p.fricDutyPos*std::max(s,0.)+p.fricDutyNeg*std::min(s,0.));
+    const double coul=p.fricDutyPos*std::max(s,0.)+p.fricDutyNeg*std::min(s,0.);
+    const double stat=(p.Rm*p.tsp*std::max(s,0.)+p.Rm*p.tsn*std::min(s,0.))/p.Vs;
+    const double g=std::exp(-(x[2]/p.wStick)*(x[2]/p.wStick));
+    return u0+p.fricGain*(coul+p.fricStick*g*(stat-coul));
   }
   // swingup_energy.slx / energy law (report section 10)
   double energyLaw() {

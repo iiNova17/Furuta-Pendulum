@@ -8,4 +8,6 @@ constexpr double tsn = 0.49045232073588091;   // A, negative direction (magnitud
 constexpr double stickGain = 1;
 constexpr double wStick = 0.2;
 constexpr double aStick = 5;
+constexpr double fricGain = 1;
+constexpr double fricStick = 1;
 }}

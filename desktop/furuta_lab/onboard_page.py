@@ -37,7 +37,7 @@ KNOBS = {
     'K3': ('duty·s/rad', 'LQR gain on pendulum speed'),
     'r': ('rad', 'arm reference angle'),
     'velFc': ('Hz', 'velocity estimate filter cut-off'),
-    'fricGain': ('–', 'friction compensation in balance (0 = off, 1 = identified Coulomb duty)'),
+    'fricGain': ('–', 'friction compensation in balance (1 = on, the 1.9 default; 0 = off)'),
     'fricBand': ('duty', 'width of the friction-compensation sign function'),
     'catchTh1': ('rad', 'hand over to LQR when |θ1| is below this …'),
     'catchW1': ('rad/s', '… and |θ̇1| is below this'),
@@ -59,6 +59,7 @@ KNOBS = {
     'stickGain': ('–', 'breakaway feedforward in the swing-up (1 = on, 0 = the 1.7 law)'),
     'wStick': ('rad/s', 'arm speed over which the breakaway part fades out'),
     'aStick': ('rad/s²', 'smoothing of the sign of the wanted arm acceleration'),
+    'fricStick': ('–', 'balance: breakaway duty at rest, fading to Coulomb as the arm moves (1 = on, 0 = Coulomb only)'),
 }
 READ_ONLY = {'Ts', 'rearm', 'modelArmSign', 'modelPendSign'}
 # Controller periods (firmware 1.7: onboard_rates.h). The LQR gain for each comes from the design's Q and R.
@@ -140,7 +141,7 @@ class OnboardPage:
     # ------------------------------------------------------------------ layout
     def build(self, v):
         a = self.app
-        a.text(v, 'The ESP32 runs the controller itself (firmware 1.8: every 4, 2 or 1 ms, pendulum read at 1 kHz, all firmware trips active). '
+        a.text(v, 'The ESP32 runs the controller itself (firmware 1.9: every 4, 2 or 1 ms, pendulum read at 1 kHz, all firmware trips active). '
                   'This page starts it, keeps the heartbeat, shows its state and records the run. '
                   'STOP / DISABLE, unticking the 12 V box or closing the app stops the motor (heartbeat within 300 ms).', small=True)
 

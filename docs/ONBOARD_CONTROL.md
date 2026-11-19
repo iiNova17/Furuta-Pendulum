@@ -62,6 +62,31 @@ reading), which is why the read rate went up with the controller rate. The cost 
 high-frequency duty switching (5.1 vs 2.2 %/ms rms), well inside the slew limit. The 4 ms setting is still the one
 validated in Simulink and replayed by `native_onboard.cpp`.
 
+## Firmware 1.9: friction compensation in balance
+
+**Why.** With 1.8 the swing-up caught the pendulum (run `20261119_205453_867500`, caught after 1.16 s with the arm
+at 3 rad/s) and balanced it for 0.7 s. Then the arm stuck at 19.3° for 0.4 s: the LQR's corrections were 1–9 %
+duty, below the 13 % breakaway, so the pendulum leaned to −3.5° until the request reached −19 % and the arm broke
+free with a lurch. The LQR then asked for ±100–116 % (saturated at the 80 % maxDuty of that run), the current
+reached 3.0–3.2 A at each reversal against the back-EMF, the current sensor clipped at the top of the ADC
+(3106 mV ≈ +3.2 A) and the firmware stopped on `ADC_INVALID_OR_CLIPPED` (the current trip was off).
+
+**Change.** The LQR output gets the friction compensation in the direction of its request, blending from the
+breakaway duty at rest (Rm·tsp/Vs = 13 %, 14 %) to the sliding Coulomb duty (7.4 %, 7.3 %) as the arm moves:
+`u = u0 + fricGain·(coul + fricStick·exp(-(w0/wStick)²)·(stat - coul))`, sign smoothed by tanh(u0/fricBand).
+**On by default** (`fricGain` 1, `fricStick` 1; the design file had `fricGain` 0); `fricGain` 0 in the knob table
+gives the 1.8 behaviour, `fricStick` 0 the Coulomb-only compensation.
+
+**Simulation** (model with breakaway, 7 ms pendulum delay, sensor noise, 4 ms): the share of the balance time with
+the arm stuck was 41–49 % without compensation (100 % from a catch-like state at 19°), 74–80 % with the
+Coulomb-only compensation (7.4 % cannot beat 13 %), **4 %** with the breakaway compensation; pendulum rms
+0.6–1.1° instead of 1.9–2.0°; no saturation. The model has no gearbox play, so it reproduces the sticking but not
+the lurch that followed. C++ law = simulated law to 1.5e-13; 226 µs per controller step on the chip.
+
+**For the next run:** current trip ≤ 2 A (it was off; a clean OVERCURRENT stops earlier than the ADC clip),
+maxDuty 50 % (what the design assumes), high-rate capture on, and Setup → “Save current profile to device NVS”
+so a reflash does not reset the profile.
+
 ## Firmware 1.8: breakaway friction and unlimited runs
 
 **Why.** The first powered runs (2026-11-19, `data/runs/20261119_*`) never left the hanging rest on their own:
@@ -128,10 +153,10 @@ shows every item below with ✓ / ✗ / ! (advisory), and the Start button stays
 is DISARMED, connected to firmware 1.6 or newer and the 12 V box is ticked. The firmware refuses `START_ONBOARD`
 on its own gates as well (see above).
 
-1. Flash firmware 1.8 (`cd firmware && pio run -t upload --upload-port COM11`). Flashing reboots the MCU:
+1. Flash firmware 1.9 (`cd firmware && pio run -t upload --upload-port COM11`). Flashing reboots the MCU:
    redo arm centre, pendulum-down reference and current zero on the Live tab (References), and check
    the encoder scale (Setup).
-   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.8)”.
+   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.9)”.
 2. Onboard control → **Read from device** (knobs), then **Apply these onboard-run limits to RAM**:
    run length (`maxDuration`, e.g. 20 s), maximum duty 50 %, slew 10000 %/s (= 100 /s; the old default
    is far too slow for feedback) and current trip 1.5 A. Travel stays as commissioned on Motor tests

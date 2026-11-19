@@ -126,7 +126,7 @@ std::vector<NamedValue> onboardFields(OnboardParams&p) {
     {"fricGain",&p.fricGain},{"fricBand",&p.fricBand},{"catchTh1",&p.catchTh1},{"catchW1",&p.catchW1},
     {"exitTh1",&p.exitTh1},{"safeTh0",&p.safeTh0},{"E0",&p.E0},{"kE",&p.kE},{"aPush",&p.aPush},{"wc",&p.wc},
     {"zc",&p.zc},{"aKick",&p.aKick},{"kickE",&p.kickE},{"wSign",&p.wSign},{"wFric",&p.wFric},{"iMax",&p.iMax},
-    {"uMax",&p.uMax},{"tsp",&p.tsp},{"tsn",&p.tsn},{"stickGain",&p.stickGain},{"wStick",&p.wStick},{"aStick",&p.aStick}};
+    {"uMax",&p.uMax},{"tsp",&p.tsp},{"tsn",&p.tsn},{"stickGain",&p.stickGain},{"wStick",&p.wStick},{"aStick",&p.aStick},{"fricStick",&p.fricStick}};
 }
 void onboardJson(JsonObject o,OnboardParams p) {
   for(auto&f:onboardFields(p))o[f.name]=*f.value;
@@ -358,7 +358,7 @@ void dispatch(const Packet&p) {
   else if(op=="HELLO"){
     if(id!=lastHelloId||p.session!=lastHelloSession){challenge=((uint64_t)esp_random()<<32)|esp_random();lastHelloId=id;lastHelloSession=p.session;}
     response["challenge"]=std::to_string(challenge);
-    response["firmware"]="FurutaWorkbench/1.8";response["runLengthUnlimited"]=true;response["onboardControl"]=true;response["protocol"]=1;response["coreRecordBytes"]=88;
+    response["firmware"]="FurutaWorkbench/1.9";response["runLengthUnlimited"]=true;response["onboardControl"]=true;response["protocol"]=1;response["coreRecordBytes"]=88;
     {JsonArray a=response.createNestedArray("onboardPeriods");for(int i=0;i<rates::count;i++)a.add(rates::Ts[i]);}
     response["pendHz"]=1000/kPendPeriodMs;response["as5600Conf"]=as5600Conf;response["as5600SlowFilter"]=kAs5600SlowFilter;
     response["adcChunkMax"]=64;response["coreChunkMax"]=16;

@@ -62,7 +62,12 @@ def design_K():
 DEADZONE = (0.13, 0.14)
 STICK_KNOBS = {'stickGain': 1.0,      # 1 = full breakaway feedforward in the swing-up motor inverse, 0 = off (1.7 law)
                'wStick': 0.2,         # rad/s: the breakaway part fades as exp(-(w0/wStick)^2)
-               'aStick': 5.0}         # rad/s^2: smoothing of the sign of the wanted arm acceleration
+               'aStick': 5.0,         # rad/s^2: smoothing of the sign of the wanted arm acceleration
+               # Balance (LQR) friction compensation, firmware 1.9. Overrides the design's fricGain 0: on the rig the
+               # LQR's small corrections stuck below the breakaway (run 20261119_205453); in simulation on the model
+               # with breakaway the arm was stuck 41-49 % of the balance time without it, 4 % with it.
+               'fricGain': 1.0,       # 1 = compensate the identified friction in balance, 0 = off (the design file)
+               'fricStick': 1.0}      # 1 = breakaway part at rest, 0 = Coulomb only
 
 
 def write_stiction():
