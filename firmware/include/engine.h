@@ -133,7 +133,11 @@ struct Filter {
   }
 };
 struct Controller {
-  State state=State::Disarmed;Config cfg;Experiment experiment;
+  // Where a run's duty request comes from: an uploaded experiment, or a closed-loop controller
+  // (Onboard: include/onboard.h, set every controller period through `external`). The safety
+  // checks, clip, slew and reversal logic below are the same for every source.
+  enum class Source:uint8_t { Experiment,Onboard };
+  State state=State::Disarmed;Config cfg;Experiment experiment;Source source=Source::Experiment;double external=0;
   int64_t center=0;bool centered=false;uint64_t session=0,lastHeartbeat=0,started=0,lastTick=0,tripSince=0,reverseUntil=0;
   uint32_t run=0;double requested=0,applied=0;std::string fault;uint32_t flags=0;
   void stop(){applied=requested=0;if(state!=State::Fault)state=State::Disarmed;session=0;reverseUntil=0;}
@@ -147,7 +151,12 @@ struct Controller {
   bool start(uint64_t now,std::string&w) {
     if(state!=State::Armed){w="ARM required";return false;}
     if(!experiment.validate(cfg,w))return false;
-    started=lastTick=now;tripSince=0;run++;state=State::Running;return true;
+    source=Source::Experiment;started=lastTick=now;tripSince=0;run++;state=State::Running;return true;
+  }
+  // Closed-loop run: the duty request is `external`; the run ends after cfg.maxDuration.
+  bool startExternal(uint64_t now,Source s,std::string&w) {
+    if(state!=State::Armed){w="ARM required";return false;}
+    source=s;external=0;started=lastTick=now;tripSince=0;run++;state=State::Running;return true;
   }
   // mv is the latest (oversampled) conversion, used for clip/validity checks.
   // tripMv is the MCU-filtered current used for the overcurrent trip; when it
@@ -165,8 +174,9 @@ struct Controller {
       if(now-tripSince>=cfg.currentTripMs*1000){fail("OVERCURRENT");return;}
     }else tripSince=0;
     if(state!=State::Running)return;
-    if((now-started)*1e-6>=experiment.duration()){stop();return;}
-    requested=experiment.value((now-started)*1e-6);
+    const double length=source==Source::Experiment?experiment.duration():cfg.maxDuration;
+    if((now-started)*1e-6>=length){stop();return;}
+    requested=source==Source::Experiment?experiment.value((now-started)*1e-6):(std::isfinite(external)?external:0.);
     double target=std::max(-cfg.maxDuty,std::min(cfg.maxDuty,requested));
     if(target!=requested)flags|=1;
     double dt=std::min(.01,(now-lastTick)*1e-6);lastTick=now;

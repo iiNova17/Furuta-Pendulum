@@ -19,6 +19,11 @@ class LabTests(unittest.TestCase):
         a,meta=wire.core_batch(bytes.fromhex(g['corePayloadHex']))
         self.assertEqual(int(a['device_us'][0]),int(g['coreTime']))
         self.assertEqual(int(a['count'][0]),-(2**53)-1)
+    def test_core_record_ctrl_byte(self):
+        # firmware 1.6 puts the onboard controller state in a former padding byte; size unchanged
+        self.assertEqual(wire.CORE.itemsize,88)
+        self.assertEqual(wire.CORE.fields['ctrl'][1],wire.CORE.fields['state'][1]+1)
+        self.assertEqual(wire.CTRL_NAMES[3],'STABILIZE')
     def test_parser_corruption_and_resync(self):
         p=wire.Parser(synced=True);good=wire.encode(1,2,3,b'hello');bad=bytearray(good);bad[4]^=4
         frames=p.feed(bytes(bad)+b'1'*2100+b'\0'+good)

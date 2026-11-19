@@ -10,7 +10,9 @@ CORE = np.dtype([
     ('current_mv','<f4'),('filtered_mv','<f4'),('requested','<f4'),('applied','<f4'),
     ('pend_age_us','<u4'),('adc_age_us','<u4'),('mag_status','u1'),('agc','u1'),
     ('magnitude','<u2'),('validity','<u4'),('limits','<u4'),('apply_us','<u8'),
-    ('adc_us','<u8'),('pend_us','<u8'),('state','u1'),('_pad','u1',3)])
+    ('adc_us','<u8'),('pend_us','<u8'),('state','u1'),('ctrl','u1'),('_pad','u1',2)])
+# ctrl (firmware 1.6): onboard controller state, 0 not running, 1 SafeStop, 2 SwingUp, 3 Stabilize
+CTRL_NAMES = {0: '', 1: 'SAFE_STOP', 2: 'SWING_UP', 3: 'STABILIZE'}
 ADC = np.dtype([('device_us','<u8'),('adc_raw','<u2'),('current_mv','<f4'),
                 ('requested','<f4'),('applied','<f4')])
 assert CORE.itemsize == 88 and ADC.itemsize == 22

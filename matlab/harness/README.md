@@ -13,6 +13,18 @@ Rig (Variant Subsystem):  Simulation = HIL link -> firmware -> plant (report mod
                           Hardware   = USB link to the ESP32 (placeholder until the bridge is built)
 ```
 
+## Two ways to run a controller on the rig (report section 8.2, `docs/ONBOARD_CONTROL.md`)
+
+| | 1. Hardware in the loop | 2. Onboard (product mode) |
+|---|---|---|
+| Controller runs in | Simulink on the laptop, this harness with `cfg.rig = 'Hardware'` | ESP32 firmware 1.6 (`firmware/include/onboard.h`) |
+| Loop | USB both ways (delay unmeasured) | inside the 1 kHz firmware loop, 4 ms period |
+| Status | not built (Hardware variant + firmware duty message) | built, equal to the harness to 7e-15, not yet run on the rig |
+
+One design, two copies: `controllers/hybrid/export_onboard.m` writes `firmware/include/onboard_design.h`
+from `ctrl_hybrid_design.m`, plus replay files that `firmware/test/native_onboard.cpp` uses to require the
+same duty as Simulink. Re-run it after any change to the design file, then rebuild and flash.
+
 ## Where to edit what (everything is a parameter)
 
 | What | File | Examples |
@@ -58,6 +70,10 @@ ctrl_hybrid_design.m    all knobs; gains derived from them (K = dlqr / place on 
   when the pendulum is caught (the hybrid reset the brief's MCT411 part is about).
 - The template outputs zero duty until gains are filled in. `new_hybrid_controller('Overwrite', true)`
   regenerates all five files (your edits are lost).
+- Swing-up design tools (report section 10): `swingup_knobs` (knobs from physics), `swingup_catch_region`
+  (where the LQR can take over), `swingup_workbench` (one design -> numbers + energy plot), `swingup_sweep`
+  (one knob or a 2D grid, `'Part'` for parallel MATLABs), `swingup_corner_test` (12 worst cases),
+  `swingup_report_data` (-> `report/figures/swingup_data.mat`, then `make_swingup_figures.py`).
 
 ```matlab
 run_sim('ctrl_hybrid.slx', 'swingup', 'Plot', true)

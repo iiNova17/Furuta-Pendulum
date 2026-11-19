@@ -54,6 +54,11 @@ See README.md for the folder map.
   `controllers/hybrid/ctrl_hybrid_design.m` unless asked; harness changes only.
 - All settings are parameters: rig/rates/limits in `harness_config.m`, controller knobs in the
   design file. Keep it that way (no constants buried in blocks).
+- Two ways to run the controller on the rig (`docs/ONBOARD_CONTROL.md`): HIL (Simulink on the laptop,
+  not built yet) and onboard (ESP32 firmware 1.6, `firmware/include/onboard.h`). The onboard numbers are
+  generated: `export_onboard.m` writes `firmware/include/onboard_design.h` (never hand-edit) and the
+  replay files for `firmware/test/native_onboard.cpp`, which must keep passing (same duty as Simulink).
+  Build that test with `-static` (Git's libstdc++ on PATH crashes it).
 - The digital twin (`twin/`) only renders; packet format and conventions in `twin/README.md`
   (q_pend = theta1 - pi).
 

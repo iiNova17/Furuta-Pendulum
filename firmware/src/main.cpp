@@ -5,9 +5,14 @@
 #include <esp_task_wdt.h>
 #include "engine.h"
 #include "hardware.h"
+#include "onboard.h"
 
 using namespace fw;
 Controller control;
+// Onboard closed-loop controller (product mode): runs every 4th 1 ms tick of an onboard run,
+// from the encoder count and the latest AS5600 reading; its duty request then goes through the
+// same safety path (Controller::tick) as an experiment.
+OnboardController onboard;OnboardParams onboardParams;unsigned onboardTick=0;
 SemaphoreHandle_t lock;
 QueueHandle_t streamQueue,eventQueue;
 TaskHandle_t adcTaskHandle,controlTaskHandle;
@@ -101,6 +106,35 @@ bool parseConfig(JsonObjectConst o,Config&c,std::string&w) {
     if(f.containsKey("sos")){auto a=f["sos"].as<JsonArrayConst>();if(a.size()!=6){w="Six SOS coefficients required";return false;}for(int i=0;i<6;i++)c.sos[i]=a[i].as<double>();}
   }
   return c.valid(w);
+}
+// Onboard controller knobs by name (JSON <-> OnboardParams). Defaults come from onboard_design.h.
+struct NamedValue {const char* name;double* value;};
+std::vector<NamedValue> onboardFields(OnboardParams&p) {
+  return {{"K0",&p.K[0]},{"K1",&p.K[1]},{"K2",&p.K[2]},{"K3",&p.K[3]},{"velFc",&p.velFc},{"r",&p.r},
+    {"fricGain",&p.fricGain},{"fricBand",&p.fricBand},{"catchTh1",&p.catchTh1},{"catchW1",&p.catchW1},
+    {"exitTh1",&p.exitTh1},{"safeTh0",&p.safeTh0},{"E0",&p.E0},{"kE",&p.kE},{"aPush",&p.aPush},{"wc",&p.wc},
+    {"zc",&p.zc},{"aKick",&p.aKick},{"kickE",&p.kickE},{"wSign",&p.wSign},{"wFric",&p.wFric},{"iMax",&p.iMax},
+    {"uMax",&p.uMax}};
+}
+void onboardJson(JsonObject o,OnboardParams p) {
+  for(auto&f:onboardFields(p))o[f.name]=*f.value;
+  o["swingUp"]=p.swingUp;o["rearm"]=p.rearm;o["Ts"]=p.Ts;
+  o["modelArmSign"]=design::modelArmSign;o["modelPendSign"]=design::modelPendSign;
+}
+bool parseOnboard(JsonObjectConst o,OnboardParams&p,std::string&w) {
+  if(o.isNull()){w="Params object required";return false;}
+  auto fields=onboardFields(p);
+  for(auto kv:o){
+    const char* k=kv.key().c_str();
+    if(!strcmp(k,"swingUp")){if(!kv.value().is<bool>()){w="swingUp must be true/false";return false;}p.swingUp=kv.value().as<bool>();continue;}
+    bool known=false;
+    for(auto&f:fields)if(!strcmp(f.name,k)){
+      if(!kv.value().is<double>()){w="Expected numeric onboard parameter";return false;}
+      *f.value=kv.value().as<double>();known=true;
+    }
+    if(!known){w="Unknown onboard parameter";return false;}
+  }
+  return p.valid(w);
 }
 bool parseSegment(JsonObjectConst o,Segment&s,std::string&w) {
   if(o.isNull()){w="Segment object required";return false;}
@@ -211,9 +245,24 @@ void controlTask(void*) {
     t=esp_timer_get_time(); // Ages must use time after the mutex was acquired.
     State before=control.state;
     if((n>5||overrunStreak>=5)&&armed())control.fail("CONTROL_OVERRUN");
+    if(control.state==State::Running&&control.source==Controller::Source::Onboard) {
+      if(onboardTick++%4==0) {                       // controller period 4 ms, held in between
+        const bool pendFresh=t-sample.pendTime<20000&&(sample.status&0x20);
+        if(!pendFresh){control.fail("PEND_INVALID");notice("PEND_INVALID");}
+        else{
+          const double th0=armAngle(count,control.center,control.cfg.armSign,control.cfg.countsPerRev);
+          const double th1=pendAngle(sample.pend,control.cfg.pendDownRaw,control.cfg.pendSign);
+          control.external=onboard.step(th0,th1);
+          if(onboard.mode==OnboardController::SafeStop){control.stop();notice("ONBOARD_SAFE_STOP");}
+          else if(!onboard.p.swingUp&&onboard.mode==OnboardController::SwingUp){control.stop();notice("ONBOARD_PENDULUM_LOST");}
+        }
+      }
+    }
     // 1.5: no trip on a single clipped conversion (switching-noise spikes tripped real runs at 0.74 A).
     // The averaged-reading check in Controller::tick (ADC_INVALID_OR_CLIPPED) remains.
     control.tick(t,count,cps,sample.mv,t-sample.adcTime,hw::encoderOk,sample.filtered);
+    const bool onboardRunning=control.state==State::Running&&control.source==Controller::Source::Onboard;
+    sample.ctrl=onboardRunning?(uint8_t)(onboard.mode+1):0;
     if(burst.pending&&control.state==State::Running)startBurst(t);
     hw::output(control.applied);
     esp_task_wdt_reset();
@@ -276,7 +325,7 @@ void dispatch(const Packet&p) {
   else if(op=="HELLO"){
     if(id!=lastHelloId||p.session!=lastHelloSession){challenge=((uint64_t)esp_random()<<32)|esp_random();lastHelloId=id;lastHelloSession=p.session;}
     response["challenge"]=std::to_string(challenge);
-    response["firmware"]="FurutaWorkbench/1.5";response["protocol"]=1;response["coreRecordBytes"]=88;
+    response["firmware"]="FurutaWorkbench/1.6";response["onboardControl"]=true;response["protocol"]=1;response["coreRecordBytes"]=88;
     response["adcChunkMax"]=64;response["coreChunkMax"]=16;
     response["baud"]=460800;response["flashBytes"]=ESP.getFlashChipSize();response["psramBytes"]=ESP.getPsramSize();
     response["maxBurstBytes"]=4194304;response["maxSegments"]=kMaxSegments;response["maxTable"]=4096;
@@ -301,12 +350,40 @@ void dispatch(const Packet&p) {
   }else if(op=="START"){
     if(!experimentValid)why="Upload/validate an experiment first";
     else control.start(esp_timer_get_time(),why);
+  }else if(op=="START_ONBOARD"){
+    // Product mode: the ESP32 runs the hybrid controller. Gates: armed (centred arm, commissioned
+    // limits, heartbeat), encoder scale, pendulum-down reference, fresh pendulum reading, and the
+    // profile signs the model was identified with (a flipped sign would push the wrong way).
+    OnboardParams p=onboardParams;
+    if(in.containsKey("swingUp")){if(!in["swingUp"].is<bool>())why="swingUp must be true/false";else p.swingUp=in["swingUp"].as<bool>();}
+    const Config&c=control.cfg;
+    if(!why.empty()){}
+    else if(control.state!=State::Armed)why="ARM required";
+    else if(!std::isfinite(c.countsPerRev)||c.countsPerRev<=0)why="Encoder scale (countsPerRev) required";
+    else if(c.pendDownRaw<0)why="Pendulum-down reference required";
+    else if(!(esp_timer_get_time()-sample.pendTime<20000&&(sample.status&0x20)))why="Pendulum reading invalid";
+    else if(c.armSign!=design::modelArmSign||c.pendSign!=design::modelPendSign)
+      why="Profile armSign/pendSign differ from the identified model's ("+std::to_string(design::modelArmSign)+", "+std::to_string(design::modelPendSign)+")";
+    else if(p.valid(why)){
+      onboard.p=p;onboard.reset();onboardTick=0;
+      if(control.startExternal(esp_timer_get_time(),Controller::Source::Onboard,why)){
+        response["mode"]=p.swingUp?"swing-up + LQR":"LQR only";response["seconds"]=c.maxDuration;
+        if(c.slewPerSecond<50)response["warning"]="slewPerSecond is below 50/s; the controller was designed with 100/s";
+      }
+    }
+  }else if(op=="ONBOARD_GET"){
+    onboardJson(response.createNestedObject("params"),onboardParams);
   }else if(op=="CLEAR_FAULT"){
     if(control.state==State::Fault){control.fault.clear();control.state=State::Disarmed;halt();}
   }else if(armed())why="Disarm before changing configuration/captures";
   else if(op=="SET_CONFIG"){
     if(calibrating||burst.active||burst.pending)why="Capture/calibration in progress";
     else{Config c=control.cfg;if(parseConfig(in["config"].as<JsonObjectConst>(),c,why)){applyConfig(c);experimentValid=false;cfgOut=c;wantCfg=true;}}
+  }else if(op=="ONBOARD_CONFIG"){
+    OnboardParams p=onboardParams;
+    if(parseOnboard(in["params"].as<JsonObjectConst>(),p,why)){onboardParams=p;onboardJson(response.createNestedObject("params"),p);}
+  }else if(op=="ONBOARD_DEFAULTS"){
+    onboardParams=OnboardParams();onboardJson(response.createNestedObject("params"),onboardParams);
   }else if(op=="SAVE_CONFIG"){
     DynamicJsonDocument doc(4096);configJson(doc.to<JsonObject>(),control.cfg);std::string json;serializeJson(doc,json);
     Preferences pref;pref.begin("furuta",false);size_t n=pref.putString("config",json.c_str());pref.putUInt("crc",crc32((const uint8_t*)json.data(),json.size()));pref.end();

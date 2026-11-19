@@ -45,7 +45,7 @@ class Device:
     def _send(self,op,args=None,waiter=False):
         with self.write_lock:
             if not self.connected:raise RuntimeError('Device disconnected')
-            if op in ('ARM','START') and self.inhibit:raise RuntimeError('Run canceled / motion disabled')
+            if op in ('ARM','START','START_ONBOARD') and self.inhibit:raise RuntimeError('Run canceled / motion disabled')
             self.sequence+=1
             if self.sequence>0xffffffff:raise RuntimeError('Reconnect to renew command sequence')
             seq=self.sequence;b=wire.command(self.session,seq,op,**(args or {}))
@@ -158,6 +158,34 @@ class Device:
         for i,s in enumerate(segments):check();self.rpc('SET_SEGMENT',index=i,segment=s)
         check();self.rpc('VALIDATE');check();self.rpc('ARM');check();self.rpc('START')
         self.log('Finite experiment started')
+
+    def onboard_params(self,params=None,defaults=False):
+        """Read or change the onboard controller's knobs (firmware 1.6, product mode).
+
+        params: dict of knob -> value (see ONBOARD_CONFIG in firmware/src/main.cpp), merged over the
+        current values on the MCU; defaults=True restores the values generated from ctrl_hybrid_design.m.
+        """
+        if not self.identity.get('onboardControl'):raise RuntimeError('Firmware without onboard control (flash 1.6)')
+        if defaults:return self.rpc('ONBOARD_DEFAULTS')['params']
+        if params:
+            if self.status.get('state')!='DISARMED':raise RuntimeError('Disarm before changing controller knobs')
+            return self.rpc('ONBOARD_CONFIG',params=params)['params']
+        return self.rpc('ONBOARD_GET')['params']
+
+    def run_onboard(self,swing_up=True):
+        """Product mode: the ESP32 runs swing-up + LQR (or LQR only) until maxDuration, STOP or a trip.
+
+        The laptop only keeps the heartbeat going (_loop) and receives telemetry; the 'ctrl' field of
+        every core row shows the controller state (wire.CTRL_NAMES).
+        """
+        if self.inhibit:raise RuntimeError('Powered motion is not enabled in the interface')
+        if not self.identity.get('onboardControl'):raise RuntimeError('Firmware without onboard control (flash 1.6)')
+        generation=self.generation
+        def check():
+            if self.inhibit or generation!=self.generation:raise RuntimeError('Run canceled by STOP')
+        check();self.rpc('ARM');check();r=self.rpc('START_ONBOARD',swingUp=bool(swing_up))
+        self.log(f"Onboard controller started: {r.get('mode')}, up to {r.get('seconds')} s"+(f" ({r['warning']})" if r.get('warning') else ''))
+        return r
 
     def capture(self,seconds,progress=None,cancel=None,adc_rate=None):
         original=copy.deepcopy(self.config);changed=False
