@@ -61,39 +61,52 @@ Knob changes are kept in RAM only; the defaults are the design file's values.
 Powered steps need the person at the rig to confirm, for that batch, that **the center rod is removed,
 12 V is on and the area is clear**. Keep a hand near STOP. Never skip a step.
 
-1. Flash firmware 1.6. Flashing reboots the MCU: redo arm centre, pendulum-down reference, current zero
-   and encoder scale in the lab app.
-   **Expected:** the app connects; `identity['firmware'] == 'FurutaWorkbench/1.6'`.
-2. Check the profile (Setup page): `countsPerRev` 1496, `armSign` +1, `pendSign` −1, `maxDuty` 0.5,
-   `slewPerSecond` 100 (the default 0.5 is far too slow for feedback), `travelCounts` ≈ 498 (120°),
-   `currentTripA` 1.5, `heartbeatMs` 300, `maxDuration` = the run length you want (e.g. 20 s).
-3. Passive sign check (motor unpowered is fine): stream data and move the parts by hand.
-   **Expected:** pendulum held upright reads about 0°, hanging ±180°; turning the arm in its positive
-   direction gives a positive arm angle. **If not:** fix the profile before any powered run.
-4. Stage 1, LQR only. Confirm rod out / 12 V / area clear. Hold the pendulum lightly near upright, then:
-   ```python
-   from furuta_lab.device import Device
-   d = Device(); d.connect('COM5')        # close the Furuta Lab app first (one port owner)
-   d.inhibit = False                       # same as enabling powered motion in the app
-   d.run_onboard(swing_up=False)           # release the pendulum right after this returns
-   ```
-   **Expected:** the pendulum stays up; the arm swings slowly by about ±20° (friction limit cycle with
-   `fricGain` 0, report 9.9); the run ends at `maxDuration`. **If not:** `d.stop()`; read the last event
-   (`d.last_event`) and the recorded telemetry.
+All steps use the Furuta Lab app (`Start-Furuta-Lab.cmd`), tab **Onboard control**. Its readiness list
+shows every item below with ✓ / ✗ / ! (advisory), and the Start button stays disabled until the device
+is DISARMED, connected to firmware 1.6 and the 12 V box is ticked. The firmware refuses `START_ONBOARD`
+on its own gates as well (see above).
+
+1. Flash firmware 1.6 (`cd firmware && pio run -t upload --upload-port COM11`). Flashing reboots the MCU:
+   redo arm centre, pendulum-down reference and current zero on the Live tab (References), and check
+   the encoder scale (Setup).
+   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.6)”.
+2. Onboard control → **Read from device** (knobs), then **Apply these onboard-run limits to RAM**:
+   run length (`maxDuration`, e.g. 20 s), maximum duty 50 %, slew 10000 %/s (= 100 /s; the old default
+   is far too slow for feedback) and current trip 1.5 A. Travel stays as commissioned on Motor tests
+   (≈ 498 counts, 120°). Optionally Setup → “Save current profile to device NVS”.
+   **Expected:** no ✗ or ! left in the readiness list except the 12 V box.
+3. Passive sign check (motor unpowered is fine): watch θ0 / θ1 on the Onboard control page and move the
+   parts by hand.
+   **Expected:** pendulum held upright reads about 0° (the catch-region light turns green within ±20°),
+   hanging ±180°; turning the arm in its positive direction gives a positive θ0. **If not:** fix the
+   profile (the page offers “Set profile signs to the model’s”) and repeat before any powered run.
+4. Stage 1, LQR only. Confirm rod out / 12 V / area clear. Tick the 12 V box, choose **LQR balance
+   only**, hold the pendulum lightly near upright (catch-region light green), press **Start onboard
+   controller**, then let go.
+   **Expected:** state STABILIZE; the pendulum stays up; the arm swings slowly by about ±20° (friction
+   limit cycle with `fricGain` 0, report 9.9); the run ends at `maxDuration`. **If not:** STOP / DISABLE.
+   The page reports the stop reason (firmware notice or fault) and, when recording, a run summary.
 5. Stage 2, full swing-up. Pendulum hanging at rest, arm centred. Confirm rod out / 12 V / area clear.
-   ```python
-   d.run_onboard(swing_up=True)
-   ```
-   **Expected (simulation):** caught after about 1.5 s, arm within about 50°, current below 1 A while
-   swinging and one short peak near 1.5 A at the catch, then balancing. **If not:** `d.stop()`.
-6. Stop with `d.stop()` (or close the app: the heartbeat stops and the firmware trips within 300 ms).
+   Choose **Swing-up + LQR balance** and press Start.
+   **Expected (simulation):** SWING-UP, then STABILIZE after about 1.5 s, arm within about 50°, current
+   below 1 A while swinging and one short peak near 1.5 A at the catch, then balancing. **If not:**
+   STOP / DISABLE.
+6. Stop with **STOP / DISABLE** (or untick the 12 V box, or close the app: the heartbeat stops and the
+   firmware trips within 300 ms). Recorded runs are in `data/runs/` with `purpose: onboard`, the
+   controller, and the knob values in the manifest; the `ctrl` signal (Live tab, group “Onboard”)
+   shows the controller state.
+
+Without the app (scripts): `d = Device(); d.connect('COM11'); d.inhibit = False; d.run_onboard(swing_up=False)`
+(close the app first: one port owner), knobs with `d.onboard_params({...})`, stop with `d.stop()`.
 
 | Symptom | Likely cause | Check | Fix |
 |---|---|---|---|
 | `START_ONBOARD` refused: signs | profile `armSign`/`pendSign` differ from the model | Setup page | set +1 / −1 (step 3 must then pass) |
 | `PEND_INVALID` | AS5600 read failing or magnet status bad | `pendStatus`, `pendValid` in STATUS | wiring / magnet distance |
 | Stage 1 falls immediately the other way | a sign is wrong despite step 3 | arm vs duty direction (estimation check "Kb not positive") | stop; recheck signs |
-| Swing-up stalls below the top | push smaller than designed (friction higher than identified) | arm amplitude in telemetry | report section 10.8: push tolerance is about ±5 %; raise `aPush` slightly via `ONBOARD_CONFIG` |
+| Swing-up stalls below the top | push smaller than designed (friction higher than identified) | arm amplitude in telemetry | report section 10.8: push tolerance is about ±5 %; raise `aPush` slightly (Onboard control → knobs → Apply edited values) |
+| LQR-only run ends at once with `ONBOARD_PENDULUM_LOST` | pendulum outside the catch region at Start | catch-region light | hold it within ±20° of upright and nearly still, then Start |
+| Hanging pendulum does not read ±180° | stale pendulum-down reference (or magnet moved) | θ1 on the page, “magnet” in the header | redo References → pendulum down; check the magnet if the header says weak |
 | Arm runs past 100° after the catch | arm too fast at hand-over | `ctrl` and arm speed at the catch | raise `wc` (6.9 also passed all worst cases) |
 | `CONTROL_OVERRUN` | the 1 ms loop is too slow | STATUS `controlOverruns` | report it: the onboard step needs optimising |
 

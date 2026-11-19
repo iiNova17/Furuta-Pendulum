@@ -18,6 +18,7 @@ from . import signals as S
 from .viewer import SignalView
 from .fitview import FitView
 from .estimate_page import EstimatePage
+from .onboard_page import OnboardPage
 from .backend import ROOT,MatlabBackend,jsonable,save_capture,load_capture,load_run
 
 pg.setConfigOptions(useOpenGL=False,antialias=False,background='w',foreground='#263649')
@@ -100,10 +101,10 @@ class LabApp(W.QMainWindow):
         pr.addWidget(self.progress_label,1);pr.addWidget(self.progress_bar);pr.addWidget(self.cancel_button)
         self.progress_row.setStyleSheet('background:#eaf2ff;border-radius:5px;');self.progress_row.hide();v.addWidget(self.progress_row)
         self.nav=W.QTabBar();self.nav.setExpanding(False)
-        for title in ['Live && recordings','Still noise && filters','Motor tests','Parameter estimation','Setup && guide']:self.nav.addTab(title)
+        for title in ['Live && recordings','Still noise && filters','Motor tests','Parameter estimation','Onboard control','Setup && guide']:self.nav.addTab(title)
         self.nav.currentChanged.connect(self.page_changed);v.addWidget(self.nav)
         split=W.QSplitter();v.addWidget(split,1);self.pages=W.QStackedWidget();self.pages.setMinimumWidth(450);split.addWidget(self.pages)
-        for build in [self.live_page,self.noise_page,self.motor_page,self.model_page,self.setup_page]:
+        for build in [self.live_page,self.noise_page,self.motor_page,self.model_page,self.onboard_page,self.setup_page]:
             area=W.QScrollArea();area.setWidgetResizable(True);area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff);page=W.QWidget();layout=W.QVBoxLayout(page);layout.setSpacing(9)
             build(layout);layout.addStretch();area.setWidget(page);self.pages.addWidget(area)
         right=W.QSplitter(QtCore.Qt.Vertical)
@@ -253,6 +254,8 @@ class LabApp(W.QMainWindow):
         self.button(g,'Fit / validate speed model in MATLAB (open recording)',self.fit_matlab)
         self.button(g,'Export latest analysis JSON',self.export_result)
         self.text(g,'MATLAB starts in a separate process on demand and uses the output-shaft arm speed; live sensors and STOP stay independent.',small=True)
+    def onboard_page(self,v):
+        self.onboard=OnboardPage(self);self.onboard.build(v)
     def setup_page(self,v):
         g=self.group(v,'Encoder scale')
         self.gear=self.number(g,'Reduction (provisional)',34,.1,10000,4)
@@ -332,7 +335,7 @@ class LabApp(W.QMainWindow):
         self.raw_info.setText(info);self.raw_table.setRowCount(len(idx))
         for r,i in enumerate(idx):
             self.raw_table.setItem(r,0,W.QTableWidgetItem(f'{t[i]:.4f}'))
-            for c,n in enumerate(S.RAW_FIELDS):self.raw_table.setItem(r,c+1,W.QTableWidgetItem(S.raw_text(n,rows[i][n])))
+            for c,n in enumerate(S.RAW_FIELDS):self.raw_table.setItem(r,c+1,W.QTableWidgetItem(S.raw_text(n,S.field(rows[i],n))))
         if force:self.raw_table.resizeColumnsToContents()
     def export_csv(self):
         src=self.raw_source()
@@ -349,6 +352,7 @@ class LabApp(W.QMainWindow):
     def page_changed(self,index):
         self.pages.setCurrentIndex(index)
         if index==3:self.right_stack.setCurrentIndex(2 if self.fit_drawn else 0)
+        elif index==4:self.right_stack.setCurrentIndex(0)      # onboard control: live signals
         else:self.right_stack.setCurrentIndex(1 if index and self.analysis_drawn else 0)
         self.live=self.right_stack.currentIndex()==0
     def show_fit_view(self):
@@ -683,7 +687,7 @@ class LabApp(W.QMainWindow):
     def load_recorded(self,path):
         rows,manifest=load_run(path);self.set_run(path,rows,manifest)
         self.report('Run saved',f'{len(rows)} samples.\n\n{path}\n\nView it with Open recording….')
-        self.estimate.recording_finished(path,manifest)
+        self.estimate.recording_finished(path,manifest);self.onboard.recording_finished(path,rows,manifest)
     def set_run(self,path,rows,manifest):
         self.run_data,self.run_manifest,self.run_path=rows,manifest,Path(path)
         meta=manifest.get('metadata',{});self.dead_windows=meta.get('dead_windows');self.run_start=None
@@ -697,7 +701,7 @@ class LabApp(W.QMainWindow):
         if self.auto_deadzone_path is not None and Path(path)==Path(self.auto_deadzone_path):
             self.auto_deadzone_path=None
             if meta.get('purpose')=='breakaway':self.analyze_deadzone(save=True)
-        self.estimate.recording_finished(path,manifest)
+        self.estimate.recording_finished(path,manifest);self.onboard.recording_finished(path,rows,manifest)
     def require_run(self):
         if self.run_data is None or len(self.run_data)<150:raise ValueError('Finish or open a sufficiently long recorded run first')
         return self.run_data,self.run_manifest['config'],self.run_manifest.get('metadata',{})
@@ -797,7 +801,7 @@ class LabApp(W.QMainWindow):
             allow=d.ready and self.power.isChecked() and state=='DISARMED'
             self.run_button.setEnabled(allow);self.dead_button.setEnabled(allow)
             for w in self.estimate.preset_widgets.values():w['run'].setEnabled(allow)
-        self.estimate.update_status()
+        self.estimate.update_status();self.onboard.update_status()
         self.max_refresh=max(self.max_refresh,time.perf_counter()-begin)
     def closeEvent(self,event):
         self.closing=True;self.timer.stop();self.cancel.set();self.device.close();self.backend.cancel();self.executor.shutdown(wait=False,cancel_futures=True);event.accept()

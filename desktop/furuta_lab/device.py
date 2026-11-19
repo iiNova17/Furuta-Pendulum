@@ -172,18 +172,21 @@ class Device:
             return self.rpc('ONBOARD_CONFIG',params=params)['params']
         return self.rpc('ONBOARD_GET')['params']
 
-    def run_onboard(self,swing_up=True):
+    def run_onboard(self,swing_up=None,**start):
         """Product mode: the ESP32 runs swing-up + LQR (or LQR only) until maxDuration, STOP or a trip.
 
         The laptop only keeps the heartbeat going (_loop) and receives telemetry; the 'ctrl' field of
-        every core row shows the controller state (wire.CTRL_NAMES).
+        every core row shows the controller state (wire.CTRL_NAMES). Extra keyword arguments are sent
+        with START_ONBOARD as they are (e.g. swingUp=False, or a controller selector in later firmware).
         """
         if self.inhibit:raise RuntimeError('Powered motion is not enabled in the interface')
         if not self.identity.get('onboardControl'):raise RuntimeError('Firmware without onboard control (flash 1.6)')
+        if swing_up is not None:start['swingUp']=bool(swing_up)
+        start.setdefault('swingUp',True)
         generation=self.generation
         def check():
             if self.inhibit or generation!=self.generation:raise RuntimeError('Run canceled by STOP')
-        check();self.rpc('ARM');check();r=self.rpc('START_ONBOARD',swingUp=bool(swing_up))
+        check();self.rpc('ARM');check();r=self.rpc('START_ONBOARD',**start)
         self.log(f"Onboard controller started: {r.get('mode')}, up to {r.get('seconds')} s"+(f" ({r['warning']})" if r.get('warning') else ''))
         return r
 

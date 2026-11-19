@@ -136,6 +136,56 @@ class LabTests(unittest.TestCase):
         self.assertEqual([x[2] for x in w],[10,-10,15,-15,20,-20])
         with self.assertRaises(ValueError):A.deadzone_sequence(5,1,start_pct=10)
 
+    # ------------------------------------------------------------ onboard control page (firmware 1.6)
+    def test_run_onboard_sends_start_arguments(self):
+        from furuta_lab.device import Device
+        d=Device();calls=[];d.identity={'onboardControl':True};d.inhibit=False
+        d.rpc=lambda op,**a:(calls.append((op,a)),{'ok':True,'mode':'x','seconds':20})[1]
+        d.run_onboard(swing_up=False);d.run_onboard(swingUp=True);d.run_onboard()
+        self.assertEqual(calls,[('ARM',{}),('START_ONBOARD',{'swingUp':False}),('ARM',{}),('START_ONBOARD',{'swingUp':True}),
+                                ('ARM',{}),('START_ONBOARD',{'swingUp':True})])
+        d.stop()
+        with self.assertRaises(RuntimeError):d.run_onboard()
+    def test_onboard_page_knobs_checks_and_summary(self):
+        from PySide6.QtWidgets import QApplication
+        from furuta_lab.app import LabApp
+        from furuta_lab import onboard_page as O
+        app=QApplication.instance() or QApplication([]);w=LabApp();p=w.onboard
+        self.assertEqual(w.nav.tabText(4),'Onboard control');self.assertFalse(p.start_button.isEnabled())
+        w.refresh();self.assertFalse(p.start_button.isEnabled())
+        with self.assertRaises(RuntimeError):p.start()                     # not connected
+        params={'K0':-.18,'K1':-2.155,'aPush':80.,'swingUp':True,'Ts':.004,'modelArmSign':1,'modelPendSign':-1}
+        p.params_loaded(params);self.assertEqual(p.edited(),{})
+        row=[r for r in range(p.table.rowCount()) if p.table.item(r,0).text()=='aPush'][0]
+        p.table.item(row,1).setText('84');self.assertEqual(p.edited(),{'aPush':84.})
+        ts=[r for r in range(p.table.rowCount()) if p.table.item(r,0).text()=='Ts'][0]
+        self.assertFalse(p.table.item(ts,1).flags()&__import__('PySide6').QtCore.Qt.ItemIsEditable)
+        p.table.item(row,1).setText('abc')
+        with self.assertRaises(ValueError):p.edited()
+        # readiness with a fake connected device whose pendSign differs from the model
+        d=w.device;d.ready=True;d.identity={'onboardControl':True,'firmware':'FurutaWorkbench/1.6'}
+        d.status={'state':'DISARMED','centered':True,'centerCount':0}
+        d.config={'countsPerRev':1496,'armSign':1,'pendSign':1,'pendDownRaw':3008,'maxDuty':.5,'travelCounts':498,
+                  'slewPerSecond':10,'currentTripA':0,'maxDuration':20,'heartbeatMs':300}
+        items=dict((t.split(' (')[0],ok) for ok,t in p.checks())
+        self.assertFalse(items['Profile signs armSign 1, pendSign 1']);self.assertIsNone(items['Slew 10 /s — below the 100 /s it was designed with'])
+        self.assertFalse(items['12 V box ticked']);d.ready=False
+        # angles as the firmware computes them: raw = down -> hanging (180), raw = down + 2048 -> upright (0)
+        a=np.zeros(1,wire.CORE);a['validity']=7;a['count']=187;a['pend_raw']=3008
+        th0,th1=O.angles(a[0],{'countsPerRev':1496,'armSign':1,'pendSign':-1,'pendDownRaw':3008},{'centered':True,'centerCount':0})
+        self.assertAlmostEqual(th0,187*360/1496);self.assertAlmostEqual(abs(th1),180)
+        a['pend_raw']=3008-2048;self.assertAlmostEqual(O.angles(a[0],{'pendSign':-1,'pendDownRaw':3008},{})[1],0)
+        # summary of a synthetic run: 1 s swing-up, then stabilize
+        n=1000;r=np.zeros(n,wire.CORE);r['device_us']=np.arange(n)*4000;r['validity']=7;r['state']=1
+        r['state'][100:900]=3;r['ctrl'][100:350]=2;r['ctrl'][350:900]=3;r['current_mv']=2500;r['filtered_mv']=2500
+        txt=O.summary(r,{'countsPerRev':1496,'currentZeroMv':2500,'sensitivityMvA':185,'pendDownRaw':3008,'pendSign':-1},
+                      {'status':{'centered':True,'centerCount':0},'final_status':{'state':'DISARMED'}})
+        self.assertIn('First STABILIZE (caught) at **1.00 s**',txt);self.assertIn('ran for **3.20 s**',txt)
+        # stop reason from a firmware notice
+        d.event_count=5;p.event_mark=4;d.last_event={'event':'ONBOARD_SAFE_STOP'};d.status={'state':'DISARMED'}
+        p.finished_run();self.assertIn('safeTh0',p.last_end)
+        w.close()
+
 from test_estimation import *  # noqa: E402,F401,F403
 
 if __name__=='__main__':unittest.main(verbosity=2)

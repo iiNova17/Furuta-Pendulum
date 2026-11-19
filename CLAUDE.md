@@ -1,5 +1,11 @@
 # Notes for AI coding agents (Claude, Codex, ...)
 
+> **Branch `onboard-control`:** only the firmware and the Furuta Lab app are on this branch (plus the
+> protocol, config and the app's MATLAB backend). The harness, model, report, twin and data sections below
+> refer to files on `sim-harness` / `main`. `firmware/include/onboard_design.h` is generated there by
+> `export_onboard.m`; copy it here, never hand-edit it. The app's Onboard control tab is
+> `desktop/furuta_lab/onboard_page.py`; new onboard controllers are one `CONTROLLERS` entry there.
+
 Project: Control II Furuta (rotary inverted) pendulum. ESP32-S3 firmware, a Python/Qt lab app
 (Furuta Lab) for experiments and parameter estimation, MATLAB/Simulink models, and the LaTeX report.
 See README.md for the folder map.

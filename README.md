@@ -1,41 +1,39 @@
-# Furuta Pendulum (Control II project)
+# Furuta Pendulum: onboard control (branch `onboard-control`)
 
-Rotary inverted pendulum: hardware, firmware, lab software, identified model and report.
+This branch holds only what runs on and next to the rig: the **ESP32 firmware** and the **Furuta Lab app**.
+It is where the onboard controllers are brought up on hardware: swing-up + LQR now (firmware 1.6), PID and
+pole placement next. The model, the Simulink harness (where the controllers are designed), the report,
+the CAD and the recorded data live on `sim-harness` / `main`.
 
-## Repository layout
+## Layout
 
 | Folder | Contents |
 |---|---|
-| `report/` | LaTeX report `furuta_model.tex` and its compiled PDF; `figures/make_report_data.py` regenerates all figures and numbers from `data/runs`; `archive/` holds earlier versions |
-| `matlab/model/` | **Final identified model for MATLAB/Simulink**: `furuta_params.m` (parameters, linear models) and `furuta_rhs.m` (nonlinear model). See its README |
-| `matlab/harness/` | **Simulation + controller harness** (Simulink/Simscape/Stateflow): the identified model as a Simscape plant, the rig's firmware and sensors, the hybrid controller template (`controllers/hybrid/`: Stateflow supervisor + PID / pole placement / LQR / swing-up, one file per owner), scenarios, brief-4.7 metrics, Phase-1 validation. See its README |
-| `twin/` | **Digital twin** (Unreal Engine 5.3, C++): renders the rig posed from UDP packets (real rig solid, model as a ghost); MATLAB senders in `twin/matlab/`. See its README |
-| `data/runs/` | Raw hardware recordings (one folder per run) |
-| `data/estimation/` | Furuta Lab estimation sessions; `claude_loop` is the final model, `claude_loop/export` its MATLAB/LaTeX export |
-| `data/captures`, `data/logs`, `data/matlab-jobs` | Passive captures, app logs and MATLAB backend jobs |
-| `desktop/` | Furuta Lab (Python/Qt) app: live view, experiments, parameter estimation (`furuta_lab/estimation.py`), simulation bench, tests |
-| `firmware/` | ESP32-S3 firmware (PlatformIO) |
-| `protocol/` | Serial protocol spec and golden vectors |
-| `config/` | Device profile and schema |
-| `matlab/` (rest) | Older MATLAB workbench app (`FurutaWorkbench`) |
-| `hardware/cad/` | SolidWorks parts and assembly (`rotary_inverted_pendulum.SLDASM`) |
-| `hardware/print/` | STL / 3MF / STEP files for 3D printing |
-| `tools/usb-bench/` | Stand-alone USB bench firmware used to commission the sensors |
-| `docs/` | User guides, hardware notes, experiment and validation notes |
-| `docs/project/` | Course project description, project brief and wiring, original project handoff |
-| `docs/HANDOFF_*.md`, `IMPLEMENTATION_PLAN.md`, `CLAUDE.md` | Implementation plans and notes for AI coding agents |
-| `test-results/` | Early simulator/hardware acceptance results (October 2026) |
+| `firmware/` | ESP32-S3 firmware (PlatformIO). `include/onboard.h` is the onboard controller; `include/onboard_design.h` is **generated** on `sim-harness` by `matlab/harness/controllers/hybrid/export_onboard.m` (copy it here, never hand-edit); `test/native_onboard.cpp` replays harness runs and requires the same duty as Simulink |
+| `desktop/` | Furuta Lab (Python/Qt) app. Tab **Onboard control** (`furuta_lab/onboard_page.py`) starts the onboard controller, shows its state, edits its knobs and records the run |
+| `docs/ONBOARD_CONTROL.md` | How onboard control works and the hardware bring-up procedure |
+| `docs/` | App guides, hardware notes, earlier implementation plans |
+| `protocol/`, `config/` | Serial protocol spec and golden vectors; device profile and schema |
+| `matlab/furuta_backend.m`, `matlab/+furuta/` | Only the MATLAB backend the app calls for its speed-model fit |
+| `data/` | Created by the app at run time (recordings, logs). Not part of this branch: new recordings show as untracked files; commit them on `sim-harness` / `main` with the rest of the data |
 
-## Getting started (teammates)
+## Getting started
 
-1. Clone: `git clone https://github.com/iiNova17/Furuta-Pendulum.git`
-2. Python app: install Python 3.12, run `Setup-Furuta-Lab.ps1` once, then `Start-Furuta-Lab.cmd`.
-3. Model in MATLAB/Simulink: `cd matlab/model`, `run furuta_params.m`, then follow `matlab/model/README.md`.
-4. Controllers / simulation: `cd matlab/harness`, `harness_setup`, then `run_sim('ctrl_hybrid.slx', 'swingup', 'Plot', true)`;
-   fill in your section of `controllers/hybrid/ctrl_hybrid_design.m` (see `matlab/harness/README.md`).
-5. Digital twin: `powershell -File twinun_twin.ps1` (Unreal Engine 5.3), then `twin/matlab/twin_demo.m`.
-6. Report: build `report/furuta_model.tex` with `latexmk -pdf` (MiKTeX or TeX Live).
-7. Firmware: open `firmware/` in VS Code with PlatformIO.
+1. App: install Python 3.12, run `Setup-Furuta-Lab.ps1` once, then `Start-Furuta-Lab.cmd`.
+2. Firmware: `cd firmware && pio run -t upload --upload-port COM11` (the rig is on COM11 here).
+3. Onboard replay test after any design change:
+   `g++ -std=c++17 -O2 -static -o native_onboard firmware/test/native_onboard.cpp && ./native_onboard firmware/test`
+4. Bring-up on hardware: follow `docs/ONBOARD_CONTROL.md`, using the app's Onboard control tab.
+
+## Adding a controller (PID, pole placement)
+
+1. Design it in the harness on `sim-harness` (`controllers/hybrid/`), export its numbers with an
+   `export_onboard`-style script into a generated header, and add its law to `firmware/include/onboard.h`
+   with a replay test like `native_onboard.cpp`.
+2. Let `START_ONBOARD` select it (e.g. a `controller` field) and bump the firmware version.
+3. In the app add one entry to `CONTROLLERS` in `desktop/furuta_lab/onboard_page.py`: its `start`
+   arguments are sent with `START_ONBOARD` as they are, and its knobs appear automatically from `ONBOARD_GET`
+   (add their units and meanings to `KNOBS`).
 
 Motor safety: never command motor motion unless the person at the rig has confirmed that the center rod
 is removed, 12 V is on and the area is clear.
