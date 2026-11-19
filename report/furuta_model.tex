@@ -1389,6 +1389,247 @@ The models also neglect the inductance. With an electrical time constant of the 
 Thus, the four-state models of section~\ref{sec:ssmodels} are suitable for controller design as long as the closed-loop poles remain well below this value.
 
 %======================================================================
+\section{Controller Simulation Harness}
+\label{sec:harness}
+%======================================================================
+Since every powered experiment on the rig risks a current trip, a collision of the arm with its travel limit or a damaged pendulum, it is desired to develop and test the controllers in simulation first, against a plant that behaves like the real rig and not only like its linear model. The objective of this section is to describe the Simulink harness in which the LQR (section~\ref{sec:lqr}) and the swing-up (section~\ref{sec:swingup}) were designed and tested. The harness contains no controller design of its own: it connects a controller to a model of the rig that includes the identified plant of equation~\ref{eq:nl_num}, the firmware and the sensors, runs a set of standard tests, and computes the same performance metrics for every controller. All files are in \nolinkurl{matlab/harness}.
+
+\subsection{Structure}
+\label{sec:harness_structure}
+The top level of the harness (\texttt{furuta\_harness.slx}, see Figure~\ref{fig:harness_top}) consists of only two blocks, connected as a feedback loop. The Controller block receives the measurement $\mathbf{y} = \begin{bmatrix} \theta_0 & \theta_1 & i \end{bmatrix}^T$ and the arm reference $r$, and returns the duty cycle $d$, the active state of the supervisor (mode 0 for the safety stop, 1 for the swing-up and 2 for stabilizing) and a vector of internal signals for debugging. The Rig block receives the duty cycle and returns the measurement, together with the true state $\mathbf{x}$, the true current, the duty cycle actually applied by the firmware and its fault code, which are logged but never fed back.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_harness_top.pdf}
+\caption{Top level of the controller harness in Simulink: the controller slot (left) and the rig (right), which is a variant subsystem with a simulated and a hardware-in-the-loop implementation.}
+\label{fig:harness_top}
+\end{figure}
+
+The Rig block is a variant subsystem with two choices. The Simulation variant contains the model of the rig described below, and the Hardware variant is reserved for the USB link to the ESP32, so that the same controller file can run against the real rig in the hardware-in-the-loop mode of section~\ref{sec:harness_modes} without any change. Since the USB bridge has not been built yet, all results of sections~\ref{sec:lqr} and~\ref{sec:swingup} were obtained with the Simulation variant.
+
+The harness runs at three nested rates, which follow from the hardware:
+\begin{enumerate}
+  \item the controller period $T_s = 4\,\mathrm{ms}$, the rate at which the firmware streams measurements (see section~\ref{sec:lqr_disc});
+  \item the firmware and sensor period of 1\,ms, the loop rate of the ESP32;
+  \item the plant integration step of 0.5\,ms, using the fixed-step fourth-order Runge--Kutta method that was used for the validation in section~\ref{sec:estimation}, with a quarter of its step.
+\end{enumerate}
+Since each rate must be an integer multiple of the next one, this condition is checked before every run by \texttt{harness\_config.m}, the configuration file of the rig.
+
+\subsection{Two Ways to Run the Controller}
+\label{sec:harness_modes}
+The controllers of this work are designed once, in the harness, but there are two places where they can run on the real rig (see Figure~\ref{fig:modes} and Table~\ref{tab:modes}). In both, the ESP32 firmware keeps every safety function of the experiments: the duty limit and slew limit, the arm travel trip, the overcurrent trip and the heartbeat from the computer, which stops the motor if the computer stops responding.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw, thick, rounded corners=2pt, fill=gray!10, align=center, font=\small, minimum height=1.25cm, text width=3.3cm},
+  ctl/.style={box, fill=gray!30},
+  arr/.style={-{Stealth}, thick},
+  lab/.style={font=\small\bfseries, anchor=west},
+  node distance=0.7cm]
+  \node[lab] at (-1.9, 1.25) {(a) Hardware in the loop};
+  \node[ctl] (pc1) {Computer: Simulink\\estimator, laws,\\Stateflow};
+  \node[box, right=2.7cm of pc1] (fw1) {ESP32 firmware\\sensors, safety,\\PWM};
+  \node[box, right=of fw1] (rig1) {Motor, arm\\and pendulum};
+  \draw[arr] ([yshift=3mm]pc1.east) -- node[above, font=\scriptsize] {duty, every 4\,ms} ([yshift=3mm]fw1.west);
+  \draw[arr] ([yshift=-3mm]fw1.west) -- node[below, font=\scriptsize] {$\theta_0,\ \theta_1,\ i$} ([yshift=-3mm]pc1.east);
+  \draw[arr] ([yshift=3mm]fw1.east) -- ([yshift=3mm]rig1.west);
+  \draw[arr] ([yshift=-3mm]rig1.west) -- ([yshift=-3mm]fw1.east);
+  \node[lab] at (-1.9, -1.95) {(b) Onboard};
+  \node[box, below=2.0cm of pc1] (pc2) {Computer, GUI\\commands, knobs,\\digital twin};
+  \node[ctl, right=2.7cm of pc2] (fw2) {ESP32 firmware\\estimator, laws,\\supervisor, safety};
+  \node[box, right=of fw2] (rig2) {Motor, arm\\and pendulum};
+  \draw[arr] ([yshift=3mm]pc2.east) -- node[above, font=\scriptsize] {start, stop, knobs} ([yshift=3mm]fw2.west);
+  \draw[arr] ([yshift=-3mm]fw2.west) -- node[below, font=\scriptsize] {telemetry} ([yshift=-3mm]pc2.east);
+  \draw[arr] ([yshift=3mm]fw2.east) -- ([yshift=3mm]rig2.west);
+  \draw[arr] ([yshift=-3mm]rig2.west) -- ([yshift=-3mm]fw2.east);
+\end{tikzpicture}
+\caption{The two ways to run the controller on the rig. The darker block runs the controller: (a) Simulink on the computer, closing the loop over USB; (b) the ESP32 itself, with the computer only sending commands and showing the telemetry.}
+\label{fig:modes}
+\end{figure}
+
+\textbf{1. Hardware in the loop.} The controller, including its Stateflow supervisor, runs in Simulink on the computer, using the Hardware variant of the Rig. Every 4\,ms the firmware streams the measurements, and Simulink answers with the duty cycle, which the firmware applies through its safety path. This mode runs exactly the files that were designed and tested in the harness, so a change to a law can be tried on the rig without touching the firmware, and it is the mode required by the project brief, in which the hybrid controller runs against the real hardware. However, the USB link is inside the control loop, and its delay has not been measured yet. The worst cases with one additional controller period of delay (sections~\ref{sec:lqr_corners} and~\ref{sec:su_corners}) represent this mode.
+
+\textbf{2. Onboard.} The same controller runs on the ESP32, inside the 1\,kHz firmware loop: every fourth firmware period, the estimator, the LQR, the energy swing-up and the supervisor are evaluated from the encoder count and the latest AS5600 reading, and the resulting duty request passes through the same safety path as before. The computer only sends commands (the controller knobs, start and stop), keeps the heartbeat going and receives the telemetry, in which a spare byte of every record now carries the state of the supervisor, so the lab application and the digital twin can show it. Since no USB link is inside the loop, this mode has the nominal timing of the designs, which is why it is the intended mode for the finished device.
+
+\begin{table}[h]
+\centering
+\caption{Comparison of the two ways to run the controller on the rig.}
+\label{tab:modes}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & Hardware in the loop & Onboard \\
+\midrule
+Controller runs in & Simulink on the computer & ESP32 firmware (C++) \\
+Inside the loop & USB link, both directions & nothing \\
+Loop timing & 4\,ms plus the USB delay & 4\,ms \\
+Computer & runs the controller & commands, knobs, telemetry, twin \\
+Changing a law & edit the Simulink file & re-export and flash the firmware \\
+Status & Hardware variant not built & built, verified against the harness \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Since the onboard mode is a second copy of the controller, it is required that both copies compute the same duty cycle, otherwise the simulation results of sections~\ref{sec:lqr} and~\ref{sec:swingup} would not apply to it. To ensure this, every number of the onboard copy (the gain $K$, the swing-up knobs, the guards of the supervisor, the estimator and the plant constants) is written by the script \texttt{export\_onboard.m} from the design file \texttt{ctrl\_hybrid\_design.m} into a generated header of the firmware, so the design exists only once. Furthermore, the same script records the measured angles that the Simulink controller received in a swing-up test and in a push test, together with the duty cycle it commanded, and a native test of the firmware (\nolinkurl{firmware/test/native_onboard.cpp}) feeds the same angles to the C++ controller. Over the 3751 periods of the swing-up and the 1501 periods of the push test, the largest difference in the duty cycle was $7\times10^{-15}$, and the supervisor was in the same state in every period, which shows that the two copies are the same controller up to the round-off of floating-point arithmetic.
+
+Before an onboard run starts, the firmware requires, in addition to the arming conditions of the experiments (centered arm, commissioned limits and, with the current trip enabled, a calibrated current zero), the encoder scale, the pendulum-down reference, a fresh pendulum reading, and the arm and pendulum signs of the device profile to be those with which the model was identified ($+1$ and $-1$, see section~\ref{sec:estimation}), since a flipped sign would make the controller push the pendulum the wrong way. During the run, the firmware stops the motor if the pendulum reading is older than 20\,ms, when the supervisor enters SafeStop, and at the end of the run length set in the profile. A balance-only option skips the swing-up and ends the run as soon as the pendulum leaves the catch region, which allows the LQR to be tested on its own first, by releasing the pendulum near upright by hand.
+
+\subsection{The Simulated Rig}
+\label{sec:harness_rig}
+The Simulation variant reproduces the path from the duty cycle commanded by the controller to the measurements it receives, in four groups (see Figure~\ref{fig:harness_rig}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_harness_rig.pdf}
+\caption{Simulation variant of the rig: link to the controller with its delays and rate changes, firmware actuator, plant, and sensors.}
+\label{fig:harness_rig}
+\end{figure}
+
+\textbf{1. Link.} The duty cycle passes a command delay and a rate change from 4\,ms to 1\,ms, and the measurement passes the opposite rate change and a measurement delay. Both delays are given as a whole number of controller periods. Since the delay of the USB link has not been measured, both are zero in the nominal configuration, and one additional period of command delay is one of the worst cases of sections~\ref{sec:lqr_corners} and~\ref{sec:su_corners}.
+
+\textbf{2. Firmware.} The block \texttt{FirmwareActuator} reproduces the safety and output logic of the firmware (\nolinkurl{firmware/include/engine.h}) every millisecond:
+\begin{enumerate}
+  \item the duty cycle is clipped to $\pm 0.5$ and its rate of change to the slew limit of 100 per second;
+  \item when the sign of the duty cycle reverses, it passes through zero (driver standby) for one firmware period;
+  \item the duty cycle is quantized to the 10-bit resolution of the PWM;
+  \item the motor is switched off permanently if the measured arm angle exceeds $120^\circ$ or if the filtered current stays above 1.5\,A for 10\,ms.
+\end{enumerate}
+
+\textbf{3. Plant.} The plant of equation~\ref{eq:nl_num}, described in section~\ref{sec:harness_plant}, with an optional disturbance torque on each joint, which is used for the push test.
+
+\textbf{4. Sensors.} The block \texttt{FurutaSensors} produces what the ESP32 measures: the arm angle quantized to the 1496 counts per revolution of the encoder, the pendulum angle quantized to the 12 bits of the AS5600, read every 2\,ms and delayed by the 7\,ms lag of section~\ref{sec:processing}, and the current with an added noise of 0.05\,A (standard deviation) passed through the 40\,Hz second-order Butterworth filter of the firmware (see Table~\ref{tab:setup}).
+
+Each of these effects can be switched off for an ideal run (\texttt{'Mode', 'ideal'}), which was used only to separate the effect of the rig from that of a design.
+
+\subsection{The Plant as a Simscape Multibody Model}
+\label{sec:harness_plant}
+The plant inside the Rig consists of an electrical and a mechanical part. The motor and driver are built from Simulink blocks that evaluate the current of equation~\ref{eq:nl_current}, including the open circuit at zero duty cycle, and the friction torques of equation~\ref{eq:nl_friction} and of the pendulum joint. The resulting joint torques drive a Simscape Multibody model of the arm and the pendulum (see Figure~\ref{fig:harness_plant}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_harness_plant.pdf}
+\caption{Mechanical part of the plant subsystem: the arm and the pendulum as a Simscape Multibody model, driven by the joint torques $\tau_0$ and $\tau_1$. The CAD bodies are visual only; the inertial bodies (arm inertia $I_a$ and pendulum $m$, $L_p$, $J_1$) carry the identified parameters.}
+\label{fig:harness_plant}
+\end{figure}
+
+Since the identified parameters are divided by the unknown torque constant (see section~\ref{sec:estimation}), the multibody model is built with $K_\tau = 1\,\mathrm{N\,m/A}$, so that the scaled parameters become SI values and the current in amperes is the joint torque. An arm with an inertia $I_a$ about the motor axis, carrying at the distance $L_{arm}$ a slender pendulum of mass $m$, center of mass at $L_p$ and inertia $J_1$ about its center of mass, has exactly the equations of motion of equation~\ref{eq:nl_mass} if
+\begin{equation}
+  \tilde G = m\, g\, L_p, \qquad \tilde J_p = J_1 + m L_p^2, \qquad \tilde h = m\, L_{arm} L_p, \qquad \tilde J_a = I_a + m L_{arm}^2 .
+  \label{eq:harness_bodies}
+\end{equation}
+Solving equation~\ref{eq:harness_bodies} for the arm length yields
+\begin{equation}
+  \therefore\; L_{arm} = \frac{g\, \tilde h}{\tilde G} = 6.81\,\mathrm{cm},
+\end{equation}
+which is the identified arm length of Table~\ref{tab:params}. Since only the products $m L_p$ and $m L_p^2 + J_1$ appear in equation~\ref{eq:harness_bodies}, the split between $m$ and $L_p$ cannot be identified and does not change the dynamics. Thus, $L_p$ was taken from the CAD model (51.2\,mm), and $m$, $J_1$ and $I_a$ follow from equation~\ref{eq:harness_bodies}. In other words, the Simscape plant is the identified model of this work drawn as bodies, and not a second model with its own parameters.
+
+To make sure that this holds in the implementation, the test file \nolinkurl{matlab/harness/tests/test_harness.m} checks four properties after every change of the plant or the rig:
+\begin{enumerate}
+  \item the body parameters reproduce the four lumped parameters of equation~\ref{eq:harness_bodies} to a relative error of $10^{-12}$;
+  \item driven by a 25\,\% square wave at 1.4\,Hz with disturbance pulses on both joints, the Simscape plant and equation~\ref{eq:nl_num}, integrated with the same step and the same applied duty cycle, agree to better than $10^{-5}$ degrees and $10^{-5}$\,rad/s over 4\,s, which is round-off;
+  \item the linearization of the plant equations at the upright position gives back the matrices of equation~\ref{eq:ss_up_num} and the poles 0, $+12.26$, $-12.63$ and $-29.23\,\mathrm{rad/s}$;
+  \item driving the plant with the duty cycle that the firmware applied in the first validation run, starting from the measured state, reproduces the fits of Table~\ref{tab:validation}: 89\,\% for the arm angle, 90\,\% for the pendulum angle, 92\,\% for the arm speed and 88\,\% for the current, with RMS errors of $1.5^\circ$, $1.4^\circ$ and 0.043\,A.
+\end{enumerate}
+The last check closes the loop to the recorded hardware runs, which is a good indication that the harness reproduces the rig as closely as the identified model does.
+
+\subsection{Hybrid Controller Template}
+\label{sec:harness_ctrl}
+The controller of both design sections is the hybrid template \texttt{ctrl\_hybrid.slx} (see Figure~\ref{fig:harness_ctrl}), which is organized in three groups:
+\begin{enumerate}
+  \item a shared state estimator, which wraps $\theta_1$ to $[-\pi, \pi)$ with zero upright and computes both velocities as finite differences over one period, low-pass filtered at 40\,Hz;
+  \item the control laws, each in its own file referenced by a Subsystem Reference block (\texttt{stab\_pid}, \texttt{stab\_pole\_placement}, \texttt{stab\_lqr} and \texttt{swingup\_energy}), so that every law is edited by one team member only, followed by the selection of the stabilizer and the friction compensation of section~\ref{sec:lqr_fric};
+  \item the Stateflow supervisor, which decides which law drives the motor.
+\end{enumerate}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_harness_controller.pdf}
+\caption{Hybrid controller template: state estimator (left), the control laws as referenced subsystem files with the selection of the stabilizer and the friction compensation (middle), and the Stateflow supervisor (right).}
+\label{fig:harness_ctrl}
+\end{figure}
+
+The supervisor (see Figure~\ref{fig:harness_chart}) has three states. It starts in Stabilize if the pendulum is already inside the catch region and in SwingUp otherwise. It switches from SwingUp to Stabilize when $|\theta_1| < 20^\circ$ and $|\dot\theta_1| < 8\,\mathrm{rad/s}$, and back when $|\theta_1| > 35^\circ$. From either state, it enters SafeStop with the highest priority if $|\theta_0| > 100^\circ$, which sets the duty cycle to zero before the firmware's travel trip at $120^\circ$. Leaving SafeStop is disabled by default, so the stop behaves like an emergency stop. Since the exit angle is larger than the catch angle, small oscillations around $20^\circ$ do not make the supervisor chatter between the two laws.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/fig_harness_supervisor.pdf}
+\caption{Stateflow supervisor of the hybrid controller with its three states and guards. The numbers at the transitions give their priority.}
+\label{fig:harness_chart}
+\end{figure}
+
+Every knob of the controller, including the guards of the supervisor, is set in the design file \texttt{ctrl\_hybrid\_design.m}, which also derives the gains (for example $K$ by \texttt{dlqr} on the discretized model of equation~\ref{eq:lqr_disc}) and passes the plant constants needed by the swing-up. No value is stored inside a block, so a design can be changed for a single run without editing any file, which made the sweeps of sections~\ref{sec:lqr_space} and~\ref{sec:su_space} possible.
+
+\subsection{Tests and Metrics}
+\label{sec:harness_tests}
+Four standard tests are defined in \texttt{furuta\_scenario.m} (see Table~\ref{tab:harness_tests}). Each fails on any firmware trip, in addition to its own criterion.
+
+\begin{table}[h]
+\centering
+\caption{Standard tests of the harness and their pass criteria.}
+\label{tab:harness_tests}
+\small
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Test & Start & Event & Length & Pass criterion \\
+\midrule
+Balance & $\theta_1 = 5^\circ$ & none & 5\,s & $|\theta_1| < 3^\circ$ after 2\,s \\
+Push & $\theta_1 = 2^\circ$ & $+1.5\,\mathrm{rad/s}$ at 2\,s & 6\,s & $|\theta_1| < 3^\circ$ after 4\,s \\
+Arm step & upright & $r = 45^\circ$, 1 to 4\,s & 7\,s & $|\theta_1| < 20^\circ$, $|\theta_0 - r| < 5^\circ$ at 3.9, 6.9\,s \\
+Swing-up & hanging & none & 15\,s & $|\theta_1| < 10^\circ$ in the last 3\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For every run, the harness computes the performance metrics of the pendulum after the event (maximum deviation, peak and recovery time, IAE, ISE and ITAE of equation~\ref{eq:itae}), the step metrics of the arm (rise time, overshoot, settling time), the steady-state errors, the control effort (peak and RMS duty cycle and the share of periods at the duty limit) and, for the swing-up, the time to catch, which is the first entry into the Stabilize state.
+
+To test a design against the uncertainty of the model, a run can use a modified plant or configuration:
+\begin{enumerate}
+  \item parameters drawn independently from the standard errors of Table~\ref{tab:params}, scaled by a factor;
+  \item a given set of plant parameters, which is used for the physically consistent corner plants of section~\ref{sec:lqr_corners};
+  \item any change of the rig configuration, such as an additional command delay or a longer sensor lag.
+\end{enumerate}
+
+\subsection{Design Tools}
+\label{sec:harness_tools}
+On top of the harness, the design of each controller was carried out with a small set of MATLAB scripts in \nolinkurl{matlab/harness/controllers/hybrid}, which follow the same pattern for both controllers (see Table~\ref{tab:harness_tools}): starting values from physics, one design tested in a single call, a sweep over the design space, and the worst cases.
+
+\begin{table}[h]
+\centering
+\caption{Design tools used in sections~\ref{sec:lqr} and~\ref{sec:swingup}.}
+\label{tab:harness_tools}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Step & LQR & Swing-up \\
+\midrule
+Starting values & \texttt{lqr\_gains} & \texttt{swingup\_knobs} \\
+Target region & -- & \texttt{swingup\_catch\_region} \\
+One design, numbers and plots & \texttt{lqr\_workbench} & \texttt{swingup\_workbench} \\
+Design space & grid of push tests & \texttt{swingup\_sweep} \\
+Worst cases & \texttt{lqr\_corner\_test} & \texttt{swingup\_corner\_test} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Since one run takes about 3 to 8\,s, the sweeps were split over several MATLAB processes, and each result was saved after every run so that an interrupted sweep could be resumed. The logged runs can also be replayed in the Unreal Engine digital twin of the rig (\nolinkurl{twin/}), which only renders the angles it receives and was used to visualize the final swing-up.
+
+\subsection{Limitations}
+Limitations of the harness are:
+\begin{enumerate}
+  \item The delay of the USB link and the controller period that the hardware-in-the-loop link achieves have not been measured. The nominal configuration assumes no extra delay and a period of 4\,ms.
+  \item The current noise of 0.05\,A before the firmware filter is an assumed value.
+  \item The harness uses the maximum slew limit of the firmware (100 per second), while the firmware's default profile uses 0.5 per second, which is too slow for feedback and has to be raised on the rig before any closed-loop test.
+  \item The pendulum sensor lag is modeled as a pure delay in steps of 1\,ms, since its physical cause is not known (see section~\ref{sec:processing}).
+  \item The gearbox play, the motor inductance and the flattening of the arm friction at higher speeds are not modeled, as in the identified model itself.
+  \item Neither way of running the controller has been used on the rig yet:
+  \begin{enumerate}
+    \item for the hardware-in-the-loop mode, the Hardware variant of the Rig and a compact duty message in the firmware are not implemented yet;
+    \item the onboard mode is built and compiles for the ESP32, and its equivalence with the harness was shown by replaying recorded inputs, but its execution time on the ESP32 has not been measured; the firmware reports any overrun of its 1\,ms loop and stops the motor after repeated overruns.
+  \end{enumerate}
+\end{enumerate}
+
+%======================================================================
 \section{LQR Controller Design}
 \label{sec:lqr}
 %======================================================================
@@ -1627,6 +1868,210 @@ Limitations of the presented design are:
   \item The design space was sampled with one simulation per point, so the boundaries of Figure~\ref{fig:lqr_map} are affected by sensor noise, which is why a current margin of 0.15\,A was kept.
   \item The gearbox play and the flattening of the arm friction at higher speeds (see section~\ref{sec:estimation}) are not modeled. Both affect the friction limit cycle and the friction compensation more than the linear part of the design.
   \item The velocities are estimated by filtered differences. A model-based observer that removes part of the sensor lag would allow a stiffer gain, which is not covered by this design.
+\end{enumerate}
+
+%======================================================================
+\section{Swing-Up Controller Design}
+\label{sec:swingup}
+%======================================================================
+The LQR of section~\ref{sec:lqr} can only hold the pendulum once it is close to upright. Since the pendulum starts hanging at $\theta_1 = \pi$, a second controller is needed that brings it from rest to the neighborhood of the upright position, where the Stateflow supervisor hands it over to the LQR. The objective of this section is to design this swing-up controller so that it delivers the pendulum into the region that the LQR can actually hold, while staying inside the same limits of the rig as before: the 1.5\,A current trip, the 50\,\% duty limit, and the $\pm 100^\circ$ arm angle at which the supervisor stops the motor. Following the method of section~\ref{sec:lqr}, the knobs of the law are first computed from physics, then the target region and the design space are mapped in the controller harness, and the final choice is made on the physically consistent worst cases.
+
+\subsection{Pendulum Energy}
+\label{sec:su_energy}
+Since the swing-up has to change the pendulum from a hanging to an upright state, its energy is the natural quantity to control. With the scaled parameters of Table~\ref{tab:params}, the energy of the pendulum, measured from the upright rest state, is
+\begin{equation}
+  E = \frac{1}{2}\tilde J_p\, \dot\theta_1^2 + \tilde G \left(\cos\theta_1 - 1\right),
+  \label{eq:su_E}
+\end{equation}
+where the first term is the kinetic energy of the swing and the second is the potential energy. At rest upright $E = 0$, and at rest hanging $E = -2\tilde G$. Thus, any motion with $E = 0$ just reaches the upright position, which is why $E = 0$ is the target of an energy-based swing-up. In the rest of this section, the energy is expressed in units of $2\tilde G$:
+\begin{equation}
+  e = \frac{E}{2\tilde G},
+  \label{eq:su_e}
+\end{equation}
+so that $e = -1$ means hanging still and $e = 0$ means just reaching the top.
+
+Differentiating equation~\ref{eq:su_E} with respect to time yields
+\begin{equation}
+  \dot E = \dot\theta_1 \left( \tilde J_p\, \ddot\theta_1 - \tilde G \sin\theta_1 \right).
+\end{equation}
+The pendulum row of equation~\ref{eq:nl_mass} gives $\tilde J_p\, \ddot\theta_1 = \tilde G \sin\theta_1 - \tilde h \cos\theta_1\, \ddot\theta_0 + \tilde J_p \sin\theta_1 \cos\theta_1\, \dot\theta_0^2 - \tilde b_1 \dot\theta_1 - \tilde\tau_p(\dot\theta_1)$. Substituting it back and neglecting the centrifugal and friction terms, which are small compared with the coupling term during a swing, yields
+\begin{equation}
+  \therefore\; \dot E \approx -\tilde h \cos\theta_1\, \dot\theta_1\, \ddot\theta_0 .
+  \label{eq:su_Edot}
+\end{equation}
+Equation~\ref{eq:su_Edot} shows that the only way the motor can change the pendulum energy is through the acceleration of the arm $\ddot\theta_0$, and that the energy rises when the pivot is accelerated against the direction in which the bob moves, which can be intuitively understood as pumping a playground swing. Since $\tilde h/\tilde J_p = 1.086$, an acceleration of the arm transfers almost one to one into an angular acceleration of the pendulum, so moderate arm accelerations are sufficient.
+
+\subsection{Why a Proportional Energy Law Stalls}
+The classic energy law sets the arm acceleration proportional to the energy error, for example $\ddot\theta_{0} = -k\, (E_0 - E)\sin\theta_1$ in the early harness sketch. Since both the energy error and the factor $\sin\theta_1$ go to zero as the pendulum approaches the top, the push fades exactly where the friction of equation~\ref{eq:nl_f} still removes energy. In the harness, this sketch stalled about $38^\circ$ short of upright for every gain that was tried. Therefore, the law of this work keeps the push at full size until the energy is close to its target, and aims slightly above $e = 0$ so that the losses of the last part of the swing are covered.
+
+\subsection{Control Law}
+\label{sec:su_law}
+The swing-up law consists of four parts, each of which has one physical purpose.
+
+\textbf{1. Energy pump.} Following equation~\ref{eq:su_Edot}, the arm is accelerated against $\cos\theta_1\,\dot\theta_1$ with a constant size $a_p$, scaled down only near the energy target $E_0$:
+\begin{equation}
+  a_{\mathrm{pump}} = -a_p\, \operatorname{sat}\!\left(k_E\, (E_0 - e)\right) \tanh\!\left( \frac{\dot\theta_1 \cos\theta_1}{\omega_s} \right),
+  \label{eq:su_pump}
+\end{equation}
+where $\operatorname{sat}$ limits its argument to $\pm 1$, $k_E$ sets the energy band below $E_0$ in which the push fades, and the hyperbolic tangent is a sign function smoothed over a band $\omega_s$ to avoid chattering at the turning points. If the energy overshoots ($e > E_0$), the same expression changes sign and brakes the pendulum.
+
+\textbf{2. Kick from rest.} A pendulum hanging perfectly still has $\dot\theta_1 = 0$, so equation~\ref{eq:su_pump} gives no direction to push in. Thus, while $e < -1 + e_k$, the arm is accelerated with a constant $a_k$ instead, which starts the swing.
+
+\textbf{3. Arm centering.} Since the pump moves the arm back and forth with every swing, a weak spring and damper keep it near its reference $r$:
+\begin{equation}
+  \ddot\theta_{0,\mathrm{cmd}} = a_{\mathrm{pump}} - \omega_c^2\, (\theta_0 - r) - 2\zeta_c\, \omega_c\, \dot\theta_0 ,
+  \label{eq:su_center}
+\end{equation}
+where $\omega_c$ and $\zeta_c$ are the natural frequency and damping of the centering.
+
+\textbf{4. Current command.} The acceleration is converted into the current that the arm row of equation~\ref{eq:nl_mass} needs, neglecting the reaction of the pendulum, and then into a duty cycle through equation~\ref{eq:nl_current} solved for $d$:
+\begin{equation}
+  i_{\mathrm{cmd}} = \operatorname{sat}_{i_{\max}}\!\left( \tilde J_a\, \ddot\theta_{0,\mathrm{cmd}} + \tilde B_{eq}\, \dot\theta_0 + \tilde\tau_c(\dot\theta_0) \right), \qquad
+  d = \operatorname{sat}_{d_{\max}}\!\left( \frac{R_m\, i_{\mathrm{cmd}} + K_b\, \dot\theta_0}{V_s} \right),
+  \label{eq:su_current}
+\end{equation}
+where the friction torque uses the smooth sign of $\dot\theta_0$ over a band $\omega_f$. Since the back-EMF term $K_b\,\dot\theta_0$ is added to the duty cycle, reversing the commanded acceleration while the arm moves reverses the current only up to $i_{\max}$, instead of producing the current spike of section~\ref{sec:lqr_sim}. Thus, this form addresses the binding limit of our rig directly, and if the duty limit $d_{\max}$ is reached, the clipping lowers the current further instead of raising it.
+
+\subsection{Starting Values from Physics}
+\label{sec:su_physics}
+\textbf{Energy target.} Near the top, $\cos\theta_1$ approaches zero beyond the horizontal, so the pump of equation~\ref{eq:su_pump} has little effect over the last quarter of the swing, while the friction of the pendulum joint keeps removing energy. Thus, $E_0$ is set to the energy lost from the horizontal to the top. For a swing with $e = 0$, the angular velocity is $\dot\theta_1 = 2\omega_n \cos(\phi/2)$, with $\phi$ the angle from hanging and $\omega_n = \sqrt{\tilde G/\tilde J_p} = 12.51\,\mathrm{rad/s}$. Integrating the dry and viscous friction torques over $\phi$ from $\pi/2$ to $\pi$:
+\begin{equation}
+  \therefore\; E_0 = \frac{\tilde\tau_p\, \frac{\pi}{2} + \tilde b_1\, 4\omega_n \left(1 - \sin\frac{\pi}{4}\right)}{2\tilde G} = \frac{1.002\times10^{-3} + 1.771\times10^{-3}}{0.05797} = 0.048 .
+  \label{eq:su_E0}
+\end{equation}
+The push fades over a band of one $E_0$ below the target, so $k_E = 1/E_0 = 21$.
+
+\textbf{Push size.} One push lasts about a quarter of the swing period, $T_q = \pi/(2\omega_n) = 0.126\,\mathrm{s}$, during which the arm speeds up to about $a_p T_q$. Limiting the current to $i_{\max} = 1.0\,\mathrm{A}$, one third below the trip level, gives $\tilde J_a a_p + \tilde\tau_{c+} \le i_{\max}$, or $a_p \le 132\,\mathrm{rad/s^2}$. Limiting the duty cycle to $d_{\max} = 0.45$, below the firmware's 0.5, gives with equation~\ref{eq:su_current}
+\begin{equation}
+  a_p \le \frac{d_{\max} V_s - R_m \tilde\tau_{c+}}{R_m \tilde J_a + \left(R_m \tilde B_{eq} + K_b\right) T_q} = 52.1\,\mathrm{rad/s^2},
+\end{equation}
+so the duty cycle is the tighter limit, and $a_p = 52\,\mathrm{rad/s^2}$ is the starting value.
+
+\textbf{Centering and kick.} The centering is set about three times slower than the pendulum, $\omega_c = \omega_n/3 = 4.2\,\mathrm{rad/s}$ with $\zeta_c = 0.7$, so that the two motions do not fight each other. The kick has to overcome the static friction of the arm with a 50\,\% margin, $a_k = 1.5\,\tilde\tau_{c+}/\tilde J_a = 69\,\mathrm{rad/s^2}$, and it ends once the pendulum swings by about $5^\circ$, $e_k = (1 - \cos 5^\circ)/2 = 0.0019$. The smoothing bands are $\omega_s = \omega_f = 1\,\mathrm{rad/s}$, a few counts of the velocity noise of the two sensors at 4\,ms. These values are computed by the script \nolinkurl{matlab/harness/controllers/hybrid/swingup_knobs.m}.
+
+\subsection{The Target: Catch Region of the LQR}
+\label{sec:su_catch}
+Before tuning the swing-up, it is required to know which states the LQR can actually take over. Thus, the closed loop with the final LQR of equation~\ref{eq:K_final} was started in the harness from a grid of pendulum angles $\theta_1$ from $-35$ to $35^\circ$ and pendulum speeds $\dot\theta_1$ from $-14$ to $14\,\mathrm{rad/s}$, with the arm centered and at rest, the supervisor guards opened wide, and realistic sensors and firmware. A state counts as held if the firmware did not trip and $|\theta_1| < 10^\circ$ during the last second of a 3\,s run. Since the plant is symmetric, only $\theta_1 \ge 0$ was simulated and the result was mirrored.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_swingup_catch.pdf}
+\caption{Catch region of the LQR: states at the hand-over that the LQR holds (colored by their peak armature current), states that fall (light gray) and states that trip the firmware (crosses). The lines are the energy curves $e = 0$ and $e = E_0$ for a pendulum rising toward the top, the dashed box is the catch guard of the supervisor and the circles are the hand-over states of the final swing-up design in the 12 worst cases of section~\ref{sec:su_corners}.}
+\label{fig:su_catch}
+\end{figure}
+
+Figure~\ref{fig:su_catch} shows that only 215 of the 841 states are held, and that they form a narrow diagonal band of states in which the pendulum is still rising toward the top ($\theta_1$ and $\dot\theta_1$ of opposite signs). States that move away from upright fall or trip the firmware, which happened in 350 of the 841 states. Furthermore, the peak current grows quickly with the hand-over angle: every held state at $10^\circ$ reached at least 1.26\,A, and every held state at $20^\circ$ at least 1.69\,A, which the trip tolerates only because it requires 10\,ms above 1.5\,A. Thus, the swing-up should deliver a rising pendulum, and the hand-over itself, not the swing-up, is where the current budget is spent. The energy curves of equation~\ref{eq:su_E} run along this band, which shows that an energy target slightly above zero naturally delivers the pendulum into it.
+
+\subsection{Simulation Environment}
+The swing-up was tested in the same harness and with the same realistic sensors and firmware as the LQR (see section~\ref{sec:lqr_sim}). In the swing-up test, the pendulum starts hanging at rest with the arm centered, the supervisor hands it over to the LQR when $|\theta_1| < 20^\circ$ and $|\dot\theta_1| < 8\,\mathrm{rad/s}$, and the test passes if the firmware did not trip and $|\theta_1| < 10^\circ$ during the last 3\,s of a 15\,s run. The time to catch is the first entry into the Stabilize state, and the supervisor stops the motor if $|\theta_0| > 100^\circ$, after which the arm coasts and the firmware trips at $120^\circ$.
+
+With the starting values of section~\ref{sec:su_physics}, the swing-up passed and the pendulum was caught after 3.51\,s, with the arm reaching $61^\circ$. The energy rose in steps of about 0.1 per half swing, as expected from equation~\ref{eq:su_Edot}, and the estimated energy followed the true one closely. The peak current of 1.25\,A occurred at the hand-over, where the LQR received the pendulum at $\theta_1 = -18.9^\circ$, while the current during the swing-up itself stayed below 0.7\,A.
+
+\subsection{Design Space}
+\label{sec:su_space}
+To find which knobs matter, each was varied alone around the starting point (see Table~\ref{tab:su_oat}).
+
+\begin{table}[h]
+\centering
+\caption{One knob at a time around the starting values of section~\ref{sec:su_physics} (one swing-up test per value).}
+\label{tab:su_oat}
+\footnotesize
+\begin{tabular}{@{}lll@{}}
+\toprule
+Knob & Values & Effect \\
+\midrule
+$a_p$ [rad/s$^2$] & 30 to 100 & fails below 52; catch from 3.51 to 0.88\,s, arm from $61^\circ$ to $91^\circ$ \\
+$\omega_c$ [rad/s] & 2 to 7 & arm $96^\circ$ at 2, $61^\circ$ to $66^\circ$ at 3 to 5.5, fails at 7 \\
+$E_0$ & 0.01 to 0.18 & fails at 0.025 and below; no change above 0.048 \\
+$k_E$ & 5 to 80 & fails at 10 and below; no change above 21 \\
+$\zeta_c$ & 0.4 to 1.4 & catch from 2.9 to 7.5\,s, fails at 1.4 \\
+$a_k$ [rad/s$^2$], $i_{\max}$ [A] & 40 to 150, 0.6 to 1.2 & no effect on passing or catch time \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The energy target $E_0$ and the fade gain $k_E$ act only as thresholds: below the friction loss of equation~\ref{eq:su_E0}, the pendulum stalls short of the top, as predicted in section~\ref{sec:su_physics}, and above it, nothing changes, which is a good indication for the followed methodology. The current limit $i_{\max}$ did not act at all, since the results were identical for every value from 0.6 to 1.2\,A, so it remains a pure safety bound. On the other hand, the push size $a_p$ sets the speed of the swing-up and the centering $\omega_c$ sets how far the arm travels. Therefore, the design was reduced to the two variables $a_p$ and $\omega_c$, which were sampled on a grid of 8 values of $a_p$ (40 to $110\,\mathrm{rad/s^2}$) and 7 values of $\omega_c$ (2 to $6.5\,\mathrm{rad/s}$), with one swing-up test per point (see Figures~\ref{fig:su_map} and~\ref{fig:su_surface}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_swingup_map.pdf}
+\caption{Time to catch (left) and largest arm angle (right) over the two remaining design variables, nominal model and timing. Gray crosses mark designs that failed the swing-up test, and the circle marks the final design.}
+\label{fig:su_map}
+\end{figure}
+
+Of the 56 designs, 37 passed. The time to catch falls from about 4.5\,s to 0.8\,s as the push grows, but the arm travel grows in the same direction, and many passing designs swung the arm to $90$ to $98^\circ$, just below the $100^\circ$ stop. Weak pushes ($a_p \le 50\,\mathrm{rad/s^2}$) were unreliable, since the many swings they need let the arm drift, and $a_p = 110\,\mathrm{rad/s^2}$ raised the peak current up to 1.58\,A. A stiffer centering reduced the arm travel at almost no cost in time, so the useful region lies at $\omega_c$ of 5.75 to $6.5\,\mathrm{rad/s}$ and $a_p$ of 70 to $90\,\mathrm{rad/s^2}$, with a catch after 1.1 to 1.8\,s and the arm within $39$ to $65^\circ$. Thus, unlike the LQR, the binding limit of the swing-up is the arm travel and not the current.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/fig_swingup_surface.pdf}
+\caption{The design space of Figure~\ref{fig:su_map} in three dimensions, with the time to catch as the height of each bar and the peak armature current as its color. Crosses on the floor mark the designs that failed, and the outlined bar is the final design.}
+\label{fig:su_surface}
+\end{figure}
+
+\subsection{Physically Consistent Worst Cases}
+\label{sec:su_corners}
+Six designs from the useful region were run through the 12 worst cases of section~\ref{sec:lqr_corners}: the four corner plants (pendulum strength $\pm 18.6\,\%$, arm viscous friction $\pm 13.2\,\%$) with the nominal timing, one additional controller period of delay on the duty cycle, and a pendulum sensor lag of 10\,ms (see Table~\ref{tab:su_corners} and Figure~\ref{fig:su_corners}).
+
+\begin{table}[h]
+\centering
+\caption{Swing-up designs in the 12 physically consistent worst cases (one test per case). The catch time and the arm angle are taken over the passing tests, the peak current over all tests.}
+\label{tab:su_corners}
+\small
+\begin{tabular}{@{}ccccc@{}}
+\toprule
+$a_p$ [rad/s$^2$] / $\omega_c$ [rad/s] & Passed & Catch [s] & Largest $|\theta_0|$ & Peak current \\
+\midrule
+70 / 5.75 & 9/12 & 1.45--1.82 & $49^\circ$ & 1.15\,A \\
+80 / 5.75 & 9/12 & 1.46--1.56 & $75^\circ$ & 1.45\,A \\
+90 / 5.75 & 12/12 & 1.14--1.20 & $69^\circ$ & 1.49\,A \\
+70 / 6.5 & 9/12 & 1.73--2.16 & $58^\circ$ & 1.48\,A \\
+80 / 6.5 & 12/12 & 1.43--1.52 & $50^\circ$ & 1.57\,A \\
+90 / 6.5 & 11/12 & 1.12--1.18 & $73^\circ$ & 1.39\,A \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_swingup_corners.pdf}
+\caption{Largest arm angle (left) and time to catch (right) of the six designs in the 12 worst cases, where the marker shows the timing case. Open markers passed and filled markers failed; failed tests are drawn at the right edge.}
+\label{fig:su_corners}
+\end{figure}
+
+Every failure in Table~\ref{tab:su_corners} followed the same pattern: the pendulum was caught, but the arm was moving fast at the hand-over, and the LQR, whose arm feedback is soft, let it run past the $100^\circ$ stop. None of the failures was an overcurrent trip. Thus, the reliability of the swing-up is decided by the arm speed at the hand-over, which depends on the exact sequence of swings, and the boundary between passing and failing designs is not smooth.
+
+To separate this from the sensor noise of a single test, the two designs that passed all 12 cases and the design between them ($a_p = 85\,\mathrm{rad/s^2}$, $\omega_c = 6.0\,\mathrm{rad/s}$) were repeated with three further noise seeds, giving 36 tests each. The designs 80\,/\,6.5 and 90\,/\,5.75 passed all 36, while 85\,/\,6.0 failed 9 of them, all with one additional period of delay. Finally, the neighbors of 80\,/\,6.5 were run through the 12 cases: $\omega_c = 6.9$ passed 12 and $\omega_c = 6.1$ passed 11, but $a_p = 75$ and $85\,\mathrm{rad/s^2}$ passed only 10 each. Therefore, the design tolerates a change of the centering, while the push size has to stay within about $\pm 5\,\%$ of its value.
+
+\subsection{Final Design}
+\label{sec:su_final}
+Of the two designs that passed all 48 tests, $a_p = 80\,\mathrm{rad/s^2}$ with $\omega_c = 6.5\,\mathrm{rad/s}$ was selected, since it keeps the arm within $50^\circ$, a margin of $50^\circ$ to the $100^\circ$ stop against $31^\circ$ for the faster design, and since its catch time changed by less than 0.1\,s over all worst cases, which shows that it repeats the same sequence of swings regardless of the plant and the timing. Its peak current of 1.57\,A occurred once, at the hand-over with a sensor lag of 10\,ms, and did not trip the firmware, which acts on the filtered current only after 10\,ms above 1.5\,A. The final knobs are
+\begin{equation}
+  \boxed{E_0 = 0.048,\quad k_E = 21,\quad a_p = 80\,\mathrm{rad/s^2},\quad \omega_c = 6.5\,\mathrm{rad/s},\quad \zeta_c = 0.7,\quad a_k = 69\,\mathrm{rad/s^2}}
+  \label{eq:su_final}
+\end{equation}
+with $e_k = 0.0019$, $\omega_s = \omega_f = 1\,\mathrm{rad/s}$, $i_{\max} = 1.0\,\mathrm{A}$ and $d_{\max} = 0.45$.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_swingup_run.pdf}
+\caption{Swing-up of the final design, nominal model and timing: pendulum energy in units of $2\tilde G$ (true and estimated from the measured angles), pendulum and arm angles, and armature current with the 1.5\,A trip level. The vertical line marks the hand-over to the LQR.}
+\label{fig:su_run}
+\end{figure}
+
+Figure~\ref{fig:su_run} shows the final design with the nominal model. The energy rises from $-1$ to the target in less than 1.5\,s, the pendulum is caught after \textbf{1.47\,s} with a peak current of 0.82\,A over the whole run, and the arm stays within $47^\circ$. After the catch, the pendulum stays within $3^\circ$, while the arm swings by about $\pm 21^\circ$, which is the friction limit cycle of the soft LQR without compensation (see section~\ref{sec:lqr_fric}). In the worst cases, the hand-over states lie between $\theta_1 = -17.6$ and $-16.1^\circ$ with $\dot\theta_1$ between 4.6 and 5.5\,rad/s, inside the held band of Figure~\ref{fig:su_catch}. The law is implemented in the block \texttt{energy law} of \nolinkurl{matlab/harness/controllers/hybrid/swingup_energy.slx}, its knobs are set in \texttt{ctrl\_hybrid\_design.m}, and the tools of this section (\texttt{swingup\_knobs}, \texttt{swingup\_catch\_region}, \texttt{swingup\_workbench}, \texttt{swingup\_sweep} and \texttt{swingup\_corner\_test}) are in the same folder. The complete hybrid controller, swing-up followed by the catch with the LQR of section~\ref{sec:lqr_final}, also runs on the ESP32 in the onboard mode of section~\ref{sec:harness_modes}, where it reproduces the duty cycle of this swing-up run to $7\times10^{-15}$.
+
+\subsection{Limitations}
+Limitations of the presented design are:
+\begin{enumerate}
+  \item All results are simulations of the identified model; the swing-up has not yet been run on the hardware.
+  \item The push size has a narrow tolerance of about $\pm 5\,\%$. Since the current command of equation~\ref{eq:su_current} relies on the identified $\tilde J_a$ and Coulomb friction, an error in these values changes the effective push:
+  \begin{enumerate}
+    \item the corner plants vary only the arm viscous friction, not $\tilde J_a$ or the Coulomb friction, which are known to about 1\,\%;
+    \item the gearbox play and the flattening of the arm friction at higher speeds are not modeled, and both act during the large arm motions of the swing-up.
+  \end{enumerate}
+  \item The hand-over at $|\theta_1| \approx 17^\circ$ costs up to 1.57\,A in the worst cases (see Figure~\ref{fig:su_catch}). This current is set by the catch guard of the supervisor and by the LQR, not by the swing-up law.
+  \item The design space and the worst cases were sampled with one or a few simulations per point, so the boundaries of Figure~\ref{fig:su_map} are affected by sensor noise and by the discrete number of swings.
+  \item The kick always starts in the same direction, so all tests approach the top from the same side; the mirrored approach follows from the symmetry of the plant but was not run separately.
 \end{enumerate}
 
 \end{document}

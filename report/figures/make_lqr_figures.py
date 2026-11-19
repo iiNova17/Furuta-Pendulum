@@ -1,4 +1,4 @@
-"""Figures for the LQR design section (section 8 of furuta_model.tex).
+"""Figures for the LQR design section (section 9 of furuta_model.tex).
 
 Reads lqr_data.mat, which holds the simulation results of the controller harness
 (matlab/harness: lqr_workbench, lqr_corner_test, corner_plants and the design-space sweeps),
