@@ -1,1 +1,0 @@
-Passive recording active on COM11. Drive disabled.
