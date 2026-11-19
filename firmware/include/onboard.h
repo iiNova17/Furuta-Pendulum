@@ -11,6 +11,7 @@
 #include <string>
 #include "onboard_design.h"
 #include "onboard_rates.h"
+#include "onboard_stiction.h"
 
 namespace fw {
 struct OnboardParams {
@@ -24,6 +25,8 @@ struct OnboardParams {
   double iMax=design::sw_i_max, uMax=design::sw_u_max;
   double Jp=design::pl_Jp, G=design::pl_G, Ja=design::pl_Ja, Beq=design::pl_Beq, tcp=design::pl_tcp, tcn=design::pl_tcn;
   double Rm=design::pl_Rm, Kb=design::pl_Kb, Vs=design::pl_Vs;
+  // 1.8: arm breakaway friction (measured dead zone) and how the swing-up's motor inverse uses it
+  double tsp=stiction::tsp, tsn=stiction::tsn, stickGain=stiction::stickGain, wStick=stiction::wStick, aStick=stiction::aStick;
   double r=0;               // arm reference [rad]
   bool swingUp=true;        // false: balance only (start near upright); losing the pendulum ends the run
   // Supported controller periods and their LQR gains (same Q, R as the design; onboard_rates.h).
@@ -32,11 +35,11 @@ struct OnboardParams {
   bool setPeriod(double ts){const int i=periodIndex(ts);if(i<0)return false;Ts=rates::Ts[i];for(int k=0;k<4;k++)K[k]=rates::K[i][k];return true;}
   bool valid(std::string& why) const {
     const double all[]={Ts,velFc,K[0],K[1],K[2],K[3],fricGain,fricBand,fricDutyPos,fricDutyNeg,catchTh1,catchW1,exitTh1,
-      safeTh0,E0,kE,aPush,wc,zc,aKick,kickE,wSign,wFric,iMax,uMax,Jp,G,Ja,Beq,tcp,tcn,Rm,Kb,Vs,r};
+      safeTh0,E0,kE,aPush,wc,zc,aKick,kickE,wSign,wFric,iMax,uMax,Jp,G,Ja,Beq,tcp,tcn,Rm,Kb,Vs,r,tsp,tsn,stickGain,wStick,aStick};
     for(double x:all) if(!std::isfinite(x)){why="Nonfinite onboard parameter";return false;}
     if(periodIndex(Ts)<0){why="Onboard controller period must be 1, 2 or 4 ms (onboard_rates.h)";return false;}
     if(velFc<=0||fricBand<=0||wSign<=0||wFric<=0||Jp<=0||G<=0||Ja<=0||Rm<=0||Vs<=0||iMax<=0||uMax<=0||uMax>1||
-       catchTh1<=0||exitTh1<catchTh1||safeTh0<=0){why="Onboard parameter out of range";return false;}
+       catchTh1<=0||exitTh1<catchTh1||safeTh0<=0||tsp<0||tsn<0||stickGain<0||wStick<=0||aStick<=0){why="Onboard parameter out of range";return false;}
     return true;
   }
 };
@@ -88,8 +91,14 @@ struct OnboardController {
     double a0=-p.aPush*std::min(1.,std::max(-1.,p.kE*(p.E0-e)))*std::tanh(w1*std::cos(th1)/p.wSign);
     if(e< -1+p.kickE)a0=p.aKick;
     a0=a0-p.wc*p.wc*(th0-p.r)-2*p.zc*p.wc*w0;
+    // Motor inverse: inertia + viscous + dry friction. The dry friction blends from the breakaway (arm at rest,
+    // in the direction of the wanted acceleration) to the sliding Coulomb friction as the arm speeds up (1.8).
+    // Without it the kick from rest asked for 11 % duty, below the 13-14 % breakaway, and the arm never moved.
     const double sf=std::tanh(w0/p.wFric);
-    double i=p.Ja*a0+p.Beq*w0+p.tcp*std::max(sf,0.)+p.tcn*std::min(sf,0.);
+    const double coul=p.tcp*std::max(sf,0.)+p.tcn*std::min(sf,0.);
+    const double sa=std::tanh(a0/p.aStick),stat=p.tsp*std::max(sa,0.)+p.tsn*std::min(sa,0.);
+    const double g=std::exp(-(w0/p.wStick)*(w0/p.wStick));
+    double i=p.Ja*a0+p.Beq*w0+coul+p.stickGain*g*(stat-coul);
     i=std::min(p.iMax,std::max(-p.iMax,i));
     double u=(p.Rm*i+p.Kb*w0)/p.Vs;
     return std::min(p.uMax,std::max(-p.uMax,u));

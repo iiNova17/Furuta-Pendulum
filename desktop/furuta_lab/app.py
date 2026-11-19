@@ -666,7 +666,7 @@ class LabApp(W.QMainWindow):
     def start_sequence(self,segments,purpose,extra=None):
         c=self.device.config;total=sum(s['duration'] for s in segments);peak=max(abs(s['amplitude']) for s in segments)
         problem=None
-        if total>c['maxDuration']:problem=f'Sequence lasts {total:.2f} s but the device maximum run is {c["maxDuration"]:g} s (step 2 “Maximum run seconds”, then Apply).'
+        if c['maxDuration']>0 and total>c['maxDuration']:problem=f'Sequence lasts {total:.2f} s but the device maximum run is {c["maxDuration"]:g} s (step 2 “Maximum run seconds”, then Apply).'
         elif peak>c['maxDuty']+1e-12:problem=(f'Sequence needs {peak*100:g} % duty but the device maximum duty is {c["maxDuty"]*100:g} %. '
                                               'Raise “Maximum duty (%)” and Apply, or lower the amplitude / “Maximum test duty”.')
         if problem:

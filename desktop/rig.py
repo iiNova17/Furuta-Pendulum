@@ -108,7 +108,7 @@ def main():
             st = d.status; c = d.config
             if st.get('state') != 'DISARMED' or not st.get('centered'):
                 raise SystemExit(f'Not ready: state {st.get("state")}, centered {st.get("centered")}')
-            if total > c['maxDuration'] or amp / 100 > c['maxDuty'] + 1e-9 or not c.get('travelCounts'):
+            if (c['maxDuration'] > 0 and total > c['maxDuration']) or amp / 100 > c['maxDuty'] + 1e-9 or not c.get('travelCounts'):
                 raise SystemExit('Limits too small: run setup first')
             meta = {'purpose': 'estimation', 'estimation_step': tag, 'preset': name, 'amplitude_pct': amp, 'freqs_hz': freqs,
                     'segments': seg, 'source_tool': 'rig.py', 'setup': 'full_assembly', 'gear': 34, '12v_declared': True}

@@ -18,7 +18,8 @@ static int replay(const std::string& file) {
   std::ifstream in(file);
   if(!in){std::printf("missing %s\n",file.c_str());return 1;}
   std::string line;std::getline(in,line);
-  OnboardController c;c.reset();
+  // The harness runs predate the breakaway feedforward (1.8): replay with it off, i.e. the Simulink law.
+  OnboardController c;c.p.stickGain=0;c.reset();
   double maxErr=0;size_t n=0,modeErr=0,firstBad=0;
   while(std::getline(in,line)) {
     double t,th0,th1,r,duty;int mode;
@@ -54,6 +55,17 @@ int main(int argc,char**argv) {
    // a 1 ms controller from the same start settles like the 4 ms one (closed loop not run here: see onboard_rates.py)
    OnboardController c;c.p.setPeriod(.001);c.p.swingUp=false;c.reset();double u=c.step(0,.1);assert(c.mode==OnboardController::Stabilize&&u>0);}
 
+  // 1.8 breakaway feedforward: from the hanging rest the kick must ask for more than the breakaway duty
+  // (Rm tsp / Vs = 13 %); the 1.7 law (stickGain 0) asked for 11.1 % and the arm never moved on the rig.
+  {OnboardController c;c.reset();const double u=c.step(0,3.14159265358979);
+   OnboardController o;o.p.stickGain=0;o.reset();const double u0=o.step(0,3.14159265358979);
+   const double breakaway=c.p.Rm*c.p.tsp/c.p.Vs;
+   std::printf("kick from rest: %.1f %% duty with breakaway feedforward, %.1f %% without; breakaway %.1f %%\n",100*u,100*u0,100*breakaway);
+   assert(c.mode==OnboardController::SwingUp&&u>breakaway+.02&&u0<breakaway);
+   // moving fast, the feedforward is gone: same command as the 1.7 law
+   OnboardController f;f.reset();f.step(0,2.);OnboardController f0;f0.p.stickGain=0;f0.reset();f0.step(0,2.);
+   const double uf=f.step(.02,2.05),uf0=f0.step(.02,2.05);assert(std::abs(uf-uf0)<1e-6);}
+
   // run control: an onboard run takes the external request, keeps every safety check, ends at maxDuration
   Controller k;std::string why;
   k.cfg.maxDuty=.5;k.cfg.travelCounts=500;k.cfg.slewPerSecond=100;k.cfg.currentZeroMv=2500;k.cfg.maxDuration=2;
@@ -69,6 +81,12 @@ int main(int argc,char**argv) {
   assert(k.startExternal(5000000,Controller::Source::Onboard,why));
   k.tick(5400000,0,0,2500,100,true);assert(k.fault=="HEARTBEAT_TIMEOUT");                  // heartbeat still active
   k.state=State::Disarmed;k.fault.clear();assert(!k.startExternal(6000000,Controller::Source::Onboard,why)); // needs ARM
+  // 1.8: maxDuration 0 = no run-length limit; every trip still applies
+  {Config c=k.cfg;c.maxDuration=0;std::string w;assert(c.valid(w));c.maxDuration=-1;assert(!c.valid(w));}
+  k.cfg.maxDuration=0;assert(k.arm(12,7000000,why));assert(k.startExternal(7000000,Controller::Source::Onboard,why));
+  for(int i=1;i<=3600;i++){k.lastHeartbeat=7000000+(uint64_t)i*1000000;k.tick(7000000+(uint64_t)i*1000000,0,0,2500,100,true);}
+  assert(k.state==State::Running);                                                        // an hour later: still running
+  k.tick(7000000+3600ull*1000000+400000,0,0,2500,100,true);assert(k.fault=="HEARTBEAT_TIMEOUT"); // heartbeat still ends it
 
   std::printf(fails?"FAILED\n":"native_onboard OK\n");
   return fails;

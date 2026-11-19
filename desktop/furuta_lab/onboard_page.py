@@ -54,13 +54,19 @@ KNOBS = {
     'wFric': ('rad/s', 'smoothing of the arm friction sign'),
     'iMax': ('A', 'swing-up current limit'),
     'uMax': ('duty', 'swing-up duty limit'),
+    'tsp': ('A', 'arm breakaway friction, positive (measured dead zone 13 %)'),
+    'tsn': ('A', 'arm breakaway friction, negative (measured dead zone 14 %)'),
+    'stickGain': ('–', 'breakaway feedforward in the swing-up (1 = on, 0 = the 1.7 law)'),
+    'wStick': ('rad/s', 'arm speed over which the breakaway part fades out'),
+    'aStick': ('rad/s²', 'smoothing of the sign of the wanted arm acceleration'),
 }
 READ_ONLY = {'Ts', 'rearm', 'modelArmSign', 'modelPendSign'}
 # Controller periods (firmware 1.7: onboard_rates.h). The LQR gain for each comes from the design's Q and R.
-# Closed-loop simulation on the identified model with sensor noise (2026-11-19): 1 ms with the pendulum read
-# at 1 kHz gives the largest pendulum-delay margin (25 ms vs 22 ms at 4 ms); 4 ms is what Simulink validated.
-PERIODS = [(0.001, '1 ms — fastest (largest delay margin in simulation)'), (0.002, '2 ms'),
-           (0.004, '4 ms — as designed and validated in Simulink')]
+# On the rig (2026-11-19) 1 ms never swung up: the speed estimates are noisier at 1 ms, the duty request
+# jumpier (slew-clipped 7 % of the time vs 2 %) and the pump weaker, so 4 ms (the Simulink design) is the
+# default and 2 ms the alternative. The first entry is the default.
+PERIODS = [(0.004, '4 ms — as designed and validated in Simulink (default)'), (0.002, '2 ms'),
+           (0.001, '1 ms — did not swing up on the rig (noisier speed estimates)')]
 STREAM_HZ = 250            # fastest stream that fits 460800 baud with margin (500 Hz records / 2)
 BURST_BUDGET = 4194304     # bytes the firmware allows for a capture (HELLO maxBurstBytes)
 CTRL_STYLE = {0: ('NOT RUNNING', '#6b7785'), 1: ('SAFE STOP', '#7a1020'), 2: ('SWING-UP', '#c77700'), 3: ('STABILIZE', '#1f7a4d')}
@@ -70,6 +76,11 @@ STOP_HINTS = {
     'ONBOARD_PENDULUM_LOST': 'balance-only mode and the pendulum left the catch region',
     'PEND_INVALID': 'the pendulum reading was older than 20 ms or the magnet status was bad',
 }
+
+
+def run_length(config):
+    m = config.get('maxDuration', 0)
+    return 'no limit' if not m else f'{m:g} s'
 
 
 def angles(row, config, status):
@@ -129,7 +140,7 @@ class OnboardPage:
     # ------------------------------------------------------------------ layout
     def build(self, v):
         a = self.app
-        a.text(v, 'The ESP32 runs the controller itself (firmware 1.7: every 1, 2 or 4 ms, pendulum read at 1 kHz, all firmware trips active). '
+        a.text(v, 'The ESP32 runs the controller itself (firmware 1.8: every 4, 2 or 1 ms, pendulum read at 1 kHz, all firmware trips active). '
                   'This page starts it, keeps the heartbeat, shows its state and records the run. '
                   'STOP / DISABLE, unticking the 12 V box or closing the app stops the motor (heartbeat within 300 ms).', small=True)
 
@@ -137,6 +148,8 @@ class OnboardPage:
         self.checklist = W.QLabel('Connect USB to check.'); self.checklist.setWordWrap(True); self.checklist.setTextFormat(QtCore.Qt.RichText)
         g.addWidget(self.checklist)
         self.rec_seconds = a.number(g, 'Run length — maxDuration (s)', 20, .5, 3600, 1)
+        self.no_limit = W.QCheckBox('No run-length limit (runs until STOP, a trip or a fault; firmware 1.8)'); g.addWidget(self.no_limit)
+        self.no_limit.toggled.connect(lambda on: self.rec_seconds.setEnabled(not on))
         self.rec_duty = a.number(g, 'Maximum duty (%)', 50, 0, 100, 1)
         self.rec_slew = a.number(g, 'Slew rate (%/s)', 10000, .1, 100000, 0)
         self.rec_trip = a.number(g, 'Current trip A (0 = off)', 1.5, 0, 50, 2)
@@ -216,7 +229,7 @@ class OnboardPage:
         out.append((True if slew >= 50 else None, f'Slew {slew:g} /s' + ('' if slew >= 50 else ' — below the 100 /s it was designed with')))
         trip = c.get('currentTripA', 0)
         out.append((True if trip > 0 else None, f'Current trip {trip:g} A' if trip > 0 else 'Current trip OFF (1.5 A recommended)'))
-        out.append((True, f'Run length (maxDuration) {c.get("maxDuration", 0):g} s · heartbeat {c.get("heartbeatMs", "?")} ms'))
+        out.append((True, f'Run length {run_length(c)} · heartbeat {c.get("heartbeatMs", "?")} ms'))
         periods = d.identity.get('onboardPeriods') or [0.004]
         ts = self.period.currentData()
         out.append((any(abs(ts - p) < 1e-9 for p in periods),
@@ -268,7 +281,8 @@ class OnboardPage:
             self.sign_button.setVisible(bool(p) and (c.get('armSign') != p.get('modelArmSign') or c.get('pendSign') != p.get('modelPendSign')))
 
     def finished_run(self):
-        d = self.app.device; s = d.status; reason = 'reached the run length (maxDuration) or STOP'
+        d = self.app.device; s = d.status
+        reason = 'STOP / DISABLE' if not d.config.get('maxDuration') else 'reached the run length (maxDuration) or STOP'
         if s.get('state') == 'FAULT':
             reason = f'FAULT {s.get("fault", "?")}'
         if d.event_count > self.event_mark and (d.last_event or {}).get('event') in STOP_HINTS:
@@ -301,10 +315,12 @@ class OnboardPage:
     # ----------------------------------------------------------------- actions
     def apply_limits(self):
         a = self.app; a.require_disarmed(); c = copy.deepcopy(a.device.config)
-        c.update(maxDuration=self.rec_seconds.value(), maxDuty=self.rec_duty.value() / 100,
+        if self.no_limit.isChecked() and not a.device.identity.get('runLengthUnlimited'):
+            raise RuntimeError('“No run-length limit” needs firmware 1.8 or newer')
+        c.update(maxDuration=0. if self.no_limit.isChecked() else self.rec_seconds.value(), maxDuty=self.rec_duty.value() / 100,
                  slewPerSecond=self.rec_slew.value() / 100, currentTripA=self.rec_trip.value())
         a.submit(lambda: a.device.apply(c), lambda r: a.report('Onboard-run limits applied to RAM',
-                 f'maxDuration {c["maxDuration"]:g} s · maxDuty {c["maxDuty"] * 100:g} % · slew {c["slewPerSecond"]:g} /s · '
+                 f'run length {run_length(c)} · maxDuty {c["maxDuty"] * 100:g} % · slew {c["slewPerSecond"]:g} /s · '
                  f'current trip {c["currentTripA"]:g} A. Use “Save current profile to device NVS” (Setup) to keep them after a restart.'))
 
     def set_signs(self):
@@ -403,7 +419,8 @@ class OnboardPage:
                 armed_s = None
                 if burst:
                     c = d.config; per_s = c.get('adcHz', 2000) * 24 + 500 * 128     # bytes per second (record sizes rounded up)
-                    armed_s = round(min(c.get('maxDuration', 20) + .5, .95 * BURST_BUDGET / per_s), 1)
+                    limit = c.get('maxDuration', 20) + .5 if c.get('maxDuration', 0) > 0 else math.inf
+                    armed_s = round(min(limit, .95 * BURST_BUDGET / per_s), 1)
                     d.arm_burst(armed_s); notes.append(f'high-rate capture armed for {armed_s:g} s')
                 meta = a.metadata() | {'purpose': 'onboard', 'controller': entry['key'], 'controller_label': entry['label'],
                                        'start': entry['start'], 'controller_period_s': ts, 'onboard_params': copy.deepcopy(params),
@@ -421,7 +438,8 @@ class OnboardPage:
             a.running = True; a.run_start = None; a.run_metadata = meta; self.run_meta = meta; self.burst_armed = armed_s
             self.active = True; self.seen_running = False; self.t_start = time.monotonic(); self.end_label.setText('')
             warn = f'\n\n⚠ {r["warning"]}' if r.get('warning') else ''
-            a.report('Onboard controller running', f'**{r.get("mode", entry["label"])}** every {r.get("Ts", ts) * 1e3:g} ms, up to {r.get("seconds", "?")} s. '
+            a.report('Onboard controller running', f'**{r.get("mode", entry["label"])}** every {r.get("Ts", ts) * 1e3:g} ms, '
+                     + (f'up to {r["seconds"]:g} s. ' if r.get('seconds') else 'no run-length limit: STOP / DISABLE ends it. ')
                      + (f'Recording to {path}. ' if path else 'Not recording. ') + 'STOP / DISABLE stops the motor.'
                      + (f'\n\nSet for this run: {"; ".join(notes)}.' if notes else '') + warn)
         try:

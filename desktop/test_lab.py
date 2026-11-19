@@ -206,7 +206,7 @@ class LabTests(unittest.TestCase):
         d.status={'state':'DISARMED','centered':True,'centerCount':0}
         d.config={'countsPerRev':1496,'armSign':1,'pendSign':-1,'pendDownRaw':3008,'maxDuty':.5,'travelCounts':498,
                   'slewPerSecond':100,'currentTripA':1.5,'maxDuration':20,'heartbeatMs':300,'streamHz':100,'adcHz':2000}
-        w.power.setChecked(True);p.controller.setCurrentIndex(1);p.period.setCurrentIndex(0)   # LQR only, 1 ms
+        w.power.setChecked(True);p.controller.setCurrentIndex(1);p.period.setCurrentIndex(p.period.findData(.001))   # LQR only, 1 ms
         p.start()
         end=_t.monotonic()+5
         while w.busy and _t.monotonic()<end:app.processEvents();_t.sleep(.01)
@@ -222,6 +222,35 @@ class LabTests(unittest.TestCase):
         while w.busy and _t.monotonic()<end:app.processEvents();_t.sleep(.01)
         self.assertTrue((tmp/'runs'/'run1'/'burst'/'capture.npz').exists())
         d.ready=d.connected=False;d.port=None;w.close()
+    def test_breakaway_model_and_unlimited_run(self):
+        """Stick-slip arm friction: 11 % duty from rest holds the arm (as on the rig), 20 % breaks it free;
+        without tsp/tsn the model is unchanged. Run length 0 = no limit in the onboard page."""
+        from furuta_lab import estimation as E
+        P={'Rm':3.4254,'Kb':.48137,'Ja':5.6343e-3,'Jp':1.8531e-4,'h':2.0123e-4,'G':2.8987e-2,'Beq':1.6122e-2,'b1':1.2082e-4,
+           'tcp':.25814,'tcn':.25689,'tp':6.379e-4}
+        S=P|E.breakaway_from_deadzone(.13,.14,P['Rm']);x=[0.,np.pi,0.,0.]
+        self.assertAlmostEqual(S['tsp'],.13*12/P['Rm'])
+        self.assertGreater(E.rhs(x,.111,P,12.)[0][2],10)          # smoothed Coulomb only: the arm accelerates
+        self.assertLess(abs(E.rhs(x,.111,S,12.)[0][2]),1e-9)       # with breakaway: it stays put
+        self.assertGreater(E.rhs(x,.20,S,12.)[0][2],10)            # above the breakaway it slips
+        self.assertLess(abs(E.rhs(x,-.13,S,12.)[0][2]),1e-9)       # -13 % is inside the 14 % negative dead zone
+        th=np.vstack([E._vec(P),E._vec(S)]);X,_=E.sim_batch(th,np.full((1,200),.111),np.array([x]),.001,12.)
+        self.assertGreater(abs(X[0,0,-1,0]),1e-3);self.assertLess(abs(X[1,0,-1,0]),1e-9)   # batch = single-state physics
+        self.assertEqual(len(E._vec(P)),13);self.assertEqual(E.full(P)['tsp'],0.)
+        from PySide6.QtWidgets import QApplication
+        from furuta_lab.app import LabApp
+        from furuta_lab import onboard_page as O
+        app=QApplication.instance() or QApplication([]);w=LabApp();p=w.onboard
+        self.assertEqual(p.period.currentData(),.004)                # 4 ms is the default
+        self.assertEqual(O.run_length({'maxDuration':0}),'no limit');self.assertEqual(O.run_length({'maxDuration':20}),'20 s')
+        d=w.device;sent=[];d.ready=d.connected=True;d.identity={'onboardControl':True,'runLengthUnlimited':True}
+        d.status={'state':'DISARMED'};d.config={'maxDuration':20}
+        d.apply=lambda c:sent.append(dict(c));w.submit=lambda fn,done=None,label='':(fn(),done and done(None))
+        p.no_limit.setChecked(True);self.assertFalse(p.rec_seconds.isEnabled());p.apply_limits()
+        self.assertEqual(sent[-1]['maxDuration'],0.)
+        d.identity={'onboardControl':True}
+        with self.assertRaises(RuntimeError):p.apply_limits()        # older firmware refuses 0
+        d.ready=d.connected=False;w.close()
 
 from test_estimation import *  # noqa: E402,F401,F403
 

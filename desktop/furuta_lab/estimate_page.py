@@ -592,7 +592,7 @@ class EstimatePage(QtCore.QObject):
                 text.append(f'slew: each reversal takes {rev * 1000:.0f} ms ({frac * 100:.0f} % of the shortest half period)'
                             + (' ⚠ raise “Slew rate” for sharper edges' if frac > .5 else ''))
             if c:
-                if total > c.get('maxDuration', 0):
+                if c.get('maxDuration', 0) > 0 and total > c['maxDuration']:
                     text.append(f'⚠ needs “Maximum run seconds” ≥ {total:.1f}')
                 if amp / 100 > c.get('maxDuty', 0) + 1e-9:
                     text.append(f'⚠ needs “Maximum duty” ≥ {amp:g} %')

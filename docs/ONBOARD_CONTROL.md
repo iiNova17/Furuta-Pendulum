@@ -62,6 +62,42 @@ reading), which is why the read rate went up with the controller rate. The cost 
 high-frequency duty switching (5.1 vs 2.2 %/ms rms), well inside the slew limit. The 4 ms setting is still the one
 validated in Simulink and replayed by `native_onboard.cpp`.
 
+## Firmware 1.8: breakaway friction and unlimited runs
+
+**Why.** The first powered runs (2026-11-19, `data/runs/20261119_*`) never left the hanging rest on their own:
+the swing-up's kick asked for 11.1 % duty and the arm stayed stuck for 9–27 s, because the arm needs 13 % / 14 %
+to break free (the breakaway dead zone measured with Motor tests on 2026-11-07). No copy of the model had this:
+`furuta_rhs.m`, the Simscape harness plant, `estimation.py` and the controller's motor inverse all had only the
+identified sliding Coulomb friction (7.4 % / 7.3 %), smoothed with tanh(w0 / 0.1), so a torque below it still let
+the arm creep. Replaying the recorded 11.1 % duty through the model: without breakaway the arm moves 285° in
+6 s; with it, 0° (as on the rig).
+
+**Model.** Arm breakaway friction tsp = 13 % · 12 V / Rm = 0.4554 A, tsn = 14 % · 12 V / Rm = 0.4905 A (1.76 × the
+sliding friction), stick-slip (Karnopp): within |θ̇0| < 0.05 rad/s the friction holds the arm up to the breakaway
+and brings its speed to zero (2 ms time constant); above it the identified Coulomb + viscous friction applies.
+`desktop/furuta_lab/estimation.py` (`STICK`, `breakaway_from_deadzone`); parameter sets without tsp / tsn simulate
+exactly as before. The validation fits of the identified model are unchanged (within 2 points; the validation
+square waves are all above the dead zone).
+
+**Controller.** The swing-up's motor inverse adds the breakaway in the direction of the wanted arm acceleration
+when the arm is at rest, blending to the sliding Coulomb friction as it speeds up:
+`i = Ja a0 + Beq w0 + coul + stickGain · exp(-(w0/wStick)²) · (stat - coul)`, with `coul` the Coulomb term of 1.7,
+`stat = tsp·max(sa,0) + tsn·min(sa,0)`, `sa = tanh(a0/aStick)`. Knobs `tsp`, `tsn`, `stickGain` (1; 0 = the 1.7 law),
+`wStick` (0.2 rad/s), `aStick` (5 rad/s²); defaults generated into `include/onboard_stiction.h` by
+`firmware/tools/onboard_rates.py`. The kick from rest now asks for 24.1 % duty instead of 11.1 %. Closed-loop
+simulation on the model with breakaway: the 1.7 law never moves the arm (as on the rig); with the feedforward
+the swing-up is caught after 1.44 s (4 ms) / 1.45 s (2 ms), arm within 47°. The Simulink replay test runs with
+`stickGain` 0 (the harness runs predate it) and still matches to 6e-15; the C++ law equals the simulated one to 2e-11.
+The Simulink swing-up block does not have the feedforward yet (see `docs/HANDOFF_BREAKAWAY.md` on `sim-harness`).
+
+**Run length.** `maxDuration` 0 = no limit for onboard runs (and experiments): the run lasts until STOP / DISABLE,
+a trip, a fault, SafeStop or heartbeat loss. App: “No run-length limit”.
+
+**Controller period.** 1 ms never swung up on the rig (noisier speed estimates, jumpier duty, weaker pump), so the
+app's default is 4 ms again (the Simulink design); 2 ms also worked.
+
+Measured (12 V off, nothing armed): controller step 205 µs mean, 386 µs worst with the feedforward; no overruns.
+
 ## What the firmware does in an onboard run
 
 - Every Ts (1, 2 or 4 ms; every 1st, 2nd or 4th tick of the 1 ms loop): arm angle from the encoder (`armSign`, `countsPerRev`, marked centre), pendulum
@@ -92,10 +128,10 @@ shows every item below with ✓ / ✗ / ! (advisory), and the Start button stays
 is DISARMED, connected to firmware 1.6 or newer and the 12 V box is ticked. The firmware refuses `START_ONBOARD`
 on its own gates as well (see above).
 
-1. Flash firmware 1.7 (`cd firmware && pio run -t upload --upload-port COM11`). Flashing reboots the MCU:
+1. Flash firmware 1.8 (`cd firmware && pio run -t upload --upload-port COM11`). Flashing reboots the MCU:
    redo arm centre, pendulum-down reference and current zero on the Live tab (References), and check
    the encoder scale (Setup).
-   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.7)”.
+   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.8)”.
 2. Onboard control → **Read from device** (knobs), then **Apply these onboard-run limits to RAM**:
    run length (`maxDuration`, e.g. 20 s), maximum duty 50 %, slew 10000 %/s (= 100 /s; the old default
    is far too slow for feedback) and current trip 1.5 A. Travel stays as commissioned on Motor tests
