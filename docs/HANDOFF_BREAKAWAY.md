@@ -67,6 +67,19 @@ with `cfg.p` equals the old model to 5e-9 on 300 states. **Not run:** `test_harn
    `include/onboard_stiction.h` (written by `firmware/tools/onboard_rates.py`), delete that header, and remove
    `c.p.stickGain=0` from the replay in `test/native_onboard.cpp`.
 4. **Report section 10** (swing-up design): describe the breakaway feedforward and rerun the worst-case tests.
+5. **Balance friction compensation** (firmware 1.9 on `onboard-control`; `ctrl_hybrid.slx` friction compensation
+   block). On the rig with 1.8 the LQR's corrections (1-9 % duty) stuck below the 13 % breakaway; the arm broke
+   free with a lurch and the LQR saturated (run `20261119_205453_867500`). Make the block identical to 1.9:
+
+   ```matlab
+   s    = tanh(u0/fric.band);
+   coul = fric.duty(1)*max(s,0) + fric.duty(2)*min(s,0);              % identified Coulomb duty, as before
+   stat = (p.Rm*p.tsp*max(s,0) + p.Rm*p.tsn*min(s,0))/p.Vs;           % breakaway duty (13 % / 14 %)
+   g    = exp(-(w0/w_stick)^2);
+   u    = u0 + fric.gain*(coul + fric.stick*g*(stat - coul));
+   ```
+   Knobs: `D.fric.gain = 1` (was 0), `D.fric.stick = 1`. Python closed loop on the model with breakaway: arm stuck
+   41-49 % of the balance time without, 74-80 % with Coulomb only, 4 % with this; rerun `lqr_corner_test`.
 
 ## Results
 
@@ -81,4 +94,5 @@ with `cfg.p` equals the old model to 5e-9 on 300 states. **Not run:** `test_harn
 | Firmware 1.8 feedforward = simulated law | 2e-11 over 1500 steps; kick 24.1 % duty | yes (native C++) |
 | Swing-up from rest on the model with breakaway | old law stuck, new law caught at 1.44 s | yes, Python closed loop |
 | Swing-up from rest on the rig with firmware 1.8 | — | **unverified** (not run with power yet) |
-| Simscape plant / Simulink swing-up with breakaway | — | **to do** (steps 1–4) |
+| Firmware 1.9 balance compensation = simulated law | 1.5e-13; arm stuck 4 % vs 41-49 % (simulation) | yes (native C++, Python) |
+| Simscape plant / Simulink swing-up and balance with breakaway | — | **to do** (steps 1–5) |
