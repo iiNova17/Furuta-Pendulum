@@ -19,7 +19,8 @@ static int replay(const std::string& file) {
   if(!in){std::printf("missing %s\n",file.c_str());return 1;}
   std::string line;std::getline(in,line);
   // The harness runs predate the breakaway feedforward (1.8): replay with it off, i.e. the Simulink law.
-  OnboardController c;c.p.stickGain=0;c.p.fricGain=design::fricGain;c.reset();
+  // The replay runs predate 1.8 / 1.9 (no breakaway feedforward, no balance compensation): both off here.
+  OnboardController c;c.p.stickGain=0;c.p.fricGain=0;c.reset();
   double maxErr=0;size_t n=0,modeErr=0,firstBad=0;
   while(std::getline(in,line)) {
     double t,th0,th1,r,duty;int mode;

@@ -74,7 +74,7 @@ reached 3.0–3.2 A at each reversal against the back-EMF, the current sensor cl
 **Change.** The LQR output gets the friction compensation in the direction of its request, blending from the
 breakaway duty at rest (Rm·tsp/Vs = 13 %, 14 %) to the sliding Coulomb duty (7.4 %, 7.3 %) as the arm moves:
 `u = u0 + fricGain·(coul + fricStick·exp(-(w0/wStick)²)·(stat - coul))`, sign smoothed by tanh(u0/fricBand).
-**On by default** (`fricGain` 1, `fricStick` 1; the design file had `fricGain` 0); `fricGain` 0 in the knob table
+**On by default** (`fricGain` 1, `fricStick` 1, set in `ctrl_hybrid_design.m`, which had `fricGain` 0 before); `fricGain` 0 in the knob table
 gives the 1.8 behaviour, `fricStick` 0 the Coulomb-only compensation.
 
 **Simulation** (model with breakaway, 7 ms pendulum delay, sensor noise, 4 ms): the share of the balance time with
@@ -86,6 +86,10 @@ the lurch that followed. C++ law = simulated law to 1.5e-13; 226 µs per control
 **For the next run:** current trip on (default 4 A; positive currents clip the sensor at about +3.2 A first),
 maxDuty 50 % (what the design assumes), high-rate capture on, and Setup → “Save current profile to device NVS”
 so a reflash does not reset the profile.
+
+**Risk.** In the report's worst cases (Table 12, section 9.9) the full compensation tripped every case with a
+10 ms pendulum sensor lag, which the uncompensated design survived; the identified lag is 7 ms. If the balance
+oscillates, lower `fricGain` (e.g. 0.5) in the knob table; `fricGain` 0 is the 1.8 behaviour.
 
 ## Firmware 1.8: breakaway friction and unlimited runs
 
@@ -108,8 +112,8 @@ square waves are all above the dead zone).
 when the arm is at rest, blending to the sliding Coulomb friction as it speeds up:
 `i = Ja a0 + Beq w0 + coul + stickGain · exp(-(w0/wStick)²) · (stat - coul)`, with `coul` the Coulomb term of 1.7,
 `stat = tsp·max(sa,0) + tsn·min(sa,0)`, `sa = tanh(a0/aStick)`. Knobs `tsp`, `tsn`, `stickGain` (1; 0 = the 1.7 law),
-`wStick` (0.2 rad/s), `aStick` (5 rad/s²); defaults generated into `include/onboard_stiction.h` by
-`firmware/tools/onboard_rates.py`. The kick from rest now asks for 24.1 % duty instead of 11.1 %. Closed-loop
+`wStick` (0.2 rad/s), `aStick` (5 rad/s²); defaults from `ctrl_hybrid_design.m`, written into
+`include/onboard_design.h` by `export_onboard.m` (the measured breakaway comes from `furuta_params.m`). The kick from rest now asks for 24.1 % duty instead of 11.1 %. Closed-loop
 simulation on the model with breakaway: the 1.7 law never moves the arm (as on the rig); with the feedforward
 the swing-up is caught after 1.44 s (4 ms) / 1.45 s (2 ms), arm within 47°. The Simulink replay test runs with
 `stickGain` 0 (the harness runs predate it) and still matches to 6e-15; the C++ law equals the simulated one to 2e-11.

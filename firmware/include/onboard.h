@@ -11,13 +11,12 @@
 #include <string>
 #include "onboard_design.h"
 #include "onboard_rates.h"
-#include "onboard_stiction.h"
 
 namespace fw {
 struct OnboardParams {
   double Ts=design::Ts, velFc=design::velFc;
   double K[4]={design::K[0],design::K[1],design::K[2],design::K[3]};
-  double fricGain=stiction::fricGain, fricBand=design::fricBand, fricDutyPos=design::fricDutyPos, fricDutyNeg=design::fricDutyNeg;
+  double fricGain=design::fricGain, fricBand=design::fricBand, fricDutyPos=design::fricDutyPos, fricDutyNeg=design::fricDutyNeg;
   double catchTh1=design::catchTh1, catchW1=design::catchW1, exitTh1=design::exitTh1, safeTh0=design::safeTh0;
   bool rearm=design::rearm!=0;
   double E0=design::sw_E0, kE=design::sw_k_E, aPush=design::sw_a_push, wc=design::sw_wc, zc=design::sw_zc;
@@ -26,8 +25,8 @@ struct OnboardParams {
   double Jp=design::pl_Jp, G=design::pl_G, Ja=design::pl_Ja, Beq=design::pl_Beq, tcp=design::pl_tcp, tcn=design::pl_tcn;
   double Rm=design::pl_Rm, Kb=design::pl_Kb, Vs=design::pl_Vs;
   // 1.8: arm breakaway friction (measured dead zone) and how the swing-up's motor inverse uses it
-  double tsp=stiction::tsp, tsn=stiction::tsn, stickGain=stiction::stickGain, wStick=stiction::wStick, aStick=stiction::aStick;
-  double fricStick=stiction::fricStick;   // 1.9: breakaway part of the balance friction compensation (0 = 1.8)
+  double tsp=design::pl_tsp, tsn=design::pl_tsn, stickGain=design::sw_stick_gain, wStick=design::sw_w_stick, aStick=design::sw_a_stick;
+  double fricStick=design::fricStick;   // 1.9: breakaway part of the balance friction compensation (0 = 1.8)
   double r=0;               // arm reference [rad]
   bool swingUp=true;        // false: balance only (start near upright); losing the pendulum ends the run
   // Supported controller periods and their LQR gains (same Q, R as the design; onboard_rates.h).
