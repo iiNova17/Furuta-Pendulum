@@ -35,20 +35,33 @@ D.pid = struct('Kp', 0, 'Ki', 0, 'Kd', 0, 'N', 50, 'Kp0', 0, 'Kd0', 0);   % TODO
 D.pp.poles = [];                     % TODO 4 poles from your specs; empty = K = 0
 
 % ---- LQR owner (stab_lqr.slx) -------------------------------------------------------------------
-% K = dlqr(Ad, Bd, Q, R). Bryson's rule: Q = diag(1/max_x^2), R = 1/max_duty^2 (report section 8).
+% K = dlqr(Ad, Bd, Q, R). Bryson's rule: Q = diag(1/max_x^2), R = 1/max_duty^2 (report section 9).
 % Largest acceptable theta0 30 deg, theta1 8 deg, w0 20 rad/s, w1 30 rad/s, duty 0.10:
 % K = [-0.1795 -2.155 -0.1256 -0.1586]. Chosen for tolerance to delay (lqr_corner_test).
 D.lqr.Q = diag(1./[deg2rad(30) deg2rad(8) 20 30].^2);
 D.lqr.R = 1/0.10^2;
 
 % ---- swing-up owner (swingup_energy.slx) --------------------------------------------------------
-% Put your knobs in D.swing; the block reads ctrlP.swing.<name>.
-D.swing.k = 0;                       % TODO example knob used by the template block (u = 0 until set)
+% Energy pumping with a current-commanding motor inverse (report section 10; the block reads
+% ctrlP.swing.<name>). Starting values from physics: swingup_knobs.m. Energy e in units of 2G.
+% a_push and wc chosen from the design map and the worst cases (swingup_sweep, swingup_corner_test):
+% 48/48 worst-case runs, catch in 1.4-1.5 s, arm within 50 deg.
+D.swing.E0 = 0.048;                  % energy target above the top: friction loss of the last quarter swing
+D.swing.k_E = 21;                    % push fades within 1/k_E of the target (= 1/E0)
+D.swing.a_push = 80;                 % pivot acceleration while pumping [rad/s^2] (physics start: 52)
+D.swing.wc = 6.5;                    % arm centring natural frequency [rad/s] (physics start: 4.2)
+D.swing.zc = 0.7;                    % arm centring damping
+D.swing.a_kick = 69;                 % pivot acceleration of the kick from rest [rad/s^2]
+D.swing.kick_E = 0.0019;             % kick while e < -1 + kick_E (pendulum swings < 5 deg)
+D.swing.w_sign = 1;                  % smooth sign width on w1 cos(theta1) [rad/s]
+D.swing.w_fric = 1;                  % smooth sign width on w0 for the friction term [rad/s]
+D.swing.i_max = 1.0;                 % motor current command limit [A] (firmware trips at 1.5 A)
+D.swing.u_max = 0.45;                % duty limit (firmware clips at 0.5)
 
 % ---- friction compensation (ctrl_hybrid.slx), applied to the stabilizer output -----------------
 D.fric.gain = 0;                     % fraction of the identified Coulomb friction cancelled. 0 for the
                                      % first hardware tests; 1 once the measured loop delay is known to
-                                     % stay within one extra controller period (report section 8.9)
+                                     % stay within one extra controller period (report section 9.9)
 D.fric.band = 0.02;                  % width of the smooth sign [duty]
 
 P = merge(D, P);

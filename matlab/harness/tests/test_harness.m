@@ -107,8 +107,9 @@ end
 
 function test_hybrid_template_plumbing(tc)
 % The hybrid template (ctrl_hybrid.slx + its four law files) runs, the Stateflow supervisor switches
-% modes, and every stabilizer path reaches the output. Placeholder gains, so nothing balances.
-R = run_sim('ctrl_hybrid.slx', 'balance');
+% modes, and every stabilizer path reaches the output. The LQR is zeroed (empty Q -> K = 0) so the
+% pendulum falls whatever gains the owners have filled in.
+R = run_sim('ctrl_hybrid.slx', 'balance', 'Params', struct('stab', 3, 'lqr', struct('Q', [])));
 tc.verifyEqual(unique(R.mode(:)', 'stable'), [2 1]);     % starts in Stabilize, falls, SwingUp
 for s = 1:3                                               % 1 PID, 2 pole placement, 3 LQR
     P = struct('stab', s, 'pid', struct('Kp', 1), 'pp', struct('poles', [-5 -6 -7 -8]), ...
