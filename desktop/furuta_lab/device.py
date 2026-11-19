@@ -172,18 +172,21 @@ class Device:
             return self.rpc('ONBOARD_CONFIG',params=params)['params']
         return self.rpc('ONBOARD_GET')['params']
 
-    def run_onboard(self,swing_up=True):
+    def run_onboard(self,swing_up=None,**start):
         """Product mode: the ESP32 runs swing-up + LQR (or LQR only) until maxDuration, STOP or a trip.
 
         The laptop only keeps the heartbeat going (_loop) and receives telemetry; the 'ctrl' field of
-        every core row shows the controller state (wire.CTRL_NAMES).
+        every core row shows the controller state (wire.CTRL_NAMES). Extra keyword arguments are sent
+        with START_ONBOARD as they are (e.g. swingUp=False, or a controller selector in later firmware).
         """
         if self.inhibit:raise RuntimeError('Powered motion is not enabled in the interface')
         if not self.identity.get('onboardControl'):raise RuntimeError('Firmware without onboard control (flash 1.6)')
+        if swing_up is not None:start['swingUp']=bool(swing_up)
+        start.setdefault('swingUp',True)
         generation=self.generation
         def check():
             if self.inhibit or generation!=self.generation:raise RuntimeError('Run canceled by STOP')
-        check();self.rpc('ARM');check();r=self.rpc('START_ONBOARD',swingUp=bool(swing_up))
+        check();self.rpc('ARM');check();r=self.rpc('START_ONBOARD',**start)
         self.log(f"Onboard controller started: {r.get('mode')}, up to {r.get('seconds')} s"+(f" ({r['warning']})" if r.get('warning') else ''))
         return r
 
@@ -207,12 +210,29 @@ class Device:
     def _capture(self,seconds,progress=None,cancel=None):
         if self.status.get('state')!='DISARMED':raise RuntimeError('Still capture requires DISARMED')
         self.rpc('CAPTURE_BURST',seconds=seconds,withRun=False)
-        deadline=time.monotonic()+seconds+5
+        result=self.download_burst(seconds+5,progress,cancel,'Recording still data')
+        if len(result['core']) and np.any(result['core']['applied']!=0):raise RuntimeError('Still recording contained motor drive')
+        return result
+
+    def arm_burst(self,seconds):
+        """High-rate capture that starts with the next run (500 Hz core records, current at adcHz) into MCU memory."""
+        if self.status.get('state')!='DISARMED':raise RuntimeError('Disarm before arming a capture')
+        return self.rpc('CAPTURE_BURST',seconds=float(seconds),withRun=True)
+
+    def onboard_bench(self,steps=2000):
+        """Microseconds per onboard controller step on the MCU (private copy; no effect on runs)."""
+        if not self.identity.get('onboardControl'):raise RuntimeError('Firmware without onboard control')
+        return self.rpc('ONBOARD_BENCH',steps=int(steps))
+
+    def download_burst(self,timeout=10.,progress=None,cancel=None,label='Waiting for the capture'):
+        """Wait until the MCU capture is complete, then download it: {'adc','core','config','status','info'}."""
+        deadline=time.monotonic()+timeout
         while True:
             if cancel and cancel.is_set():raise RuntimeError('Capture download canceled')
             info=self.rpc('BURST_INFO')
-            if not info['active']:break
-            if progress:progress(f'Recording still data: {max(0,deadline-time.monotonic()-5):.1f} s remaining')
+            if not info['active'] and not info.get('pending'):break
+            if info.get('pending') and not info['active']:raise RuntimeError('The capture never started (no run reached RUNNING)')
+            if progress:progress(f'{label}: {max(0,deadline-time.monotonic()-5):.1f} s remaining')
             if time.monotonic()>deadline:raise TimeoutError('Capture did not finish')
             time.sleep(.1)
         if info.get('overflow'):raise RuntimeError('Capture overflow; reduce duration')
@@ -233,7 +253,6 @@ class Device:
         finally:
             if self.connected:self.rpc('START_STREAM')
         result['config']=copy.deepcopy(self.config);result['status']=copy.deepcopy(self.status);result['info']=info
-        if len(result['core']) and np.any(result['core']['applied']!=0):raise RuntimeError('Still recording contained motor drive')
         return result
 
     def start_record(self,path,metadata):

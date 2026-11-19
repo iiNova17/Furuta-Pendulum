@@ -1469,7 +1469,7 @@ The controllers of this work are designed once, in the harness, but there are tw
 
 \textbf{1. Hardware in the loop.} The controller, including its Stateflow supervisor, runs in Simulink on the computer, using the Hardware variant of the Rig. Every 4\,ms the firmware streams the measurements, and Simulink answers with the duty cycle, which the firmware applies through its safety path. This mode runs exactly the files that were designed and tested in the harness, so a change to a law can be tried on the rig without touching the firmware, and it is the mode required by the project brief, in which the hybrid controller runs against the real hardware. However, the USB link is inside the control loop, and its delay has not been measured yet. The worst cases with one additional controller period of delay (sections~\ref{sec:lqr_corners} and~\ref{sec:su_corners}) represent this mode.
 
-\textbf{2. Onboard.} The same controller runs on the ESP32, inside the 1\,kHz firmware loop: every fourth firmware period, the estimator, the LQR, the energy swing-up and the supervisor are evaluated from the encoder count and the latest AS5600 reading, and the resulting duty request passes through the same safety path as before. The computer only sends commands (the controller knobs, start and stop), keeps the heartbeat going and receives the telemetry, in which a spare byte of every record now carries the state of the supervisor, so the lab application and the digital twin can show it. Since no USB link is inside the loop, this mode has the nominal timing of the designs, which is why it is the intended mode for the finished device.
+\textbf{2. Onboard.} The same controller runs on the ESP32, inside the 1\,kHz firmware loop: every fourth firmware period by default (every first or second period can be selected, with the LQR gain of the same weights for that period), the estimator, the LQR, the energy swing-up and the supervisor are evaluated from the encoder count and the latest AS5600 reading (read at 1\,kHz, timed to finish just before the control tick), and the resulting duty request passes through the same safety path as before. The computer only sends commands (the controller knobs, start and stop), keeps the heartbeat going and receives the telemetry, in which a spare byte of every record now carries the state of the supervisor, so the lab application and the digital twin can show it. Since no USB link is inside the loop, this mode has the nominal timing of the designs, which is why it is the intended mode for the finished device.
 
 \begin{table}[h]
 \centering
@@ -1482,15 +1482,15 @@ The controllers of this work are designed once, in the harness, but there are tw
 \midrule
 Controller runs in & Simulink on the computer & ESP32 firmware (C++) \\
 Inside the loop & USB link, both directions & nothing \\
-Loop timing & 4\,ms plus the USB delay & 4\,ms \\
+Loop timing & 4\,ms plus the USB delay & 4\,ms (2 or 1\,ms selectable) \\
 Computer & runs the controller & commands, knobs, telemetry, twin \\
 Changing a law & edit the Simulink file & re-export and flash the firmware \\
-Status & Hardware variant not built & built, verified against the harness \\
+Status & Hardware variant not built & built (firmware 1.9), first runs on the rig \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-Since the onboard mode is a second copy of the controller, it is required that both copies compute the same duty cycle, otherwise the simulation results of sections~\ref{sec:lqr} and~\ref{sec:swingup} would not apply to it. To ensure this, every number of the onboard copy (the gain $K$, the swing-up knobs, the guards of the supervisor, the estimator and the plant constants) is written by the script \texttt{export\_onboard.m} from the design file \texttt{ctrl\_hybrid\_design.m} into a generated header of the firmware, so the design exists only once. Furthermore, the same script records the measured angles that the Simulink controller received in a swing-up test and in a push test, together with the duty cycle it commanded, and a native test of the firmware (\nolinkurl{firmware/test/native_onboard.cpp}) feeds the same angles to the C++ controller. Over the 3751 periods of the swing-up and the 1501 periods of the push test, the largest difference in the duty cycle was $7\times10^{-15}$, and the supervisor was in the same state in every period, which shows that the two copies are the same controller up to the round-off of floating-point arithmetic.
+Since the onboard mode is a second copy of the controller, it is required that both copies compute the same duty cycle, otherwise the simulation results of sections~\ref{sec:lqr} and~\ref{sec:swingup} would not apply to it. To ensure this, every number of the onboard copy (the gain $K$, the swing-up knobs, the guards of the supervisor, the estimator and the plant constants) is written by the script \texttt{export\_onboard.m} from the design file \texttt{ctrl\_hybrid\_design.m} into a generated header of the firmware, so the design exists only once. Furthermore, the same script records the measured angles that the Simulink controller received in a swing-up test and in a push test, together with the duty cycle it commanded, and a native test of the firmware (\nolinkurl{firmware/test/native_onboard.cpp}) feeds the same angles to the C++ controller. Over the 3751 periods of the swing-up and the 1501 periods of the push test, the largest difference in the duty cycle was $7\times10^{-15}$, and the supervisor was in the same state in every period, which shows that the two copies are the same controller up to the round-off of floating-point arithmetic. Since then, the first hardware runs led to two additions that deal with the breakaway friction of the arm (equation~\ref{eq:stick}): a breakaway feedforward in the swing-up (section~\ref{sec:su_law}) and a breakaway part in the friction compensation of the LQR (section~\ref{sec:lqr_fric}). Their knobs are in the design file and in the generated header as well, but the Simulink blocks do not have them yet, so the replay test runs with both switched off.
 
 Before an onboard run starts, the firmware requires, in addition to the arming conditions of the experiments (centered arm, commissioned limits and, with the current trip enabled, a calibrated current zero), the encoder scale, the pendulum-down reference, a fresh pendulum reading, and the arm and pendulum signs of the device profile to be those with which the model was identified ($+1$ and $-1$, see section~\ref{sec:estimation}), since a flipped sign would make the controller push the pendulum the wrong way. During the run, the firmware stops the motor if the pendulum reading is older than 20\,ms, when the supervisor enters SafeStop, and at the end of the run length set in the profile. A balance-only option skips the swing-up and ends the run as soon as the pendulum leaves the catch region, which allows the LQR to be tested on its own first, by releasing the pendulum near upright by hand.
 
@@ -1860,6 +1860,13 @@ $k_f$ & Nominal timing & Lag 10\,ms & ITAE, nominal timing [rad\,s$^2$] \\
 \end{tabular}
 \end{table}
 
+The first runs on the hardware showed that the arm does not start at 7.4\,\% but only at the breakaway of 13\,\% and 14\,\% (see equation~\ref{eq:breakaway}). With $k_f = 0$, the pendulum was caught and balanced, then the arm stuck at $19^\circ$ for 0.4\,s while the LQR asked for 1 to 9\,\% duty cycle, the pendulum leaned to $-3.5^\circ$ until the request reached $-19\,\%$, and the arm broke free with a lurch that saturated the LQR. Since the compensation of equation~\ref{eq:fric_comp} adds only the sliding friction, it cannot move an arm at rest either. Therefore, the compensation was extended with the breakaway, which applies while the arm is at rest and fades as it moves:
+\begin{equation}
+  d = d_{\mathrm{LQR}} + k_f \left( d_c(\sigma) + k_s\, e^{-(\dot\theta_0/\omega_s)^2} \left( d_s(\sigma) - d_c(\sigma) \right) \right),
+  \label{eq:fric_comp_stick}
+\end{equation}
+where $d_c(\sigma)$ is the bracket of equation~\ref{eq:fric_comp}, $d_s(\sigma) = d_{s+}\max(\sigma, 0) + d_{s-}\min(\sigma, 0)$ with $d_{s\pm} = R_m \tilde\tau_{s\pm}/V_s = 0.130$ and $0.140$, $\omega_s = 0.2\,\mathrm{rad/s}$, and $k_s = 1$ switches the breakaway part on. In a simulation of the model with the breakaway friction, the 7\,ms pendulum lag and sensor noise, the arm was stuck during 41 to 49\,\% of the balance time without compensation, 74 to 80\,\% with the sliding friction alone ($k_s = 0$), and \textbf{4\,\%} with equation~\ref{eq:fric_comp_stick}, while the pendulum stayed within about $1^\circ$ rms instead of $2^\circ$. However, as Table~\ref{tab:lqr_fric} shows, the full compensation does not tolerate a pendulum sensor lag of 10\,ms, which the uncompensated design survived. The lag identified in section~\ref{sec:estimation} is 7\,ms, and the firmware now reads the AS5600 so that its reading is about 0.5\,ms younger at the controller, but the margin is small, so this remains the main risk of the compensation on the hardware, and $k_f$ can be lowered from the lab application without a new firmware.
+
 \subsection{Final Design}
 \label{sec:lqr_final}
 Since the loop delay of the hardware-in-the-loop setup has not yet been measured, and the timing turned out to be the uncertainty that our design is most sensitive to, the soft weighting was selected:
@@ -1873,19 +1880,19 @@ which by equation~\ref{eq:bryson} gives $Q = \operatorname{diag}(3.648,\ 51.29,\
 \end{equation}
 with the duty cycle as output and the angles in radians. The closed-loop poles are $-5.08 \pm 1.17j$ and $-25.3 \pm 8.50j\,\mathrm{rad/s}$ ($|z| = 0.980$ and $0.904$), so the fast pair reacts about twice as fast as the open-loop pendulum falls ($+12.26\,\mathrm{rad/s}$), and the slow pair returns the arm to the center. The loop has a phase margin of $60.6^\circ$, and the gain can drop by a factor of 2.36 before the pendulum is lost. The fast pair also stays more than thirty times below the neglected electrical pole of about $-1000\,\mathrm{rad/s}$, so the reduced model of section~\ref{sec:ssmodels} remains valid for this design.
 
-The friction compensation is introduced in two stages. The first hardware tests use $k_f = 0$, which passed 22 of the 24 worst-case tests without a single trip. Once the measured loop delay is known to stay within one additional controller period of the nominal timing, $k_f$ is raised to 1, which passed all 16 tests at nominal timing and one additional period and recovers from the push more than five times faster. These values are set in \nolinkurl{matlab/harness/controllers/hybrid/ctrl_hybrid_design.m}, and the worst-case test is implemented in \texttt{lqr\_corner\_test.m} in the same folder, so any later change of the weights can be checked in the same way.
+The friction compensation is introduced in two stages. The first hardware tests use $k_f = 0$, which passed 22 of the 24 worst-case tests without a single trip. Once the measured loop delay is known to stay within one additional controller period of the nominal timing, $k_f$ is raised to 1, which passed all 16 tests at nominal timing and one additional period and recovers from the push more than five times faster. After the first hardware runs (section~\ref{sec:lqr_fric}), $k_f = 1$ with the breakaway part $k_s = 1$ of equation~\ref{eq:fric_comp_stick} is used from firmware 1.9 on; the worst-case tests above have not yet been repeated with it, since the Simulink compensation block implements only equation~\ref{eq:fric_comp}. These values are set in \nolinkurl{matlab/harness/controllers/hybrid/ctrl_hybrid_design.m}, and the worst-case test is implemented in \texttt{lqr\_corner\_test.m} in the same folder, so any later change of the weights can be checked in the same way.
 
 \subsection{Limitations}
 Limitations of the presented design are:
 \begin{enumerate}
-  \item All results are simulations of the identified model; the controller has not yet been run on the hardware.
+  \item The results are simulations of the identified model. On the hardware (onboard mode, 2026-11-19), the LQR caught and balanced the pendulum, but without compensation the arm stuck below its breakaway and the run ended (section~\ref{sec:lqr_fric}); the compensation of equation~\ref{eq:fric_comp_stick} has not yet been tested on the hardware.
   \item The timing uncertainty is represented by two discrete cases:
   \begin{enumerate}
     \item the USB delay of the hardware-in-the-loop link is not measured, so the case of one additional controller period is an assumption about its size;
     \item intermediate lags and a combination of the two delays were not tested in the worst-case set.
   \end{enumerate}
   \item The design space was sampled with one simulation per point, so the boundaries of Figure~\ref{fig:lqr_map} are affected by sensor noise, which is why a current margin of 0.15\,A was kept.
-  \item The gearbox play and the flattening of the arm friction at higher speeds (see section~\ref{sec:estimation}) are not modeled. Both affect the friction limit cycle and the friction compensation more than the linear part of the design.
+  \item The gearbox play and the flattening of the arm friction at higher speeds (see section~\ref{sec:estimation}) are not modeled, and the breakaway friction is in the model (equation~\ref{eq:stick}) but not yet in the Simscape plant used for the worst cases. All three affect the friction limit cycle and the friction compensation more than the linear part of the design.
   \item The velocities are estimated by filtered differences. A model-based observer that removes part of the sensor lag would allow a stiffer gain, which is not covered by this design.
 \end{enumerate}
 
@@ -1950,6 +1957,13 @@ where $\omega_c$ and $\zeta_c$ are the natural frequency and damping of the cent
   \label{eq:su_current}
 \end{equation}
 where the friction torque uses the smooth sign of $\dot\theta_0$ over a band $\omega_f$. Since the back-EMF term $K_b\,\dot\theta_0$ is added to the duty cycle, reversing the commanded acceleration while the arm moves reverses the current only up to $i_{\max}$, instead of producing the current spike of section~\ref{sec:lqr_sim}. Thus, this form addresses the binding limit of our rig directly, and if the duty limit $d_{\max}$ is reached, the clipping lowers the current further instead of raising it.
+
+\textbf{Breakaway feedforward.} On the hardware, the kick from the hanging rest commanded $\tilde J_a a_k = 0.39\,\mathrm{A}$, or 11.1\,\% duty cycle, since the friction term of equation~\ref{eq:su_current} is zero at rest, and the arm stayed still for 9 to 27\,s, because it needs 13\,\% to break free (equation~\ref{eq:breakaway}). Therefore, the friction term was extended in the same way as the compensation of the LQR: with the arm at rest it is the breakaway in the direction of the commanded acceleration, fading to the sliding friction as the arm moves,
+\begin{equation}
+  \tilde\tau_f = \tilde\tau_c(\dot\theta_0) + k_{st}\, e^{-(\dot\theta_0/\omega_{st})^2} \left( \tilde\tau_s(\sigma_a) - \tilde\tau_c(\dot\theta_0) \right), \qquad \sigma_a = \tanh\!\left(\frac{\ddot\theta_{0,\mathrm{cmd}}}{a_{st}}\right),
+  \label{eq:su_stick}
+\end{equation}
+which replaces $\tilde\tau_c(\dot\theta_0)$ in equation~\ref{eq:su_current}, where $\tilde\tau_s(\sigma_a) = \tilde\tau_{s+}\max(\sigma_a, 0) + \tilde\tau_{s-}\min(\sigma_a, 0)$, $k_{st} = 1$, $\omega_{st} = 0.2\,\mathrm{rad/s}$ and $a_{st} = 5\,\mathrm{rad/s^2}$. The kick from rest then commands 24.1\,\% duty cycle. In a simulation of the model with the breakaway friction, the law without it never moves the arm, as on the hardware, while with it the pendulum is caught after 1.44\,s with the arm within $47^\circ$, as in the nominal design below.
 
 \subsection{Starting Values from Physics}
 \label{sec:su_physics}
@@ -2068,7 +2082,7 @@ Of the two designs that passed all 48 tests, $a_p = 80\,\mathrm{rad/s^2}$ with $
   \boxed{E_0 = 0.048,\quad k_E = 21,\quad a_p = 80\,\mathrm{rad/s^2},\quad \omega_c = 6.5\,\mathrm{rad/s},\quad \zeta_c = 0.7,\quad a_k = 69\,\mathrm{rad/s^2}}
   \label{eq:su_final}
 \end{equation}
-with $e_k = 0.0019$, $\omega_s = \omega_f = 1\,\mathrm{rad/s}$, $i_{\max} = 1.0\,\mathrm{A}$ and $d_{\max} = 0.45$.
+with $e_k = 0.0019$, $\omega_s = \omega_f = 1\,\mathrm{rad/s}$, $i_{\max} = 1.0\,\mathrm{A}$ and $d_{\max} = 0.45$, and, since the first hardware runs, the breakaway feedforward of equation~\ref{eq:su_stick}.
 
 \begin{figure}[h]
 \centering
@@ -2077,12 +2091,12 @@ with $e_k = 0.0019$, $\omega_s = \omega_f = 1\,\mathrm{rad/s}$, $i_{\max} = 1.0\
 \label{fig:su_run}
 \end{figure}
 
-Figure~\ref{fig:su_run} shows the final design with the nominal model. The energy rises from $-1$ to the target in less than 1.5\,s, the pendulum is caught after \textbf{1.47\,s} with a peak current of 0.82\,A over the whole run, and the arm stays within $47^\circ$. After the catch, the pendulum stays within $3^\circ$, while the arm swings by about $\pm 21^\circ$, which is the friction limit cycle of the soft LQR without compensation (see section~\ref{sec:lqr_fric}). In the worst cases, the hand-over states lie between $\theta_1 = -17.6$ and $-16.1^\circ$ with $\dot\theta_1$ between 4.6 and 5.5\,rad/s, inside the held band of Figure~\ref{fig:su_catch}. The law is implemented in the block \texttt{energy law} of \nolinkurl{matlab/harness/controllers/hybrid/swingup_energy.slx}, its knobs are set in \texttt{ctrl\_hybrid\_design.m}, and the tools of this section (\texttt{swingup\_knobs}, \texttt{swingup\_catch\_region}, \texttt{swingup\_workbench}, \texttt{swingup\_sweep} and \texttt{swingup\_corner\_test}) are in the same folder. The complete hybrid controller, swing-up followed by the catch with the LQR of section~\ref{sec:lqr_final}, also runs on the ESP32 in the onboard mode of section~\ref{sec:harness_modes}, where it reproduces the duty cycle of this swing-up run to $7\times10^{-15}$.
+Figure~\ref{fig:su_run} shows the final design with the nominal model. The energy rises from $-1$ to the target in less than 1.5\,s, the pendulum is caught after \textbf{1.47\,s} with a peak current of 0.82\,A over the whole run, and the arm stays within $47^\circ$. After the catch, the pendulum stays within $3^\circ$, while the arm swings by about $\pm 21^\circ$, which is the friction limit cycle of the soft LQR without compensation (see section~\ref{sec:lqr_fric}). In the worst cases, the hand-over states lie between $\theta_1 = -17.6$ and $-16.1^\circ$ with $\dot\theta_1$ between 4.6 and 5.5\,rad/s, inside the held band of Figure~\ref{fig:su_catch}. The law is implemented in the block \texttt{energy law} of \nolinkurl{matlab/harness/controllers/hybrid/swingup_energy.slx}, its knobs are set in \texttt{ctrl\_hybrid\_design.m}, and the tools of this section (\texttt{swingup\_knobs}, \texttt{swingup\_catch\_region}, \texttt{swingup\_workbench}, \texttt{swingup\_sweep} and \texttt{swingup\_corner\_test}) are in the same folder. The complete hybrid controller, swing-up followed by the catch with the LQR of section~\ref{sec:lqr_final}, also runs on the ESP32 in the onboard mode of section~\ref{sec:harness_modes}, where it reproduces the duty cycle of this swing-up run to $7\times10^{-15}$ (with the breakaway terms switched off, since the Simulink blocks do not have them yet).
 
 \subsection{Limitations}
 Limitations of the presented design are:
 \begin{enumerate}
-  \item All results are simulations of the identified model; the swing-up has not yet been run on the hardware.
+  \item The results are simulations of the identified model. On the hardware, the law of equation~\ref{eq:su_current} could not start from rest (below the breakaway); with the feedforward of equation~\ref{eq:su_stick} the pendulum was swung up and caught after 1.16\,s with the arm at 3\,rad/s, while the worst-case tests of this section have not yet been repeated with the feedforward.
   \item The push size has a narrow tolerance of about $\pm 5\,\%$. Since the current command of equation~\ref{eq:su_current} relies on the identified $\tilde J_a$ and Coulomb friction, an error in these values changes the effective push:
   \begin{enumerate}
     \item the corner plants vary only the arm viscous friction, not $\tilde J_a$ or the Coulomb friction, which are known to about 1\,\%;

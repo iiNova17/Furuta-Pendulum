@@ -31,6 +31,7 @@ SPECS = [
     Spec('applied', 'Applied duty', '%', 'fraction', '#b52931', 'Drive'),
     Spec('mag_status', 'Magnet status', 'bits', 'bits', '#5d6d7e', 'Magnet'),
     Spec('agc', 'Magnet AGC', 'code', 'code', '#8e44ad', 'Magnet'),
+    Spec('ctrl', 'Onboard controller state', 'code', 'code', '#1f7a4d', 'Onboard'),
 ]
 BY_KEY = {s.key: s for s in SPECS}
 DEFAULT_KEYS = ['arm_deg', 'pend_deg', 'current_smooth', 'applied']
@@ -175,6 +176,10 @@ def compute(rows, config, center=None, centered=False, raw=False, smooth_hz=20.,
     # Magnet
     out['mag_status'] = Series(BY_KEY['mag_status'], rows['mag_status'].astype(float), 'bits', 'MD=0x20 ML=0x10 MH=0x08')
     out['agc'] = Series(BY_KEY['agc'], rows['agc'].astype(float), 'code')
+
+    # Onboard controller state (firmware 1.6; older records carry 0 in this byte)
+    ctrl = rows['ctrl'].astype(float) if 'ctrl' in (rows.dtype.names or ()) else np.zeros(len(rows))
+    out['ctrl'] = Series(BY_KEY['ctrl'], ctrl, 'code', '0 off · 1 SafeStop · 2 SwingUp · 3 Stabilize')
     return t, out
 
 
@@ -231,8 +236,13 @@ def continuous_angle(t, y):
 
 
 RAW_FIELDS = ['device_us', 'seq', 'count', 'pend_raw', 'adc_raw', 'current_mv', 'filtered_mv', 'requested', 'applied',
-              'mag_status', 'agc', 'magnitude', 'validity', 'limits', 'state', 'pend_age_us', 'adc_age_us']
+              'mag_status', 'agc', 'magnitude', 'validity', 'limits', 'state', 'pend_age_us', 'adc_age_us', 'ctrl']
 HEX_FIELDS = {'mag_status', 'validity', 'limits'}
+
+
+def field(row, name):
+    """row[name], or 0 for a field older recordings do not have (e.g. 'ctrl' before firmware 1.6)."""
+    return row[name] if name in (row.dtype.names or ()) else 0
 
 
 def raw_text(name, value):
@@ -252,7 +262,7 @@ def export_csv(path, rows, series, t):
         w.writerow(['t_s'] + RAW_FIELDS + [f'{k} [{series[k].unit}]' for k in keys])
         for i in range(len(rows)):
             r = rows[i]
-            w.writerow([f'{t[i]:.6f}'] + [raw_text(n, r[n]) for n in RAW_FIELDS] +
+            w.writerow([f'{t[i]:.6f}'] + [raw_text(n, field(r, n)) for n in RAW_FIELDS] +
                        ['' if not np.isfinite(series[k].values[i]) else f'{series[k].values[i]:.6g}' for k in keys])
 
 

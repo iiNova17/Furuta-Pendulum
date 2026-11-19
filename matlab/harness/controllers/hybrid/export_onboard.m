@@ -29,17 +29,19 @@ L{end+1} = add('fricGain', P.fric.gain, '');
 L{end+1} = add('fricBand', P.fric.band, '');
 L{end+1} = add('fricDutyPos', P.fric.duty(1), '');
 L{end+1} = add('fricDutyNeg', P.fric.duty(2), '');
+L{end+1} = add('fricStick', P.fric.stick, '        // 1.9: breakaway part of the balance compensation');
 L{end+1} = add('catchTh1', P.sup.catch_th1, '');
 L{end+1} = add('catchW1', P.sup.catch_w1, '');
 L{end+1} = add('exitTh1', P.sup.exit_th1, '');
 L{end+1} = add('safeTh0', P.sup.safe_th0, '');
 L{end+1} = add('rearm', P.sup.rearm, '');
 s = P.swing;
-for f = {'E0', 'k_E', 'a_push', 'wc', 'zc', 'a_kick', 'kick_E', 'w_sign', 'w_fric', 'i_max', 'u_max'}
+for f = {'E0', 'k_E', 'a_push', 'wc', 'zc', 'a_kick', 'kick_E', 'w_sign', 'w_fric', 'i_max', 'u_max', ...
+         'stick_gain', 'w_stick', 'a_stick'}
     L{end+1} = add(['sw_' f{1}], s.(f{1}), ''); %#ok<AGROW>
 end
 m = P.plant;
-for f = {'Jp', 'G', 'Ja', 'Beq', 'tcp', 'tcn', 'Rm', 'Kb', 'Vs'}
+for f = {'Jp', 'G', 'Ja', 'Beq', 'tcp', 'tcn', 'Rm', 'Kb', 'Vs', 'tsp', 'tsn'}
     L{end+1} = add(['pl_' f{1}], m.(f{1}), ''); %#ok<AGROW>
 end
 L{end+1} = 'constexpr int modelArmSign = 1;    // device profile signs the identified model was fitted with';

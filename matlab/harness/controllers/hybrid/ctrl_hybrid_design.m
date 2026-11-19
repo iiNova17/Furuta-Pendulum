@@ -57,11 +57,20 @@ D.swing.w_sign = 1;                  % smooth sign width on w1 cos(theta1) [rad/
 D.swing.w_fric = 1;                  % smooth sign width on w0 for the friction term [rad/s]
 D.swing.i_max = 1.0;                 % motor current command limit [A] (firmware trips at 1.5 A)
 D.swing.u_max = 0.45;                % duty limit (firmware clips at 0.5)
+% Breakaway feedforward in the motor inverse (firmware 1.8): with the arm at rest the friction term is the
+% breakaway (13 % / 14 % duty, measured) in the direction of a0, fading to the Coulomb term as the arm moves.
+% On the rig the kick from rest asked for 11 % duty without it and the arm never moved (2026-11-19).
+D.swing.stick_gain = 1;              % 1 = on, 0 = off (the law before 1.8)
+D.swing.w_stick = 0.2;               % arm speed over which the breakaway part fades, exp(-(w0/w_stick)^2) [rad/s]
+D.swing.a_stick = 5;                 % smooth sign width on a0 for the breakaway part [rad/s^2]
 
 % ---- friction compensation (ctrl_hybrid.slx), applied to the stabilizer output -----------------
-D.fric.gain = 0;                     % fraction of the identified Coulomb friction cancelled. 0 for the
-                                     % first hardware tests; 1 once the measured loop delay is known to
-                                     % stay within one extra controller period (report section 9.9)
+D.fric.gain = 1;                     % fraction of the identified friction cancelled (was 0 for the first
+                                     % hardware tests, report section 9.9). Set to 1 for firmware 1.9: with 0 the
+                                     % LQR's corrections stuck below the 13 % breakaway and the arm lurched free
+                                     % (run 20261119_205453); simulation: arm stuck 41-49 % of the time, 4 % with
+                                     % gain 1 and stick 1.
+D.fric.stick = 1;                    % 1.9: breakaway duty at rest, fading to Coulomb as the arm moves; 0 = Coulomb only
 D.fric.band = 0.02;                  % width of the smooth sign [duty]
 
 P = merge(D, P);
@@ -77,6 +86,12 @@ p = cfg.p;
 P.fric.duty = [p.Rm*p.tcp, p.Rm*p.tcn]/p.Vs;     % identified Coulomb friction as duty (report 5.7)
 P.plant = struct('Jp', p.Jp, 'G', p.G, 'h', p.h, 'Ja', p.Ja, 'Beq', p.Beq, ...
                  'tcp', p.tcp, 'tcn', p.tcn, 'Rm', p.Rm, 'Kb', p.Kb, 'Vs', p.Vs);
+% arm breakaway friction (measured dead zone), also when the harness plant runs without it (harness_config)
+bk = struct('tsp', 0, 'tsn', 0);
+if isfield(cfg, 'breakaway'), bk = cfg.breakaway; end
+P.plant.tsp = bk.tsp;
+P.plant.tsn = bk.tsn;
+P.fric.stick_duty = [p.Rm*bk.tsp, p.Rm*bk.tsn]/p.Vs;   % breakaway as duty (13 % / 14 %)
 P = no_empty(P);     % Simulink/Stateflow parameters cannot hold empty fields
 end
 

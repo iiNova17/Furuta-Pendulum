@@ -17,9 +17,13 @@ Rig (Variant Subsystem):  Simulation = HIL link -> firmware -> plant (report mod
 
 | | 1. Hardware in the loop | 2. Onboard (product mode) |
 |---|---|---|
-| Controller runs in | Simulink on the laptop, this harness with `cfg.rig = 'Hardware'` | ESP32 firmware 1.6 (`firmware/include/onboard.h`) |
+| Controller runs in | Simulink on the laptop, this harness with `cfg.rig = 'Hardware'` | ESP32 firmware 1.9 (`firmware/include/onboard.h`), started from the app's Onboard control tab |
 | Loop | USB both ways (delay unmeasured) | inside the 1 kHz firmware loop, 4 ms period |
-| Status | not built (Hardware variant + firmware duty message) | built, equal to the harness to 7e-15, not yet run on the rig |
+| Status | not built (Hardware variant + firmware duty message) | built, equal to the harness to 7e-13 with the breakaway terms off; first rig runs 2026-11-19 (caught, balanced, then stuck below the breakaway: fixed in 1.9, `docs/ONBOARD_CONTROL.md`) |
+
+Breakaway friction: the design (`ctrl_hybrid_design.m`) and the firmware have the swing-up breakaway feedforward and
+the breakaway-aware balance compensation; the Simscape plant and the Simulink blocks do not yet, so the harness
+plant runs without the breakaway (`harness_config.m`) until `docs/HANDOFF_BREAKAWAY.md` steps 1, 2 and 5 are done.
 
 One design, two copies: `controllers/hybrid/export_onboard.m` writes `firmware/include/onboard_design.h`
 from `ctrl_hybrid_design.m`, plus replay files that `firmware/test/native_onboard.cpp` uses to require the

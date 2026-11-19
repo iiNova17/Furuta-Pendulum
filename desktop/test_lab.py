@@ -136,6 +136,122 @@ class LabTests(unittest.TestCase):
         self.assertEqual([x[2] for x in w],[10,-10,15,-15,20,-20])
         with self.assertRaises(ValueError):A.deadzone_sequence(5,1,start_pct=10)
 
+    # ------------------------------------------------------------ onboard control page (firmware 1.6)
+    def test_run_onboard_sends_start_arguments(self):
+        from furuta_lab.device import Device
+        d=Device();calls=[];d.identity={'onboardControl':True};d.inhibit=False
+        d.rpc=lambda op,**a:(calls.append((op,a)),{'ok':True,'mode':'x','seconds':20})[1]
+        d.run_onboard(swing_up=False);d.run_onboard(swingUp=True);d.run_onboard()
+        self.assertEqual(calls,[('ARM',{}),('START_ONBOARD',{'swingUp':False}),('ARM',{}),('START_ONBOARD',{'swingUp':True}),
+                                ('ARM',{}),('START_ONBOARD',{'swingUp':True})])
+        d.stop()
+        with self.assertRaises(RuntimeError):d.run_onboard()
+    def test_onboard_page_knobs_checks_and_summary(self):
+        from PySide6.QtWidgets import QApplication
+        from furuta_lab.app import LabApp
+        from furuta_lab import onboard_page as O
+        app=QApplication.instance() or QApplication([]);w=LabApp();p=w.onboard
+        self.assertEqual(w.nav.tabText(4),'Onboard control');self.assertFalse(p.start_button.isEnabled())
+        w.refresh();self.assertFalse(p.start_button.isEnabled())
+        with self.assertRaises(RuntimeError):p.start()                     # not connected
+        params={'K0':-.18,'K1':-2.155,'aPush':80.,'swingUp':True,'Ts':.004,'modelArmSign':1,'modelPendSign':-1}
+        p.params_loaded(params);self.assertEqual(p.edited(),{})
+        row=[r for r in range(p.table.rowCount()) if p.table.item(r,0).text()=='aPush'][0]
+        p.table.item(row,1).setText('84');self.assertEqual(p.edited(),{'aPush':84.})
+        ts=[r for r in range(p.table.rowCount()) if p.table.item(r,0).text()=='Ts'][0]
+        self.assertFalse(p.table.item(ts,1).flags()&__import__('PySide6').QtCore.Qt.ItemIsEditable)
+        p.table.item(row,1).setText('abc')
+        with self.assertRaises(ValueError):p.edited()
+        # readiness with a fake connected device whose pendSign differs from the model
+        d=w.device;d.ready=True;d.identity={'onboardControl':True,'firmware':'FurutaWorkbench/1.6'}
+        d.status={'state':'DISARMED','centered':True,'centerCount':0}
+        d.config={'countsPerRev':1496,'armSign':1,'pendSign':1,'pendDownRaw':3008,'maxDuty':.5,'travelCounts':498,
+                  'slewPerSecond':10,'currentTripA':0,'maxDuration':20,'heartbeatMs':300}
+        items=dict((t.split(' (')[0],ok) for ok,t in p.checks())
+        self.assertFalse(items['Profile signs armSign 1, pendSign 1']);self.assertIsNone(items['Slew 10 /s — below the 100 /s it was designed with'])
+        self.assertFalse(items['12 V box ticked']);d.ready=False
+        # angles as the firmware computes them: raw = down -> hanging (180), raw = down + 2048 -> upright (0)
+        a=np.zeros(1,wire.CORE);a['validity']=7;a['count']=187;a['pend_raw']=3008
+        th0,th1=O.angles(a[0],{'countsPerRev':1496,'armSign':1,'pendSign':-1,'pendDownRaw':3008},{'centered':True,'centerCount':0})
+        self.assertAlmostEqual(th0,187*360/1496);self.assertAlmostEqual(abs(th1),180)
+        a['pend_raw']=3008-2048;self.assertAlmostEqual(O.angles(a[0],{'pendSign':-1,'pendDownRaw':3008},{})[1],0)
+        # summary of a synthetic run: 1 s swing-up, then stabilize
+        n=1000;r=np.zeros(n,wire.CORE);r['device_us']=np.arange(n)*4000;r['validity']=7;r['state']=1
+        r['state'][100:900]=3;r['ctrl'][100:350]=2;r['ctrl'][350:900]=3;r['current_mv']=2500;r['filtered_mv']=2500
+        txt=O.summary(r,{'countsPerRev':1496,'currentZeroMv':2500,'sensitivityMvA':185,'pendDownRaw':3008,'pendSign':-1},
+                      {'status':{'centered':True,'centerCount':0},'final_status':{'state':'DISARMED'}})
+        self.assertIn('First STABILIZE (caught) at **1.00 s**',txt);self.assertIn('ran for **3.20 s**',txt)
+        # stop reason from a firmware notice
+        d.event_count=5;p.event_mark=4;d.last_event={'event':'ONBOARD_SAFE_STOP'};d.status={'state':'DISARMED'}
+        p.finished_run();self.assertIn('safeTh0',p.last_end)
+        w.close()
+    def test_onboard_start_flow_and_burst_download(self):
+        """Start = stream 250 Hz, period, capture armed, then record, ARM, START_ONBOARD; afterwards the capture is saved."""
+        import tempfile,time as _t
+        from PySide6.QtWidgets import QApplication
+        from furuta_lab.app import LabApp
+        app=QApplication.instance() or QApplication([]);w=LabApp();p=w.onboard;d=w.device;ops=[]
+        tmp=Path(tempfile.mkdtemp());w.new_path=lambda kind:tmp/kind/'run1'
+        knobs={'K0':-.18,'Ts':.004,'modelArmSign':1,'modelPendSign':-1,'swingUp':True}
+        def rpc(op,**a):
+            ops.append(op)
+            if op=='SET_CONFIG':return {'ok':True,'config':a['config']}
+            if op=='ONBOARD_GET':return {'ok':True,'params':dict(knobs)}
+            if op=='ONBOARD_CONFIG':knobs.update(a['params']);return {'ok':True,'params':dict(knobs)}
+            if op=='START_ONBOARD':return {'ok':True,'mode':'LQR only','seconds':20,'Ts':knobs['Ts']}
+            if op=='BURST_INFO':return {'ok':True,'active':False,'pending':False,'adcCount':0,'coreCount':0,'adcHz':2000}
+            return {'ok':True}
+        d.rpc=rpc;d.connected=d.ready=True;d.port=type('P',(),{'write':lambda s,b:None,'close':lambda s:None})()
+        d.identity={'onboardControl':True,'onboardPeriods':[.001,.002,.004],'pendHz':1000}
+        d.status={'state':'DISARMED','centered':True,'centerCount':0}
+        d.config={'countsPerRev':1496,'armSign':1,'pendSign':-1,'pendDownRaw':3008,'maxDuty':.5,'travelCounts':498,
+                  'slewPerSecond':100,'currentTripA':1.5,'maxDuration':20,'heartbeatMs':300,'streamHz':100,'adcHz':2000}
+        w.power.setChecked(True);p.controller.setCurrentIndex(1);p.period.setCurrentIndex(p.period.findData(.001))   # LQR only, 1 ms
+        p.start()
+        end=_t.monotonic()+5
+        while w.busy and _t.monotonic()<end:app.processEvents();_t.sleep(.01)
+        self.assertEqual(ops,['SET_CONFIG','ONBOARD_GET','ONBOARD_CONFIG','CAPTURE_BURST','ARM','START_ONBOARD'])
+        self.assertTrue((tmp/'runs'/'run1'/'manifest.json').exists())
+        meta=json.loads((tmp/'runs'/'run1'/'manifest.json').read_text())['metadata']
+        self.assertEqual(meta['controller_period_s'],.001);self.assertEqual(meta['onboard_params']['Ts'],.001)
+        self.assertEqual(d.config['streamHz'],250);self.assertTrue(p.active);self.assertGreater(p.burst_armed,20)
+        # run ends -> capture downloaded into the run folder
+        d.finish_record();p.active=False;p.finished_run();self.assertIsNotNone(p.pending_burst)
+        seconds,path=p.pending_burst;p.pending_burst=None;p.download(seconds,path)
+        end=_t.monotonic()+5
+        while w.busy and _t.monotonic()<end:app.processEvents();_t.sleep(.01)
+        self.assertTrue((tmp/'runs'/'run1'/'burst'/'capture.npz').exists())
+        d.ready=d.connected=False;d.port=None;w.close()
+    def test_breakaway_model_and_unlimited_run(self):
+        """Stick-slip arm friction: 11 % duty from rest holds the arm (as on the rig), 20 % breaks it free;
+        without tsp/tsn the model is unchanged. Run length 0 = no limit in the onboard page."""
+        from furuta_lab import estimation as E
+        P={'Rm':3.4254,'Kb':.48137,'Ja':5.6343e-3,'Jp':1.8531e-4,'h':2.0123e-4,'G':2.8987e-2,'Beq':1.6122e-2,'b1':1.2082e-4,
+           'tcp':.25814,'tcn':.25689,'tp':6.379e-4}
+        S=P|E.breakaway_from_deadzone(.13,.14,P['Rm']);x=[0.,np.pi,0.,0.]
+        self.assertAlmostEqual(S['tsp'],.13*12/P['Rm'])
+        self.assertGreater(E.rhs(x,.111,P,12.)[0][2],10)          # smoothed Coulomb only: the arm accelerates
+        self.assertLess(abs(E.rhs(x,.111,S,12.)[0][2]),1e-9)       # with breakaway: it stays put
+        self.assertGreater(E.rhs(x,.20,S,12.)[0][2],10)            # above the breakaway it slips
+        self.assertLess(abs(E.rhs(x,-.13,S,12.)[0][2]),1e-9)       # -13 % is inside the 14 % negative dead zone
+        th=np.vstack([E._vec(P),E._vec(S)]);X,_=E.sim_batch(th,np.full((1,200),.111),np.array([x]),.001,12.)
+        self.assertGreater(abs(X[0,0,-1,0]),1e-3);self.assertLess(abs(X[1,0,-1,0]),1e-9)   # batch = single-state physics
+        self.assertEqual(len(E._vec(P)),13);self.assertEqual(E.full(P)['tsp'],0.)
+        from PySide6.QtWidgets import QApplication
+        from furuta_lab.app import LabApp
+        from furuta_lab import onboard_page as O
+        app=QApplication.instance() or QApplication([]);w=LabApp();p=w.onboard
+        self.assertEqual(p.period.currentData(),.004)                # 4 ms is the default
+        self.assertEqual(O.run_length({'maxDuration':0}),'no limit');self.assertEqual(O.run_length({'maxDuration':20}),'20 s')
+        d=w.device;sent=[];d.ready=d.connected=True;d.identity={'onboardControl':True,'runLengthUnlimited':True}
+        d.status={'state':'DISARMED'};d.config={'maxDuration':20}
+        d.apply=lambda c:sent.append(dict(c));w.submit=lambda fn,done=None,label='':(fn(),done and done(None))
+        p.no_limit.setChecked(True);self.assertFalse(p.rec_seconds.isEnabled());p.apply_limits()
+        self.assertEqual(sent[-1]['maxDuration'],0.)
+        d.identity={'onboardControl':True}
+        with self.assertRaises(RuntimeError):p.apply_limits()        # older firmware refuses 0
+        d.ready=d.connected=False;w.close()
+
 from test_estimation import *  # noqa: E402,F401,F403
 
 if __name__=='__main__':unittest.main(verbosity=2)

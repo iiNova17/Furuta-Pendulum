@@ -16,7 +16,7 @@ inline const char* stateName(State s) {
 }
 struct Config {
   double maxDuty=0,slewPerSecond=.5,maxDuration=10,travelCounts=0,velocityCountsPerSecond=0;
-  double currentTripA=0,currentTripMs=10,currentZeroMv=NAN,sensitivityMvA=185,countsPerRev=NAN;
+  double currentTripA=4,currentTripMs=10,currentZeroMv=NAN,sensitivityMvA=185,countsPerRev=NAN;
   int armSign=1,pendSign=1,pendDownRaw=-1;
   // Measured breakaway duty (fraction, NaN = unknown). Stored only; not applied to commands.
   double deadzonePos=NAN,deadzoneNeg=NAN;
@@ -24,7 +24,7 @@ struct Config {
   std::string filterType="bypass"; double alpha=.1;unsigned window=8;std::array<double,6> sos{{1,0,0,1,0,0}};
   bool valid(std::string& why)const {
     if(!std::isfinite(maxDuty)||maxDuty<0||maxDuty>1||!std::isfinite(slewPerSecond)||slewPerSecond<=0||slewPerSecond>100 ||
-       !std::isfinite(maxDuration)||maxDuration<=0||maxDuration>3600 ||
+       !std::isfinite(maxDuration)||maxDuration<0||maxDuration>3600 ||      // 0 = no run-length limit (1.8)
        !std::isfinite(travelCounts)||travelCounts<0||travelCounts>1e9||
        !std::isfinite(velocityCountsPerSecond)||velocityCountsPerSecond<0||
        !std::isfinite(currentTripA)||currentTripA<0||currentTripA>50||
@@ -88,7 +88,7 @@ struct Segment {
     if(allowed.find(" "+kind+" ")==std::string::npos){why="Unknown waveform";return false;}
     for(double x:{duration,amplitude,offset,f0,f1,phase,duty,end,bitPeriod,tablePeriod})
       if(!std::isfinite(x)){why="Nonfinite waveform";return false;}
-    if(duration<=0||duration>cfg.maxDuration||f0<=0||f1<=0||f0>=500||f1>=500||
+    if(duration<=0||(cfg.maxDuration>0&&duration>cfg.maxDuration)||f0<=0||f1<=0||f0>=500||f1>=500||
        duty<=0||duty>1||bitPeriod<.002||tablePeriod<.001){why="Waveform timing out of range";return false;}
     double peak=std::abs(amplitude);
     if(kind=="ramp")peak=std::max(peak,std::abs(end));
@@ -111,7 +111,7 @@ struct Experiment {
   std::vector<Segment> segments;
   double duration()const {double t=0;for(const auto&s:segments)t+=s.duration;return t;}
   bool validate(const Config& c,std::string&w)const {
-    if(segments.empty()||segments.size()>kMaxSegments||duration()>c.maxDuration){w="Experiment length/segments exceed limits";return false;}
+    if(segments.empty()||segments.size()>kMaxSegments||(c.maxDuration>0&&duration()>c.maxDuration)){w="Experiment length/segments exceed limits";return false;}
     for(const auto&s:segments)if(!s.validate(c,w))return false;
     return true;
   }
@@ -174,8 +174,10 @@ struct Controller {
       if(now-tripSince>=cfg.currentTripMs*1000){fail("OVERCURRENT");return;}
     }else tripSince=0;
     if(state!=State::Running)return;
+    // Experiments end with their sequence; closed-loop runs at maxDuration, or never when it is 0 (heartbeat,
+    // STOP and every trip still apply).
     const double length=source==Source::Experiment?experiment.duration():cfg.maxDuration;
-    if((now-started)*1e-6>=length){stop();return;}
+    if((source==Source::Experiment||cfg.maxDuration>0)&&(now-started)*1e-6>=length){stop();return;}
     requested=source==Source::Experiment?experiment.value((now-started)*1e-6):(std::isfinite(external)?external:0.);
     double target=std::max(-cfg.maxDuty,std::min(cfg.maxDuty,requested));
     if(target!=requested)flags|=1;

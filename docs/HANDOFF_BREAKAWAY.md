@@ -38,6 +38,17 @@ plant has no breakaway, so the harness keeps using the model without it and `tes
 `furuta_rhs`) and `validate_open_loop.m` still compare like with like. Checked in R2023b: `harness_plant_rhs`
 with `cfg.p` equals the old model to 5e-9 on 300 states. **Not run:** `test_harness.m` itself (R2026a models).
 
+## Already done for steps 2, 3 and 5 (2026-11-19, R2023b)
+
+- `ctrl_hybrid_design.m`: `D.swing.stick_gain = 1`, `w_stick = 0.2`, `a_stick = 5`; `D.fric.gain = 1` (was 0),
+  `D.fric.stick = 1`; `P.plant.tsp/tsn` and `P.fric.stick_duty` from `cfg.breakaway` (kept by `harness_config.m`
+  while `cfg.p.tsp/tsn = 0` for the plant). Note: `fric.gain = 1` already switches on the Coulomb-only
+  compensation of the current Simulink block in every harness run.
+- `export_onboard.m` writes `fricStick`, `sw_stick_gain`, `sw_w_stick`, `sw_a_stick`, `pl_tsp`, `pl_tsn`; the header
+  part was run in R2023b (it stops at the replay step, which needs the R2026a models), so `onboard_design.h` is
+  regenerated and the firmware reads these from it (the interim `onboard_stiction.h` is gone). The replay files
+  are the old ones; `native_onboard.cpp` replays them with `stickGain = 0`, `fricGain = 0`.
+
 ## To do (R2026a)
 
 1. **Simscape plant friction.** In `build_harness.m`, replace the arm Coulomb blocks ("Friction (eq. 78 ...)",
@@ -58,14 +69,11 @@ with `cfg.p` equals the old model to 5e-9 on 300 states. **Not run:** `test_harn
    g    = exp(-(w0/w_stick)^2);
    i    = Ja*a0 + Beq*w0 + coul + stick_gain*g*(stat - coul);  % then the existing i_max / u_max limits
    ```
-   Knobs in `ctrl_hybrid_design.m`: `D.swing.stick_gain = 1; D.swing.w_stick = 0.2; D.swing.a_stick = 5;` and
-   `P.plant.tsp/tsn` from `cfg.p` (only correct after step 1). Expected (Python closed loop on the model with
+   Knobs: already in `ctrl_hybrid_design.m` (`D.swing.stick_gain`, `w_stick`, `a_stick`; `P.plant.tsp/tsn` from
+   `cfg.breakaway`); the block only has to use them. Expected (Python closed loop on the model with
    breakaway, 4 ms): the old law never moves the arm; the new one catches after 1.44 s, arm within 47°.
-3. **Onboard export.** Make `export_onboard.m` write `pl_tsp`, `pl_tsn`, `sw_stick_gain`, `sw_w_stick`,
-   `sw_a_stick` into `onboard_design.h` and regenerate the replay files with the new law. Then, on
-   `onboard-control`: point the `OnboardParams` defaults at `design::` instead of the interim
-   `include/onboard_stiction.h` (written by `firmware/tools/onboard_rates.py`), delete that header, and remove
-   `c.p.stickGain=0` from the replay in `test/native_onboard.cpp`.
+3. **Onboard export.** After steps 1, 2 and 5, run `export_onboard` in R2026a to regenerate the replay files with
+   the new laws, and remove `c.p.stickGain=0; c.p.fricGain=0` from the replay in `test/native_onboard.cpp`.
 4. **Report section 10** (swing-up design): describe the breakaway feedforward and rerun the worst-case tests.
 5. **Balance friction compensation** (firmware 1.9 on `onboard-control`; `ctrl_hybrid.slx` friction compensation
    block). On the rig with 1.8 the LQR's corrections (1-9 % duty) stuck below the 13 % breakaway; the arm broke
@@ -78,7 +86,8 @@ with `cfg.p` equals the old model to 5e-9 on 300 states. **Not run:** `test_harn
    g    = exp(-(w0/w_stick)^2);
    u    = u0 + fric.gain*(coul + fric.stick*g*(stat - coul));
    ```
-   Knobs: `D.fric.gain = 1` (was 0), `D.fric.stick = 1`. Python closed loop on the model with breakaway: arm stuck
+   Knobs: already set in `ctrl_hybrid_design.m` (`D.fric.gain = 1`, `D.fric.stick = 1`, `P.fric.stick_duty`). Note the
+   report's Table 12: full compensation tripped every worst case with a 10 ms pendulum sensor lag. Python closed loop on the model with breakaway: arm stuck
    41-49 % of the balance time without, 74-80 % with Coulomb only, 4 % with this; rerun `lqr_corner_test`.
 
 ## Results

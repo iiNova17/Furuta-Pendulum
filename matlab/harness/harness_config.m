@@ -11,7 +11,7 @@ function cfg = harness_config(mode)
 arguments
     mode (1,:) char {mustBeMember(mode, {'realistic', 'ideal'})} = 'realistic'
 end
-[cfg.p, cfg.lin] = load_identified_model();
+[cfg.p, cfg.lin, cfg.breakaway] = load_identified_model();   % breakaway: measured arm stiction, for the controller design
 cfg.mode = mode;
 
 % timing: three rates
@@ -76,11 +76,12 @@ assert(isMult(cfg.Ts, cfg.fw.Ts) && isMult(cfg.fw.Ts, cfg.dt), 'harness_config:r
     cfg.Ts, cfg.fw.Ts, cfg.dt);
 end
 
-function [p, lin] = load_identified_model()
+function [p, lin, breakaway] = load_identified_model()
 % Run furuta_params.m in an isolated workspace and keep the struct p and the linear models.
 here = fileparts(mfilename('fullpath'));
 S = run_script(fullfile(here, '..', 'model', 'furuta_params.m'));
 p = S.p;
+breakaway = struct('tsp', p.tsp, 'tsn', p.tsn);   % the controllers' motor inverse and friction compensation use it
 % The Simscape plant has no arm breakaway (stick-slip) friction yet, so the harness uses the model without it
 % to keep the Simscape plant equal to furuta_rhs (tests/test_harness.m, validate_open_loop.m). Remove these two
 % lines once the plant's friction block does the same as furuta_rhs: docs/HANDOFF_BREAKAWAY.md.
