@@ -12,6 +12,9 @@ Furuta Lab app simulates, so it reproduces the validation fits in the report.
 - Input `d` is the duty cycle in [-1, 1] (armature voltage `V = d*p.Vs`, `p.Vs = 12`).
   At `d = 0` exactly, the driver is in standby: the motor is open-circuit and `i = 0`.
 - Torque-like parameters are divided by the torque constant, so torques are in amperes of motor current.
+- The arm has stick-slip friction: at rest it holds until the torque exceeds the breakaway `p.tsp` / `p.tsn`
+  (0.455 / 0.490 A = the measured 13 % / 14 % duty dead zone), then slips with the identified Coulomb + viscous
+  friction. The harness (`harness_config.m`) switches it off until the Simscape plant has it: `docs/HANDOFF_BREAKAWAY.md`.
 
 ## MATLAB
 

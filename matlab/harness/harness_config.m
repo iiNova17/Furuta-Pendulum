@@ -81,6 +81,11 @@ function [p, lin] = load_identified_model()
 here = fileparts(mfilename('fullpath'));
 S = run_script(fullfile(here, '..', 'model', 'furuta_params.m'));
 p = S.p;
+% The Simscape plant has no arm breakaway (stick-slip) friction yet, so the harness uses the model without it
+% to keep the Simscape plant equal to furuta_rhs (tests/test_harness.m, validate_open_loop.m). Remove these two
+% lines once the plant's friction block does the same as furuta_rhs: docs/HANDOFF_BREAKAWAY.md.
+p.tsp = 0;
+p.tsn = 0;
 lin = struct('A_up', S.A_up, 'B_up', S.B_up, 'Bd_up', S.Bd_up, ...
              'A_down', S.A_down, 'B_down', S.B_down, 'Bd_down', S.Bd_down, ...
              'C', S.C_up, 'D', S.D_up);

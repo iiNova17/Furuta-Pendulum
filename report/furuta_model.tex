@@ -627,9 +627,16 @@ To obtain a single model of our system with the armature voltage as its input, t
 \end{equation}
 where $J_a$ is the total inertia about the motor axis (arm, reflected rotor and pendulum mass at the arm tip), $J_p$ is the pendulum inertia about its pivot, $h$ is the inertial coupling, and $B_{eq}$ is the total viscous friction at the arm.
 
-Two friction effects observed on the experimental setup (see section~\ref{sec:estimation}) are added at this point.
+Three friction effects observed on the experimental setup (see section~\ref{sec:estimation}) are added at this point.
 
 The Coulomb friction of the gearmotor is allowed to differ between the two directions of rotation, $\tau_c = \tau_{c+}$ for $\dot\theta_0 > 0$ and $\tau_c = \tau_{c-}$ for $\dot\theta_0 < 0$.
+
+Furthermore, a gearmotor at rest does not start to turn as soon as the motor torque exceeds the sliding friction: it holds until the torque exceeds a larger breakaway friction $\tau_{s\pm}$ (static friction, see section~\ref{sec:lsresults}). Therefore, while the arm is at rest the friction takes whatever value keeps it at rest, up to $\tau_{s+}$ or $\tau_{s-}$, and only a larger torque makes it slip, after which the Coulomb friction $\tau_{c\pm}$ applies:
+\begin{equation}
+  \tau_f = \begin{cases} \tau_{hold} & \dot\theta_0 = 0 \text{ and } -\tau_{s-} \le \tau_{hold} \le \tau_{s+} \\ \tau_{c\pm} \sgn(\dot\theta_0) & \text{otherwise} \end{cases}
+  \label{eq:stick}
+\end{equation}
+where $\tau_{hold}$ is the friction torque for which $\ddot\theta_0 = 0$ in the arm equation below. In the equations that follow, $\tau_{c\pm} \sgn(\dot\theta_0)$ stands for $\tau_f$ of equation~\ref{eq:stick}.
 
 In addition, the pendulum joint has dry friction as well as viscous friction, since a free swing loses a nearly constant amplitude per half period on top of the exponential decay (see section~\ref{sec:swingresults}). Its generalized torque therefore becomes $Q_1 = -b_1 \dot\theta_1 - \tau_p \sgn(\dot\theta_1)$ instead of the purely viscous one used in equation~\ref{eq:pend_nl}, where $\tau_p$ is the dry-friction torque of the pendulum joint. Since this torque acts about the pendulum axis, which is perpendicular to the motor axis, it does not enter the arm equation.
 
@@ -1060,6 +1067,15 @@ At low speed, the plotted values are smeared by the filtering during the fast re
 
 Thus, the friction of this gearmotor behaves like Coulomb friction with very little viscous part, and the straight line of the model is a fit over the speed range of the experiments. This explains why the 30\,\% experiment, which reaches 6\,rad/s, gives different friction values (and a negative $\tilde G$) when it is added to the fit, and it is the reason why the fit and validation experiments were kept at 20--28\,\% duty.
 
+The breakaway friction cannot be seen in the driven experiments, since their square waves of 20--28\,\% duty are all above it. It was measured separately with short duty pulses that each start from rest: the arm first moved at \textbf{13\,\%} duty in the positive direction and \textbf{14\,\%} in the negative one. Since the arm is at rest there is no back-EMF, so the breakaway friction is the current $d\,V_s/R_m$ at that duty:
+\begin{equation}
+  \tilde\tau_{s+} = \frac{0.13 \cdot 12}{3.425} = 0.455\,\mathrm{A}, \qquad \tilde\tau_{s-} = \frac{0.14 \cdot 12}{3.425} = 0.490\,\mathrm{A},
+  \label{eq:breakaway}
+\end{equation}
+about 1.76 times the sliding friction $\tilde\tau_{c\pm}$.
+
+The first swing-up experiments on the hardware confirmed it: starting from rest, the controller applied 11.1\,\% duty and the arm stayed still for 9 to 27\,s. Simulating that duty with the sliding friction alone moves the arm by $285^\circ$ in 6\,s, while the model with the breakaway friction of equation~\ref{eq:stick} keeps it at rest, as observed. With the breakaway, the validation fits of Table~\ref{tab:validation} change by less than 2 percentage points, since the validation experiments are above the breakaway as well.
+
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.55\textwidth]{figures/fig_friction.pdf}
@@ -1169,6 +1185,8 @@ $\tilde b_1^*$ & $1.208\times10^{-4}$ & A\,s/rad & 11\,\% & pendulum viscous fri
 $\tilde\tau_{c+}$ & 0.2581 & A & 1.3\,\% & arm Coulomb friction, $\dot\theta_0>0$ & \\
 $\tilde\tau_{c-}$ & 0.2569 & A & 1.3\,\% & arm Coulomb friction, $\dot\theta_0<0$ & \\
 $\tilde\tau_p^*$ & $6.38\times10^{-4}$ & A & 8\,\% & pendulum joint dry friction & $5.05\times10^{-4}$ \\
+$\tilde\tau_{s+}$ & 0.4554 & A & & arm breakaway friction, $+$ & \\
+$\tilde\tau_{s-}$ & 0.4905 & A & & arm breakaway friction, $-$ & \\
 \midrule
 $\La$ & 6.81 & cm & & arm length, Eq.~\eqref{eq:Larm} & 6.10 \\
 $t_d$ & 7 & ms & & pendulum timing correction & \\
@@ -1176,7 +1194,7 @@ $t_d$ & 7 & ms & & pendulum timing correction & \\
 \end{tabular}
 \end{table}
 
-In terms of the duty cycle, the Coulomb friction corresponds to $R_m \tilde\tau_{c\pm}/V_s = 7.4\,\%$ and $7.3\,\%$, which is the friction compensation previously described in section~\ref{sec:full}.
+In terms of the duty cycle, the Coulomb friction corresponds to $R_m \tilde\tau_{c\pm}/V_s = 7.4\,\%$ and $7.3\,\%$, which is the friction compensation previously described in section~\ref{sec:full}, while the breakaway friction corresponds to 13\,\% and 14\,\%.
 
 The back-EMF damping $K_b/R_m = 0.141\,\mathrm{A\,s/rad}$ is almost nine times the mechanical viscous friction $\tilde B_{eq}$, so the damping of the arm is set mainly by the motor.
 
@@ -1191,7 +1209,8 @@ Limitations of the presented model and estimation are:
   \item The friction model is a straight line:
   \begin{enumerate}
     \item it is modeled as Coulomb plus viscous friction, which fits the speed range of the experiments (up to about 5\,rad/s);
-    \item at higher speeds the friction stays constant, so the model overestimates it there.
+    \item at higher speeds the friction stays constant, so the model overestimates it there;
+    \item the breakaway friction was measured at one arm position, while it varies with the rotor position (the motor shaft was seen to creep through the gearbox play at 11.7--12.8\,\% duty).
   \end{enumerate}
   \item The open-loop arm angle drifts over long simulations because of the small run-to-run variation of the friction in the two directions (see Table~\ref{tab:validation}).
   \item The gearbox play, felt by hand to be below $2^\circ$ at the arm, is not modeled. It may contribute to the slightly overestimated pendulum response at the highest excitation frequencies.
@@ -1260,19 +1279,19 @@ and
 \label{sec:nlmodel}
 The linear models above are only valid for small deviations from an equilibrium. Since the swing-up, large pendulum swings, the friction band of the arm and the switching of the driver at zero duty all lie outside that range, the nonlinear model is needed for simulation in Simulink and for the digital twin.
 
-This is the model that was simulated in the validation of section~\ref{sec:estimation} (see Table~\ref{tab:validation}). It is obtained by substituting the parameters of Table~\ref{tab:params} into equation~\ref{eq:scaled}, with the inductance neglected (equation~\ref{eq:qs}) and the sign functions replaced by the smooth functions of section~\ref{sec:full}.
+This is the model that was simulated in the validation of section~\ref{sec:estimation} (see Table~\ref{tab:validation}). It is obtained by substituting the parameters of Table~\ref{tab:params} into equation~\ref{eq:scaled}, with the inductance neglected (equation~\ref{eq:qs}), the sign functions replaced by the smooth functions of section~\ref{sec:full}, and the breakaway friction of equation~\ref{eq:stick}.
 
 With the state $\mathbf{x} = \begin{bmatrix} \theta_0 & \theta_1 & \dot\theta_0 & \dot\theta_1 \end{bmatrix}^T$, where $\theta_1 = 0$ is upright and $\theta_1 = \pi$ is hanging, and the duty cycle $d$ as input, the armature current is
 \begin{equation}
   i = \begin{cases} \dfrac{12\, d - 0.4814\, \dot\theta_0}{3.425} & d \neq 0 \\[6pt] 0 & d = 0 \end{cases}
   \label{eq:nl_current}
 \end{equation}
-where $12\,d$ is the armature voltage $V$ in volts. The friction torque of the arm is
+where $12\,d$ is the armature voltage $V$ in volts. While the arm slips, its friction torque is
 \begin{equation}
   \tilde\tau_c(\dot\theta_0) = \begin{cases} 0.2581 \tanh\left(\dot\theta_0 / 0.1\right) & \dot\theta_0 > 0 \\ 0.2569 \tanh\left(\dot\theta_0 / 0.1\right) & \dot\theta_0 \le 0 \end{cases}
   \label{eq:nl_friction}
 \end{equation}
-in amperes, with $\dot\theta_0$ in rad/s.
+in amperes, with $\dot\theta_0$ in rad/s. While $|\dot\theta_0| < 0.05\,\mathrm{rad/s}$, the friction instead holds the arm (it takes the value that makes $\ddot\theta_0 = -\dot\theta_0 / 0.002\,\mathrm{s}$, bringing the arm to rest), as long as that value stays between $-0.4905$ and $0.4554\,\mathrm{A}$ (equation~\ref{eq:stick}).
 
 By collecting all terms that do not contain an acceleration on the right-hand side of equation~\ref{eq:scaled}, the two mechanical equations become
 \begin{equation}
@@ -1504,7 +1523,7 @@ Each of these effects can be switched off for an ideal run (\texttt{'Mode', 'ide
 
 \subsection{The Plant as a Simscape Multibody Model}
 \label{sec:harness_plant}
-The plant inside the Rig consists of an electrical and a mechanical part. The motor and driver are built from Simulink blocks that evaluate the current of equation~\ref{eq:nl_current}, including the open circuit at zero duty cycle, and the friction torques of equation~\ref{eq:nl_friction} and of the pendulum joint. The resulting joint torques drive a Simscape Multibody model of the arm and the pendulum (see Figure~\ref{fig:harness_plant}).
+The plant inside the Rig consists of an electrical and a mechanical part. The motor and driver are built from Simulink blocks that evaluate the current of equation~\ref{eq:nl_current}, including the open circuit at zero duty cycle, and the friction torques of equation~\ref{eq:nl_friction} and of the pendulum joint (the breakaway friction of equation~\ref{eq:stick} is not in the Simscape plant yet, so the harness runs the model without it). The resulting joint torques drive a Simscape Multibody model of the arm and the pendulum (see Figure~\ref{fig:harness_plant}).
 
 \begin{figure}[h]
 \centering
