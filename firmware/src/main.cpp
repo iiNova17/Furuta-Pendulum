@@ -12,11 +12,23 @@ Controller control;
 // Onboard closed-loop controller (product mode): runs every 4th 1 ms tick of an onboard run,
 // from the encoder count and the latest AS5600 reading; its duty request then goes through the
 // same safety path (Controller::tick) as an experiment.
-OnboardController onboard;OnboardParams onboardParams;unsigned onboardTick=0;
+OnboardController onboard;OnboardParams onboardParams;unsigned onboardTick=0,onboardEvery=4;
+// 1.7: the AS5600 is read every kPendPeriodMs and its slow filter is set at boot (CONF bits SF,
+// 0 = 16x ... 3 = 2x; datasheet settling 2.2 / 1.1 / 0.55 / 0.29 ms). Fast filter (FTH) stays off.
+constexpr int kPendPeriodMs=1;
+constexpr uint8_t kAs5600SlowFilter=0;   // 16x (the chip default): closed-loop simulation with datasheet noise showed
+                                        // no delay-margin gain from 8x/4x/2x, only more noise (2026-11-19)
+int as5600Conf=-1;          // CONF register read back after setting it (-1 = not written/read)
+uint32_t pendReads=0,pendFails=0,pendReadMaxUs=0;   // AS5600 reads done / failed, longest I2C read [us]
 SemaphoreHandle_t lock;
 QueueHandle_t streamQueue,eventQueue;
-TaskHandle_t adcTaskHandle,controlTaskHandle;
-esp_timer_handle_t adcTimer,controlTimer;
+TaskHandle_t adcTaskHandle,controlTaskHandle,pendTaskHandle;
+esp_timer_handle_t adcTimer,controlTimer,pendTimer;
+// The pendulum read is started kPendLeadUs before each control tick (its own esp_timer, same period), so it
+// has finished when the controller uses it. Measured on the rig (12 V off, 250 Hz stream): age of the reading at
+// the record, median / 99 %: FreeRTOS tick 0.94 / 1.68 ms, lead 350 us 0.88 / 0.90, 800 us 0.56 / 1.29,
+// 950 us 0.45 / 1.45 ms. Reads take up to ~1 ms (I2C 400 kHz, preempted by the ADC task on core 0).
+constexpr uint32_t kPendLeadUs=950;
 hw::Snapshot sample;
 Filter currentFilter;
 uint64_t bootId,activeSession=0;
@@ -124,8 +136,13 @@ void onboardJson(JsonObject o,OnboardParams p) {
 bool parseOnboard(JsonObjectConst o,OnboardParams&p,std::string&w) {
   if(o.isNull()){w="Params object required";return false;}
   auto fields=onboardFields(p);
+  // Ts first: it loads the design's LQR gain for that period; explicit K0..K3 in the same message win.
+  if(o.containsKey("Ts")){
+    if(!o["Ts"].is<double>()||!p.setPeriod(o["Ts"].as<double>())){w="Ts must be 0.001, 0.002 or 0.004";return false;}
+  }
   for(auto kv:o){
     const char* k=kv.key().c_str();
+    if(!strcmp(k,"Ts"))continue;
     if(!strcmp(k,"swingUp")){if(!kv.value().is<bool>()){w="swingUp must be true/false";return false;}p.swingUp=kv.value().as<bool>();continue;}
     bool known=false;
     for(auto&f:fields)if(!strcmp(f.name,k)){
@@ -153,14 +170,14 @@ bool parseSegment(JsonObjectConst o,Segment&s,std::string&w) {
 struct StatusCopy {
   State state;std::string fault;bool centered,encoderOk,pendValid,burstActive,burstPending,burstOverflow;
   uint32_t configId,runId,dropped,adcOverruns,controlOverruns,adcOversample,adcMaxBusyUs,adcMaxGapUs,adcMaxLockWaitUs,adcMaxWakeUs;
-  uint64_t deviceUs;int64_t center;uint8_t pendStatus;float currentMv,filteredMv,adcReadUs;size_t burstAdcCount,burstCoreCount;int calSource;
+  uint64_t deviceUs;int64_t center;uint8_t pendStatus;uint32_t pendReads,pendFails,pendReadMaxUs;float currentMv,filteredMv,adcReadUs;size_t burstAdcCount,burstCoreCount;int calSource;
 };
 StatusCopy statusCopy() {
   StatusCopy c;c.state=control.state;c.fault=control.fault;c.centered=control.centered;c.encoderOk=hw::encoderOk;
   c.pendValid=sample.flags&2;c.burstActive=burst.active;c.burstPending=burst.pending;c.burstOverflow=burst.overflow;
   c.configId=configId;c.runId=control.run;c.dropped=dropped;c.adcOverruns=adcOverruns;c.controlOverruns=controlOverruns;
   c.adcOversample=adcOversample;c.adcMaxBusyUs=adcMaxBusyUs;c.adcMaxGapUs=adcMaxGapUs;c.adcMaxLockWaitUs=adcMaxLockWaitUs;c.adcMaxWakeUs=adcMaxWakeUs;
-  c.deviceUs=esp_timer_get_time();c.center=control.center;c.pendStatus=sample.status;c.currentMv=sample.mv;c.filteredMv=sample.filtered;
+  c.deviceUs=esp_timer_get_time();c.center=control.center;c.pendReads=pendReads;c.pendFails=pendFails;c.pendReadMaxUs=pendReadMaxUs;c.pendStatus=sample.status;c.currentMv=sample.mv;c.filteredMv=sample.filtered;
   c.adcReadUs=adcReadUs;c.burstAdcCount=burst.adcCount;c.burstCoreCount=burst.coreCount;c.calSource=(int)hw::calibrationSource;
   return c;
 }
@@ -170,6 +187,7 @@ void statusJson(JsonObject o,const StatusCopy&c) {
   o["deviceUs"]=std::to_string(c.deviceUs);o["dropped"]=c.dropped;
   o["adcOverruns"]=c.adcOverruns;o["controlOverruns"]=c.controlOverruns;
   o["encoderOk"]=c.encoderOk;o["pendStatus"]=c.pendStatus;o["pendValid"]=c.pendValid;
+  o["pendReads"]=c.pendReads;o["pendFails"]=c.pendFails;o["pendReadMaxUs"]=c.pendReadMaxUs;
   o["currentMv"]=c.currentMv;o["filteredMv"]=c.filteredMv;o["centerCount"]=std::to_string(c.center);
   o["burstActive"]=c.burstActive;o["burstPending"]=c.burstPending;
   o["burstAdcCount"]=c.burstAdcCount;o["burstCoreCount"]=c.burstCoreCount;o["burstOverflow"]=c.burstOverflow;
@@ -246,7 +264,7 @@ void controlTask(void*) {
     State before=control.state;
     if((n>5||overrunStreak>=5)&&armed())control.fail("CONTROL_OVERRUN");
     if(control.state==State::Running&&control.source==Controller::Source::Onboard) {
-      if(onboardTick++%4==0) {                       // controller period 4 ms, held in between
+      if(onboardTick++%onboardEvery==0) {            // controller period Ts (1, 2 or 4 ms), held in between
         const bool pendFresh=t-sample.pendTime<20000&&(sample.status&0x20);
         if(!pendFresh){control.fail("PEND_INVALID");notice("PEND_INVALID");}
         else{
@@ -284,16 +302,31 @@ void controlTask(void*) {
   }
 }
 void pendulumTask(void*) {
-  TickType_t last=xTaskGetTickCount();unsigned cycle=0;uint8_t status=0,agc=0;uint16_t mag=0;
+  unsigned cycle=0;uint8_t status=0,agc=0;uint16_t mag=0;
   while(true){
+    ulTaskNotifyTake(pdTRUE,portMAX_DELAY);     // pendTimer: every kPendPeriodMs, kPendLeadUs before the control tick
+    const uint64_t r0=esp_timer_get_time();
     uint8_t a[2],b[1],d[3];bool good=hw::readReg(0x0c,a,2);
+    const uint32_t readUs=(uint32_t)(esp_timer_get_time()-r0);
     if(++cycle%25==0){if(hw::readReg(0x0b,b,1))status=b[0];else good=false;if(hw::readReg(0x1a,d,3)){agc=d[0];mag=((d[1]&15)<<8)|d[2];}}
     uint64_t t=esp_timer_get_time();
     xSemaphoreTake(lock,portMAX_DELAY);
+    pendReads++;if(!good)pendFails++;if(readUs>pendReadMaxUs)pendReadMaxUs=readUs;
     if(good){sample.pend=((a[0]&15)<<8)|a[1];sample.pendTime=t;sample.status=status;sample.agc=agc;sample.mag=mag;}
     else sample.status=0;
-    xSemaphoreGive(lock);vTaskDelayUntil(&last,pdMS_TO_TICKS(2));
+    xSemaphoreGive(lock);
   }
+}
+// Set the AS5600 slow filter (volatile CONF register, so on every boot) and read it back.
+void configureAs5600() {
+  uint8_t c[2];
+  if(!hw::readReg(0x07,c,2))return;
+  uint16_t conf=((uint16_t)c[0]<<8)|c[1];
+  conf=(conf&~(uint16_t)((3u<<8)|(7u<<10)))|(uint16_t)((kAs5600SlowFilter&3u)<<8);   // SF = bits 9:8, FTH = bits 12:10 off
+  Wire.beginTransmission(0x36);Wire.write(0x07);Wire.write((uint8_t)(conf>>8));Wire.write((uint8_t)(conf&0xff));
+  if(Wire.endTransmission())return;
+  delay(3);
+  if(hw::readReg(0x07,c,2))as5600Conf=((int)c[0]<<8)|c[1];
 }
 void timerNotify(void*arg){xTaskNotifyGive(*(TaskHandle_t*)arg);}
 void adcTimerNotify(void*arg){adcFiredAt=esp_timer_get_time();xTaskNotifyGive(*(TaskHandle_t*)arg);}
@@ -325,7 +358,9 @@ void dispatch(const Packet&p) {
   else if(op=="HELLO"){
     if(id!=lastHelloId||p.session!=lastHelloSession){challenge=((uint64_t)esp_random()<<32)|esp_random();lastHelloId=id;lastHelloSession=p.session;}
     response["challenge"]=std::to_string(challenge);
-    response["firmware"]="FurutaWorkbench/1.6";response["onboardControl"]=true;response["protocol"]=1;response["coreRecordBytes"]=88;
+    response["firmware"]="FurutaWorkbench/1.7";response["onboardControl"]=true;response["protocol"]=1;response["coreRecordBytes"]=88;
+    {JsonArray a=response.createNestedArray("onboardPeriods");for(int i=0;i<rates::count;i++)a.add(rates::Ts[i]);}
+    response["pendHz"]=1000/kPendPeriodMs;response["as5600Conf"]=as5600Conf;response["as5600SlowFilter"]=kAs5600SlowFilter;
     response["adcChunkMax"]=64;response["coreChunkMax"]=16;
     response["baud"]=460800;response["flashBytes"]=ESP.getFlashChipSize();response["psramBytes"]=ESP.getPsramSize();
     response["maxBurstBytes"]=4194304;response["maxSegments"]=kMaxSegments;response["maxTable"]=4096;
@@ -365,14 +400,30 @@ void dispatch(const Packet&p) {
     else if(c.armSign!=design::modelArmSign||c.pendSign!=design::modelPendSign)
       why="Profile armSign/pendSign differ from the identified model's ("+std::to_string(design::modelArmSign)+", "+std::to_string(design::modelPendSign)+")";
     else if(p.valid(why)){
-      onboard.p=p;onboard.reset();onboardTick=0;
+      onboard.p=p;onboard.reset();onboardTick=0;onboardEvery=(unsigned)std::lround(p.Ts*1000);
       if(control.startExternal(esp_timer_get_time(),Controller::Source::Onboard,why)){
-        response["mode"]=p.swingUp?"swing-up + LQR":"LQR only";response["seconds"]=c.maxDuration;
+        response["mode"]=p.swingUp?"swing-up + LQR":"LQR only";response["seconds"]=c.maxDuration;response["Ts"]=p.Ts;
         if(c.slewPerSecond<50)response["warning"]="slewPerSecond is below 50/s; the controller was designed with 100/s";
       }
     }
   }else if(op=="ONBOARD_GET"){
     onboardJson(response.createNestedObject("params"),onboardParams);
+  }else if(op=="ONBOARD_BENCH"){
+    // CPU time of one controller step with the current knobs, on a private copy (no effect on runs).
+    // Runs in the command loop, below the 1 ms control task, so preemption makes it a slight overestimate.
+    // The command handler holds the shared lock: release it while timing, so the control, ADC and
+    // pendulum tasks keep running (1.7 first build blocked them for the whole benchmark). Disarmed only.
+    if(armed())why="Disarm before timing the controller";
+    else{
+      OnboardController b;b.p=onboardParams;b.reset();
+      const int n=std::min(5000,std::max(100,(int)(in["steps"]|2000)));double acc=0,worst=0;
+      xSemaphoreGive(lock);
+      const uint64_t t0=esp_timer_get_time();
+      for(int i=0;i<n;i++){const uint64_t s=esp_timer_get_time();acc+=b.step(.3*std::sin(i*.003),3.*std::sin(i*.01));worst=std::max(worst,(double)(esp_timer_get_time()-s));}
+      const uint64_t t1=esp_timer_get_time();
+      xSemaphoreTake(lock,portMAX_DELAY);
+      response["steps"]=n;response["usPerStep"]=(t1-t0)/(double)n;response["usWorst"]=worst;response["check"]=acc;
+    }
   }else if(op=="CLEAR_FAULT"){
     if(control.state==State::Fault){control.fault.clear();control.state=State::Disarmed;halt();}
   }else if(armed())why="Disarm before changing configuration/captures";
@@ -467,7 +518,7 @@ void setup() {
   Serial.setTxBufferSize(4096);Serial.setRxBufferSize(4096);Serial.begin(460800);
   lock=xSemaphoreCreateMutex();streamQueue=xQueueCreate(64,sizeof(hw::Snapshot));eventQueue=xQueueCreate(16,sizeof(Notice));
   if(!lock||!streamQueue||!eventQueue){while(true){digitalWrite(hw::STBY,LOW);delay(100);}}
-  hw::begin();measureAdcRead();bootId=((uint64_t)esp_random()<<32)|esp_random();
+  hw::begin();configureAs5600();measureAdcRead();bootId=((uint64_t)esp_random()<<32)|esp_random();
   Preferences p;p.begin("furuta",true);String saved=p.getString("config","");uint32_t crc=p.getUInt("crc",0);p.end();
   if(saved.length()&&crc32((const uint8_t*)saved.c_str(),saved.length())==crc){
     DynamicJsonDocument d(4096);std::string why;Config c;
@@ -479,11 +530,16 @@ void setup() {
   esp_task_wdt_init(1,true);
   xTaskCreatePinnedToCore(adcTask,"adc",4096,nullptr,8,&adcTaskHandle,0);
   xTaskCreatePinnedToCore(controlTask,"actuator",6144,nullptr,10,&controlTaskHandle,1);
-  xTaskCreatePinnedToCore(pendulumTask,"pendulum",4096,nullptr,4,nullptr,0);
+  xTaskCreatePinnedToCore(pendulumTask,"pendulum",4096,nullptr,4,&pendTaskHandle,0);
   esp_timer_create_args_t a{};a.callback=adcTimerNotify;a.arg=&adcTaskHandle;a.name="adcTick";esp_timer_create(&a,&adcTimer);
   a.callback=timerNotify;
   a.arg=&controlTaskHandle;a.name="actuatorTick";esp_timer_create(&a,&controlTimer);
-  esp_timer_start_periodic(adcTimer,1000000/control.cfg.adcHz);esp_timer_start_periodic(controlTimer,1000);
+  a.arg=&pendTaskHandle;a.name="pendTick";esp_timer_create(&a,&pendTimer);
+  esp_timer_start_periodic(adcTimer,1000000/control.cfg.adcHz);
+  // Phase: control ticks at t0 + k*1 ms, pendulum reads at t0 + k*period - kPendLeadUs.
+  const uint64_t t0=esp_timer_get_time();esp_timer_start_periodic(controlTimer,1000);
+  while(esp_timer_get_time()<t0+1000-kPendLeadUs){}
+  esp_timer_start_periodic(pendTimer,1000*kPendPeriodMs);
 }
 void loop() {
   static uint8_t rx[MAX_PACKET+16];static size_t used=0;static bool discard=false;

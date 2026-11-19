@@ -10,6 +10,7 @@
 #include <cstdint>
 #include <string>
 #include "onboard_design.h"
+#include "onboard_rates.h"
 
 namespace fw {
 struct OnboardParams {
@@ -25,11 +26,15 @@ struct OnboardParams {
   double Rm=design::pl_Rm, Kb=design::pl_Kb, Vs=design::pl_Vs;
   double r=0;               // arm reference [rad]
   bool swingUp=true;        // false: balance only (start near upright); losing the pendulum ends the run
+  // Supported controller periods and their LQR gains (same Q, R as the design; onboard_rates.h).
+  static int periodIndex(double ts){for(int i=0;i<rates::count;i++)if(std::abs(ts-rates::Ts[i])<1e-9)return i;return -1;}
+  // Switch the controller period and load the design's LQR gain for it. False if unsupported.
+  bool setPeriod(double ts){const int i=periodIndex(ts);if(i<0)return false;Ts=rates::Ts[i];for(int k=0;k<4;k++)K[k]=rates::K[i][k];return true;}
   bool valid(std::string& why) const {
     const double all[]={Ts,velFc,K[0],K[1],K[2],K[3],fricGain,fricBand,fricDutyPos,fricDutyNeg,catchTh1,catchW1,exitTh1,
       safeTh0,E0,kE,aPush,wc,zc,aKick,kickE,wSign,wFric,iMax,uMax,Jp,G,Ja,Beq,tcp,tcn,Rm,Kb,Vs,r};
     for(double x:all) if(!std::isfinite(x)){why="Nonfinite onboard parameter";return false;}
-    if(std::abs(Ts-.004)>1e-9){why="Onboard controller runs at 4 ms (the period it was designed for)";return false;}
+    if(periodIndex(Ts)<0){why="Onboard controller period must be 1, 2 or 4 ms (onboard_rates.h)";return false;}
     if(velFc<=0||fricBand<=0||wSign<=0||wFric<=0||Jp<=0||G<=0||Ja<=0||Rm<=0||Vs<=0||iMax<=0||uMax<=0||uMax>1||
        catchTh1<=0||exitTh1<catchTh1||safeTh0<=0){why="Onboard parameter out of range";return false;}
     return true;

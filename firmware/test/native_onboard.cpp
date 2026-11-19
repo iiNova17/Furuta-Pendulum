@@ -46,7 +46,13 @@ int main(int argc,char**argv) {
   assert(std::abs(pendAngle((2810+2048)%4096,2810,-1))<1e-9);
   assert(std::abs(armAngle(374,0,1,1496)-3.14159265358979/2)<1e-9);
   assert(std::abs(armAngle(-374,0,-1,1496)-3.14159265358979/2)<1e-9);
-  {OnboardParams p;std::string why;assert(p.valid(why));p.Ts=.001;assert(!p.valid(why));}
+  {OnboardParams p;std::string why;assert(p.valid(why));p.Ts=.003;assert(!p.valid(why));
+   // 1.7: 1 / 2 / 4 ms periods, each with the design's LQR gain (onboard_rates.h); 4 ms = design::K
+   for(int i=0;i<rates::count;i++){assert(p.setPeriod(rates::Ts[i])&&p.valid(why));for(int k=0;k<4;k++)assert(p.K[k]==rates::K[i][k]);}
+   assert(p.setPeriod(.004));for(int k=0;k<4;k++)assert(std::abs(p.K[k]-design::K[k])<1e-9*std::abs(design::K[k]));
+   assert(!p.setPeriod(.003));
+   // a 1 ms controller from the same start settles like the 4 ms one (closed loop not run here: see onboard_rates.py)
+   OnboardController c;c.p.setPeriod(.001);c.p.swingUp=false;c.reset();double u=c.step(0,.1);assert(c.mode==OnboardController::Stabilize&&u>0);}
 
   // run control: an onboard run takes the external request, keeps every safety check, ends at maxDuration
   Controller k;std::string why;

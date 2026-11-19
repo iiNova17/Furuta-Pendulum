@@ -1,6 +1,6 @@
-"""Onboard controller page (firmware 1.6+).
+"""Onboard controller page (firmware 1.6+; controller period choice and timing benchmark need 1.7).
 
-The ESP32 runs the controller itself (firmware/include/onboard.h, every 4 ms). This page only
+The ESP32 runs the controller itself (firmware/include/onboard.h, every 1, 2 or 4 ms). This page only
 starts it, keeps the heartbeat going (Device._loop), shows the controller state from the `ctrl`
 byte of every core record, edits the controller knobs (RAM only) and records the run.
 
@@ -16,6 +16,7 @@ import numpy as np
 from PySide6 import QtCore, QtWidgets as W
 from . import signals as S
 from . import wire
+from .backend import save_capture
 
 CONTROLLERS = [
     {'key': 'swingup_lqr', 'label': 'Swing-up + LQR balance', 'start': {'swingUp': True},
@@ -55,6 +56,13 @@ KNOBS = {
     'uMax': ('duty', 'swing-up duty limit'),
 }
 READ_ONLY = {'Ts', 'rearm', 'modelArmSign', 'modelPendSign'}
+# Controller periods (firmware 1.7: onboard_rates.h). The LQR gain for each comes from the design's Q and R.
+# Closed-loop simulation on the identified model with sensor noise (2026-11-19): 1 ms with the pendulum read
+# at 1 kHz gives the largest pendulum-delay margin (25 ms vs 22 ms at 4 ms); 4 ms is what Simulink validated.
+PERIODS = [(0.001, '1 ms — fastest (largest delay margin in simulation)'), (0.002, '2 ms'),
+           (0.004, '4 ms — as designed and validated in Simulink')]
+STREAM_HZ = 250            # fastest stream that fits 460800 baud with margin (500 Hz records / 2)
+BURST_BUDGET = 4194304     # bytes the firmware allows for a capture (HELLO maxBurstBytes)
 CTRL_STYLE = {0: ('NOT RUNNING', '#6b7785'), 1: ('SAFE STOP', '#7a1020'), 2: ('SWING-UP', '#c77700'), 3: ('STABILIZE', '#1f7a4d')}
 # Firmware notices that end an onboard run, with a hint for the operator.
 STOP_HINTS = {
@@ -116,11 +124,12 @@ class OnboardPage:
     def __init__(self, app):
         self.app = app; self.params = None; self.active = False; self.t_start = None; self.event_mark = 0
         self.last_end = ''; self.seen_running = False
+        self.burst_armed = None; self.pending_burst = None; self.run_path = None; self.run_meta = {}
 
     # ------------------------------------------------------------------ layout
     def build(self, v):
         a = self.app
-        a.text(v, 'The ESP32 runs the controller itself (firmware 1.6, every 4 ms, with all firmware trips active). '
+        a.text(v, 'The ESP32 runs the controller itself (firmware 1.7: every 1, 2 or 4 ms, pendulum read at 1 kHz, all firmware trips active). '
                   'This page starts it, keeps the heartbeat, shows its state and records the run. '
                   'STOP / DISABLE, unticking the 12 V box or closing the app stops the motor (heartbeat within 300 ms).', small=True)
 
@@ -139,7 +148,13 @@ class OnboardPage:
         g = a.group(v, '2 · Run — MOVES MOTOR')
         self.controller = W.QComboBox(); self.controller.addItems([c['label'] for c in CONTROLLERS]); g.addWidget(self.controller)
         self.how = a.text(g, '', small=True); self.controller.currentIndexChanged.connect(self.controller_changed); self.controller_changed()
-        self.record = W.QCheckBox('Record the run to data/runs'); self.record.setChecked(True); g.addWidget(self.record)
+        self.period = W.QComboBox(); g.addWidget(W.QLabel('Controller period'))
+        for ts, label in PERIODS:
+            self.period.addItem(label, ts)
+        g.addWidget(self.period)
+        self.record = W.QCheckBox('Record the run to data/runs (stream raised to 250 Hz for the run)'); self.record.setChecked(True); g.addWidget(self.record)
+        self.burst = W.QCheckBox('High-rate capture on the MCU (500 Hz records, current at 2 kHz), downloaded after the run')
+        self.burst.setChecked(True); g.addWidget(self.burst)
         self.start_button = a.button(g, 'Start onboard controller — MOVES MOTOR', self.start)
         self.start_button.setStyleSheet('font-weight:700;'); self.start_button.setEnabled(False)
         row = W.QHBoxLayout(); g.addLayout(row)
@@ -158,6 +173,7 @@ class OnboardPage:
         a.button(row, 'Read from device', self.read_params)
         a.button(row, 'Apply edited values', self.apply_params)
         a.button(row, 'Restore design values', self.restore_params)
+        a.button(g, 'Measure controller CPU time on the MCU', self.bench)
         a.text(g, 'Design values come from matlab/harness/controllers/hybrid/ctrl_hybrid_design.m (export_onboard). '
                   'Knobs can only be changed while DISARMED.', small=True)
 
@@ -201,6 +217,11 @@ class OnboardPage:
         trip = c.get('currentTripA', 0)
         out.append((True if trip > 0 else None, f'Current trip {trip:g} A' if trip > 0 else 'Current trip OFF (1.5 A recommended)'))
         out.append((True, f'Run length (maxDuration) {c.get("maxDuration", 0):g} s · heartbeat {c.get("heartbeatMs", "?")} ms'))
+        periods = d.identity.get('onboardPeriods') or [0.004]
+        ts = self.period.currentData()
+        out.append((any(abs(ts - p) < 1e-9 for p in periods),
+                    f'Controller period {ts * 1e3:g} ms (firmware offers {", ".join(f"{p * 1e3:g}" for p in periods)} ms; '
+                    f'pendulum read at {d.identity.get("pendHz", 500)} Hz)'))
         return out
 
     def update_status(self):
@@ -235,6 +256,12 @@ class OnboardPage:
         if self.active and ((self.seen_running and not row_running) or state in ('FAULT', 'CONNECTION_ERROR', 'DISCONNECTED')
                             or (not self.seen_running and time.monotonic() - self.t_start > 2)):
             self.active = False; self.finished_run()
+        if self.pending_burst and not a.busy and not a.pending_load and not self.active:
+            seconds, path = self.pending_burst; self.pending_burst = None
+            try:
+                self.download(seconds, path)
+            except Exception as e:
+                a.failed(f'High-rate capture not downloaded: {e}', release=False)
         if not a.busy:
             self.start_button.setEnabled(self.supported() and a.power.isChecked() and state == 'DISARMED')
             c = d.config if d.ready else {}
@@ -249,6 +276,27 @@ class OnboardPage:
         self.last_end = reason
         self.end_label.setText(f'Last run ended: {reason}.')
         self.app.output.append(f'\n**Onboard run ended:** {reason}.')
+        if self.burst_armed:
+            self.pending_burst = (self.burst_armed, self.run_path); self.burst_armed = None
+
+    def download(self, seconds, run_path):
+        a = self.app; d = a.device; meta = dict(self.run_meta) | {'purpose': 'onboard_burst'}
+        target = Path(run_path) / 'burst' if run_path else a.new_path('captures')
+
+        def job():
+            r = d.download_burst(seconds + 5, a.signals.progress.emit, a.cancel, 'Waiting for the high-rate capture to finish')
+            save_capture(target, r, meta)
+            return r
+        a.submit(job, lambda r: self.burst_done(r, target), 'Downloading the high-rate capture…')
+
+    def burst_done(self, r, target):
+        core, adc, c = r['core'], r['adc'], r.get('config') or {}
+        text = summary(core, c, {'status': r.get('status') or {}})
+        zero, sens = c.get('currentZeroMv'), c.get('sensitivityMvA')
+        if len(adc) and S.finite(zero) and S.finite(sens) and sens:
+            i = (adc['current_mv'].astype(float) - zero) / sens
+            text += f'\n\nCurrent at {r["info"].get("adcHz", c.get("adcHz", "?"))} Hz: peak |i| {np.max(np.abs(i)):.2f} A (unfiltered samples).'
+        self.app.output.append(f'\n\n### High-rate capture: {len(core)} records (500 Hz), {len(adc)} current samples\n\n{text}\n\nSaved to {target}')
 
     # ----------------------------------------------------------------- actions
     def apply_limits(self):
@@ -335,29 +383,66 @@ class OnboardPage:
         a.authorize_run()                                  # DISARMED, 12 V box, centered, finite limits; enables motion
         if a.busy:
             d.inhibit = True; raise RuntimeError('Wait for the current task or cancel it')
-        meta = a.metadata() | {'purpose': 'onboard', 'controller': entry['key'], 'controller_label': entry['label'],
-                               'start': entry['start'], 'onboard_params': copy.deepcopy(self.params)}
-        path = None
-        if self.record.isChecked():
-            path = a.new_path('runs'); d.start_record(path, meta)
-        self.event_mark = d.event_count
+        periods = d.identity.get('onboardPeriods') or [0.004]
+        ts = self.period.currentData()
+        if not any(abs(ts - p) < 1e-9 for p in periods):
+            d.inhibit = True; raise ValueError(f'This firmware supports only {", ".join(f"{p * 1e3:g} ms" for p in periods)}; flash 1.7 for faster periods')
+        record = self.record.isChecked(); burst = self.burst.isChecked()
+        path = a.new_path('runs') if record else None
+        self.event_mark = d.event_count; self.burst_armed = None; self.run_path = path
 
         def run():
+            notes = []
             try:
-                return d.run_onboard(**entry['start'])
+                # Profile changes must happen before recording starts (the MCU refuses them while recording).
+                if record and d.config.get('streamHz') != STREAM_HZ:
+                    c = copy.deepcopy(d.config); c['streamHz'] = STREAM_HZ; d.apply(c); notes.append(f'stream {STREAM_HZ} Hz')
+                params = d.onboard_params()
+                if abs(params.get('Ts', 0.004) - ts) > 1e-9:
+                    params = d.onboard_params({'Ts': ts}); notes.append(f'controller period {ts * 1e3:g} ms (design LQR gain for it)')
+                armed_s = None
+                if burst:
+                    c = d.config; per_s = c.get('adcHz', 2000) * 24 + 500 * 128     # bytes per second (record sizes rounded up)
+                    armed_s = round(min(c.get('maxDuration', 20) + .5, .95 * BURST_BUDGET / per_s), 1)
+                    d.arm_burst(armed_s); notes.append(f'high-rate capture armed for {armed_s:g} s')
+                meta = a.metadata() | {'purpose': 'onboard', 'controller': entry['key'], 'controller_label': entry['label'],
+                                       'start': entry['start'], 'controller_period_s': ts, 'onboard_params': copy.deepcopy(params),
+                                       'burst_seconds': armed_s}
+                if path:
+                    d.start_record(path, meta)
+                r = d.run_onboard(**entry['start'])
+                return r, params, meta, armed_s, notes
             except Exception:
                 d.stop(); d.finish_record(); raise
 
-        def done(r):
-            a.running = True; a.run_start = None; a.run_metadata = meta
+        def done(result):
+            r, params, meta, armed_s, notes = result
+            self.params_loaded(params)
+            a.running = True; a.run_start = None; a.run_metadata = meta; self.run_meta = meta; self.burst_armed = armed_s
             self.active = True; self.seen_running = False; self.t_start = time.monotonic(); self.end_label.setText('')
             warn = f'\n\n⚠ {r["warning"]}' if r.get('warning') else ''
-            a.report('Onboard controller running', f'**{r.get("mode", entry["label"])}**, up to {r.get("seconds", "?")} s. '
-                     + (f'Recording to {path}. ' if path else 'Not recording. ') + 'STOP / DISABLE stops the motor.' + warn)
+            a.report('Onboard controller running', f'**{r.get("mode", entry["label"])}** every {r.get("Ts", ts) * 1e3:g} ms, up to {r.get("seconds", "?")} s. '
+                     + (f'Recording to {path}. ' if path else 'Not recording. ') + 'STOP / DISABLE stops the motor.'
+                     + (f'\n\nSet for this run: {"; ".join(notes)}.' if notes else '') + warn)
         try:
-            a.submit(run, done, 'Arming and starting the onboard controller…')
+            a.submit(run, done, 'Preparing, arming and starting the onboard controller…')
         except Exception:
             d.inhibit = True; d.finish_record(); raise
+
+    def bench(self):
+        a = self.app
+        if not self.supported():
+            raise RuntimeError('Connect to firmware with onboard control')
+        if not a.device.identity.get('onboardPeriods'):
+            raise RuntimeError('The CPU-time measurement needs firmware 1.7')
+
+        def done(r):
+            us = r['usPerStep']
+            rows = ' · '.join(f'{p * 1e3:g} ms period: {100 * us / (p * 1e6):.1f} %' for p, _ in PERIODS)
+            a.report('Controller CPU time', f'**{us:.1f} µs per controller step** ({r["steps"]} steps, current knobs). '
+                     f'Share of the period — {rows}. The 1 ms firmware loop also runs the safety checks and the PWM; '
+                     'an overrun trips CONTROL_OVERRUN.')
+        a.submit(lambda: a.device.onboard_bench(2000), done, 'Timing the controller on the MCU…')
 
     def recording_finished(self, path, rows, manifest):
         """Called by LabApp when a run is saved or loaded; summarises onboard runs."""

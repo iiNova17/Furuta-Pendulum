@@ -185,6 +185,43 @@ class LabTests(unittest.TestCase):
         d.event_count=5;p.event_mark=4;d.last_event={'event':'ONBOARD_SAFE_STOP'};d.status={'state':'DISARMED'}
         p.finished_run();self.assertIn('safeTh0',p.last_end)
         w.close()
+    def test_onboard_start_flow_and_burst_download(self):
+        """Start = stream 250 Hz, period, capture armed, then record, ARM, START_ONBOARD; afterwards the capture is saved."""
+        import tempfile,time as _t
+        from PySide6.QtWidgets import QApplication
+        from furuta_lab.app import LabApp
+        app=QApplication.instance() or QApplication([]);w=LabApp();p=w.onboard;d=w.device;ops=[]
+        tmp=Path(tempfile.mkdtemp());w.new_path=lambda kind:tmp/kind/'run1'
+        knobs={'K0':-.18,'Ts':.004,'modelArmSign':1,'modelPendSign':-1,'swingUp':True}
+        def rpc(op,**a):
+            ops.append(op)
+            if op=='SET_CONFIG':return {'ok':True,'config':a['config']}
+            if op=='ONBOARD_GET':return {'ok':True,'params':dict(knobs)}
+            if op=='ONBOARD_CONFIG':knobs.update(a['params']);return {'ok':True,'params':dict(knobs)}
+            if op=='START_ONBOARD':return {'ok':True,'mode':'LQR only','seconds':20,'Ts':knobs['Ts']}
+            if op=='BURST_INFO':return {'ok':True,'active':False,'pending':False,'adcCount':0,'coreCount':0,'adcHz':2000}
+            return {'ok':True}
+        d.rpc=rpc;d.connected=d.ready=True;d.port=type('P',(),{'write':lambda s,b:None,'close':lambda s:None})()
+        d.identity={'onboardControl':True,'onboardPeriods':[.001,.002,.004],'pendHz':1000}
+        d.status={'state':'DISARMED','centered':True,'centerCount':0}
+        d.config={'countsPerRev':1496,'armSign':1,'pendSign':-1,'pendDownRaw':3008,'maxDuty':.5,'travelCounts':498,
+                  'slewPerSecond':100,'currentTripA':1.5,'maxDuration':20,'heartbeatMs':300,'streamHz':100,'adcHz':2000}
+        w.power.setChecked(True);p.controller.setCurrentIndex(1);p.period.setCurrentIndex(0)   # LQR only, 1 ms
+        p.start()
+        end=_t.monotonic()+5
+        while w.busy and _t.monotonic()<end:app.processEvents();_t.sleep(.01)
+        self.assertEqual(ops,['SET_CONFIG','ONBOARD_GET','ONBOARD_CONFIG','CAPTURE_BURST','ARM','START_ONBOARD'])
+        self.assertTrue((tmp/'runs'/'run1'/'manifest.json').exists())
+        meta=json.loads((tmp/'runs'/'run1'/'manifest.json').read_text())['metadata']
+        self.assertEqual(meta['controller_period_s'],.001);self.assertEqual(meta['onboard_params']['Ts'],.001)
+        self.assertEqual(d.config['streamHz'],250);self.assertTrue(p.active);self.assertGreater(p.burst_armed,20)
+        # run ends -> capture downloaded into the run folder
+        d.finish_record();p.active=False;p.finished_run();self.assertIsNotNone(p.pending_burst)
+        seconds,path=p.pending_burst;p.pending_burst=None;p.download(seconds,path)
+        end=_t.monotonic()+5
+        while w.busy and _t.monotonic()<end:app.processEvents();_t.sleep(.01)
+        self.assertTrue((tmp/'runs'/'run1'/'burst'/'capture.npz').exists())
+        d.ready=d.connected=False;d.port=None;w.close()
 
 from test_estimation import *  # noqa: E402,F401,F403
 

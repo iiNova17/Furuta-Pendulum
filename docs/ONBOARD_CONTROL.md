@@ -7,10 +7,10 @@ safety function: duty clip and slew, arm travel trip, overcurrent trip, heartbea
 | | 1. Hardware in the loop (HIL) | 2. Onboard (product mode) |
 |---|---|---|
 | Controller runs in | Simulink on the laptop (`ctrl_hybrid.slx`, Stateflow) | ESP32 firmware (`firmware/include/onboard.h`) |
-| In the loop | USB, both directions (delay not measured yet) | nothing: 4 ms, the timing it was designed for |
+| In the loop | USB, both directions (delay not measured yet) | nothing: 1, 2 or 4 ms inside the 1 kHz firmware loop (firmware 1.7) |
 | Laptop does | runs the controller | commands, knobs, heartbeat, telemetry, digital twin |
 | Change a law | edit the Simulink file | edit `ctrl_hybrid_design.m`, re-export, rebuild, flash |
-| Status | **not built**: needs the harness Hardware variant and a compact duty message in the firmware | **built** (firmware 1.6), equivalent to the harness, **not yet run on the rig** |
+| Status | **not built**: needs the harness Hardware variant and a compact duty message in the firmware | **built** (firmware 1.6, faster in 1.7), equivalent to the harness, **not yet run on the rig** |
 
 HIL is what the course brief asks for (Simulink/Stateflow against real hardware). Onboard is the
 finished device: the laptop is only the GUI and the twin.
@@ -36,9 +36,35 @@ cd firmware && pio run                                  # build; flash with: pio
 ```
 `-static` avoids picking up an older `libstdc++` from Git's folder on PATH (it crashes at start).
 
+## Firmware 1.7: faster loop and better watching
+
+| | 1.6 | 1.7 |
+|---|---|---|
+| Controller period | 4 ms | **1, 2 or 4 ms** (`ONBOARD_CONFIG {params: {Ts: 0.001}}`; the app's period selector). Each period uses the design's LQR gain for it: same Q and R, `firmware/tools/onboard_rates.py` → `include/onboard_rates.h`; the 4 ms row equals `design::K` to 6e-13 |
+| Pendulum (AS5600) read | every 2 ms on the FreeRTOS tick | **every 1 ms on its own timer, 950 µs before the control tick** |
+| Pendulum reading age at the controller (measured, median / 99 %) | 0.94 / 1.68 ms | **0.45 / 1.45 ms** |
+| AS5600 filter | chip default, not set | written at boot and reported (`as5600Conf`): still the default 16x slow filter |
+| Stream during onboard runs | as connected (100 Hz in the app) | **250 Hz** (the app raises it for the run) |
+| High-rate record of a run | — | MCU capture with the run (500 Hz records, current at 2 kHz), downloaded after the run into `<run>/burst/` |
+| Diagnostics | — | `ONBOARD_BENCH` (µs per controller step), `pendReads`, `pendFails`, `pendReadMaxUs` in STATUS |
+
+Measured on the rig (12 V off, nothing armed, 2026-11-19): one controller step takes **143 µs mean, 352 µs
+worst** (soft-float double; 14 % of a 1 ms period); 1016–1022 pendulum reads/s with 0 failures (longest read
+about 1 ms); 250 records/s streamed with 0 dropped and 0 link errors; no control overruns.
+
+Why 1 ms and not more, and why the AS5600 filter stays at 16x: a closed-loop simulation on the identified model
+(firmware port of `onboard.h`, 1 ms firmware loop with clip / slew / PWM, quantized sensors, the harness's 7 ms
+pendulum delay and datasheet sensor noise) gave the LQR a pendulum-delay margin of 22.2 ms at 4 ms, 22.5 ms at
+2 ms and **25.0 ms at 1 ms with the pendulum read at 1 kHz**; swing-up caught in 1.45–1.48 s in every case. The
+faster AS5600 filters (8x/4x/2x) gave 23.1–23.4 ms: their extra noise cancels the latency they save. A 1 ms
+controller with the pendulum read every 2 ms failed the swing-up (every other speed estimate saw a stale
+reading), which is why the read rate went up with the controller rate. The cost of 1 ms is about twice the
+high-frequency duty switching (5.1 vs 2.2 %/ms rms), well inside the slew limit. The 4 ms setting is still the one
+validated in Simulink and replayed by `native_onboard.cpp`.
+
 ## What the firmware does in an onboard run
 
-- Every 4th 1 ms tick: arm angle from the encoder (`armSign`, `countsPerRev`, marked centre), pendulum
+- Every Ts (1, 2 or 4 ms; every 1st, 2nd or 4th tick of the 1 ms loop): arm angle from the encoder (`armSign`, `countsPerRev`, marked centre), pendulum
   angle from the AS5600 (`pendSign`, `pendDownRaw`), then estimator → LQR / energy swing-up → supervisor
   (SwingUp ↔ Stabilize, SafeStop at |θ0| > 100°). The duty request goes through `Controller::tick`, exactly
   like an experiment.
@@ -63,13 +89,13 @@ Powered steps need the person at the rig to confirm, for that batch, that **the 
 
 All steps use the Furuta Lab app (`Start-Furuta-Lab.cmd`), tab **Onboard control**. Its readiness list
 shows every item below with ✓ / ✗ / ! (advisory), and the Start button stays disabled until the device
-is DISARMED, connected to firmware 1.6 and the 12 V box is ticked. The firmware refuses `START_ONBOARD`
+is DISARMED, connected to firmware 1.6 or newer and the 12 V box is ticked. The firmware refuses `START_ONBOARD`
 on its own gates as well (see above).
 
-1. Flash firmware 1.6 (`cd firmware && pio run -t upload --upload-port COM11`). Flashing reboots the MCU:
+1. Flash firmware 1.7 (`cd firmware && pio run -t upload --upload-port COM11`). Flashing reboots the MCU:
    redo arm centre, pendulum-down reference and current zero on the Live tab (References), and check
    the encoder scale (Setup).
-   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.6)”.
+   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.7)”.
 2. Onboard control → **Read from device** (knobs), then **Apply these onboard-run limits to RAM**:
    run length (`maxDuration`, e.g. 20 s), maximum duty 50 %, slew 10000 %/s (= 100 /s; the old default
    is far too slow for feedback) and current trip 1.5 A. Travel stays as commissioned on Motor tests

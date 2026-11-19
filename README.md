@@ -1,7 +1,7 @@
 # Furuta Pendulum: onboard control (branch `onboard-control`)
 
 This branch holds only what runs on and next to the rig: the **ESP32 firmware** and the **Furuta Lab app**.
-It is where the onboard controllers are brought up on hardware: swing-up + LQR now (firmware 1.6), PID and
+It is where the onboard controllers are brought up on hardware: swing-up + LQR now (firmware 1.7), PID and
 pole placement next. The model, the Simulink harness (where the controllers are designed), the report,
 the CAD and the recorded data live on `sim-harness` / `main`.
 
