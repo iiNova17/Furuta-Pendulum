@@ -273,6 +273,7 @@ class LabApp(W.QMainWindow):
         g=self.group(v,'Device profile')
         self.bus_voltage=self.number(g,'Assumed motor supply (V)',12,.1,30,2)
         self.button(g,'Clear a resolved fault',lambda:self.submit(lambda:self.device.rpc('CLEAR_FAULT')))
+        self.button(g,'Cancel device capture (stuck “Capture/calibration in progress”)',self.cancel_capture)
         self.button(g,'Save current profile to device NVS',lambda:self.submit(lambda:self.device.rpc('SAVE_CONFIG')))
         self.button(g,'Show device / link details (raw units)',self.details)
         g=self.group(v,'Help')
@@ -582,7 +583,6 @@ class LabApp(W.QMainWindow):
         u=r['unit'];sens=self.capture_sensitivity() if r['sensor']=='current_mv' else None
         amps=lambda x:f' = **{x/sens:.4g} A**' if sens else ''
         if sens:r.update(sd_a=r['sd']/sens,peak_to_peak_a=r['peak_to_peak']/sens,sensitivity_mv_a=sens)
-        over=(self.capture_data.get('config',{}) or {})
         self.report('Stationary noise',f'**SD:** {r["sd"]:.5g} {u}{amps(r["sd"])} · **Peak-to-peak:** {r["peak_to_peak"]:.5g} {u}{amps(r["peak_to_peak"])}\n\n'
                     +(f'Amperes use {sens:g} mV/A from the capture profile.\n\n' if sens else '')+
                     f'Mean {r["mean"]:.5g} {u}; drift {r["drift"]:.5g} {u}. Sample rate {r["fs"]:.2f} Hz; PSD bin spacing {r["resolution"]:.3g} Hz.\n\n'
@@ -762,6 +762,12 @@ class LabApp(W.QMainWindow):
                     'status':self.device.status,'config':self.device.config,'last_sample_raw':last,
                     'link_errors':self.device.parser.errors,'bad_frames':self.device.parser.bad_frames[-3:],
                     'max_serial_loop_gap_s':self.device.max_io_gap,'max_gui_refresh_s':self.max_refresh}),indent=2))
+    def cancel_capture(self):
+        if not self.device.ready:raise RuntimeError('Connect first')
+        def done(r):
+            if r is None:self.report('Cancel capture','This firmware has no BURST_CANCEL (flash 1.10). A capture ends by itself after its length.')
+            else:self.report('Cancel capture',f'Device capture cancelled (was {"recording" if r.get("wasActive") else "armed" if r.get("wasPending") else "idle"}).')
+        self.submit(self.device.cancel_burst,done,'Cancelling the device capture…')
     def guide(self):
         self.output.setMarkdown((ROOT/'docs'/'FOCUSED_GUIDE.md').read_text(encoding='utf-8'))
     def cancel_job(self):self.cancel.set();self.stop();threading.Thread(target=self.backend.cancel,daemon=True).start()
@@ -775,7 +781,8 @@ class LabApp(W.QMainWindow):
             if series:
                 last=a[-1];key=S.best_current_key(d.config);cur=series[key];m,sd=S.stats(t,cur.values,t[-1]-READOUT_WINDOW_S)
                 self.sensors.setText(f'Current {S.fmt(m,sd,cur.unit)}  ·  magnet {S.magnet_text(last["mag_status"])}  ·  '
-                                     f'{len(a)} samples  ·  link errors {d.parser.errors}  ·  dropped {d.meta.get("dropped",0)}')
+                                     f'{len(a)} samples  ·  link errors {d.parser.errors}  ·  dropped {d.meta.get("dropped",0)}'
+                                     +('  ·  capture recording' if s.get('burstActive') else '  ·  capture armed' if s.get('burstPending') else ''))
                 if self.right_stack.currentIndex()==0:
                     self.viewer.show_series(t,series,self.selected_keys(),self.view_mode(),'Live — latest %g s'%self.window_s.value(),follow=self.window_s.value())
                 self.set_readouts(series,t,t[-1]-READOUT_WINDOW_S,None);self.update_raw_table()

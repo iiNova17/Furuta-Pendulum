@@ -90,6 +90,16 @@ int main(int argc,char**argv) {
   assert(k.startExternal(5000000,Controller::Source::Onboard,why));
   k.tick(5400000,0,0,2500,100,true);assert(k.fault=="HEARTBEAT_TIMEOUT");                  // heartbeat still active
   k.state=State::Disarmed;k.fault.clear();assert(!k.startExternal(6000000,Controller::Source::Onboard,why)); // needs ARM
+  // 1.10: currentChecks false ignores the current sensor (clipped ADC reading, overcurrent), nothing else
+  {Controller q;std::string w;q.cfg.maxDuty=.5;q.cfg.travelCounts=500;q.cfg.slewPerSecond=100;q.cfg.currentZeroMv=2500;q.cfg.maxDuration=0;
+   q.centered=true;assert(q.arm(20,1000000,w));assert(q.startExternal(1000000,Controller::Source::Onboard,w));
+   q.tick(1001000,0,0,3150,100,true);assert(q.fault=="ADC_INVALID_OR_CLIPPED");            // checks on: clipped reading trips
+   q.state=State::Disarmed;q.fault.clear();q.cfg.currentChecks=false;q.cfg.currentZeroMv=NAN;assert(q.arm(21,2000000,w)); // no zero needed
+   assert(q.startExternal(2000000,Controller::Source::Onboard,w));q.external=.3;
+   for(int i=1;i<=30;i++){q.lastHeartbeat=2000000+i*1000;q.tick(2000000+i*1000,0,0,3150,100,true);}   // 3150 mV, 10 A
+   assert(q.state==State::Running&&q.applied>0);
+   q.tick(2000000+31*1000,600,0,3150,100,true);assert(q.fault=="ARM_TRAVEL");}               // other trips stay
+
   // 1.8: maxDuration 0 = no run-length limit; every trip still applies
   {Config c=k.cfg;c.maxDuration=0;std::string w;assert(c.valid(w));c.maxDuration=-1;assert(!c.valid(w));}
   k.cfg.maxDuration=0;assert(k.arm(12,7000000,why));assert(k.startExternal(7000000,Controller::Source::Onboard,why));

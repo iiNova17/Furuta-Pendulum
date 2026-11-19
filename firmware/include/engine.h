@@ -20,6 +20,10 @@ struct Config {
   int armSign=1,pendSign=1,pendDownRaw=-1;
   // Measured breakaway duty (fraction, NaN = unknown). Stored only; not applied to commands.
   double deadzonePos=NAN,deadzoneNeg=NAN;
+  // 1.10: false = ignore the current sensor in runs (no ADC_INVALID_OR_CLIPPED, no overcurrent trip, no zero
+  // needed to arm). The current is still measured and recorded. Asked for because positive currents above
+  // about 3.2 A clip the sensor at the top of the ADC and ended balancing runs.
+  bool currentChecks=true;
   double assumedBusV=12;uint32_t heartbeatMs=300,streamHz=250,adcHz=2000,pwmHz=20000;
   std::string filterType="bypass"; double alpha=.1;unsigned window=8;std::array<double,6> sos{{1,0,0,1,0,0}};
   bool valid(std::string& why)const {
@@ -144,7 +148,7 @@ struct Controller {
   void fail(const char*s){applied=requested=0;state=State::Fault;fault=s;session=0;}
   bool arm(uint64_t s,uint64_t now,std::string&w) {
     if(state!=State::Disarmed||!fault.empty()||!centered||!s||cfg.maxDuty<=0||cfg.travelCounts<=0){w="Disarmed state, cleared fault, centered arm and commissioned limits required";return false;}
-    if(cfg.currentTripA>0&&!std::isfinite(cfg.currentZeroMv)){w="Current trip requires zero calibration";return false;}
+    if(cfg.currentChecks&&cfg.currentTripA>0&&!std::isfinite(cfg.currentZeroMv)){w="Current trip requires zero calibration";return false;}
     if(!cfg.valid(w))return false;
     session=s;lastHeartbeat=now;state=State::Armed;return true;
   }
@@ -167,9 +171,9 @@ struct Controller {
     if(!encoderOk){fail("ENCODER_INVALID");return;}
     if(std::abs((double)(count-center))>cfg.travelCounts){fail("ARM_TRAVEL");return;}
     if(cfg.velocityCountsPerSecond>0&&std::abs(cps)>cfg.velocityCountsPerSecond){fail("ARM_VELOCITY");return;}
-    if(adcAge>20000||!std::isfinite(mv)||mv<100||mv>3100){fail("ADC_INVALID_OR_CLIPPED");return;}
+    if(cfg.currentChecks&&(adcAge>20000||!std::isfinite(mv)||mv<100||mv>3100)){fail("ADC_INVALID_OR_CLIPPED");return;}
     const double tm=std::isfinite(tripMv)?tripMv:mv;
-    if(cfg.currentTripA>0&&std::abs((tm-cfg.currentZeroMv)/cfg.sensitivityMvA)>cfg.currentTripA) {
+    if(cfg.currentChecks&&cfg.currentTripA>0&&std::abs((tm-cfg.currentZeroMv)/cfg.sensitivityMvA)>cfg.currentTripA) {
       if(!tripSince)tripSince=now;
       if(now-tripSince>=cfg.currentTripMs*1000){fail("OVERCURRENT");return;}
     }else tripSince=0;

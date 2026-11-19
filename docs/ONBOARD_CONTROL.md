@@ -62,6 +62,26 @@ reading), which is why the read rate went up with the controller rate. The cost 
 high-frequency duty switching (5.1 vs 2.2 %/ms rms), well inside the slew limit. The 4 ms setting is still the one
 validated in Simulink and replayed by `native_onboard.cpp`.
 
+## Firmware 1.10: current sensor option, capture fixes
+
+- **Ignore the current sensor during runs** (profile `currentChecks: false`; app: Onboard control → “Ignore the
+  current sensor during runs”, then Apply). No `ADC_INVALID_OR_CLIPPED`, no overcurrent trip and no current zero
+  needed to arm; the current is still measured and recorded. Positive currents above about +3.2 A clip the sensor
+  at the top of the ESP32 ADC, which ended a balancing run (run `20261119_205453_867500`). With the option on,
+  nothing limits the current except the duty limit, so keep max duty moderate (TB6612: 1.2 A continuous / 3.2 A peak).
+- **“Capture/calibration in progress” with nothing running** (bug). Causes found: (1) a high-rate capture armed
+  with a run kept recording for its whole length (run length + 0.5 s, about 30 s with no run-length limit) after
+  a short run, and ARM was refused meanwhile; (2) a capture armed for a start that was then refused stayed
+  pending forever and blocked every profile change (Apply limits, Motor tests, estimation runs). Fixes: the
+  capture now ends 0.5 s after its run ends; new command `BURST_CANCEL`; the app cancels the capture when a start
+  fails, cancels a left-over capture before a start, cancels a stale pending capture and retries when a profile
+  change is refused, explains the remaining cases in words, shows “capture recording / armed” in the header, and
+  has Setup → “Cancel device capture”. Reproduced and fixed on the rig (pending capture → profile change
+  refused → the app cancels it and the change goes through). The 0.5 s end after a run is not yet verified
+  with power.
+- App: the onboard start refuses while a live recording is running (it used to end that recording on the way),
+  and a “Clear fault” button sits next to Start.
+
 ## Firmware 1.9: friction compensation in balance
 
 **Why.** With 1.8 the swing-up caught the pendulum (run `20261119_205453_867500`, caught after 1.16 s with the arm
@@ -157,10 +177,10 @@ shows every item below with ✓ / ✗ / ! (advisory), and the Start button stays
 is DISARMED, connected to firmware 1.6 or newer and the 12 V box is ticked. The firmware refuses `START_ONBOARD`
 on its own gates as well (see above).
 
-1. Flash firmware 1.9 (`cd firmware && pio run -t upload --upload-port COM11`). Flashing reboots the MCU:
+1. Flash firmware 1.10 (`cd firmware && pio run -t upload --upload-port COM11`). Flashing reboots the MCU:
    redo arm centre, pendulum-down reference and current zero on the Live tab (References), and check
    the encoder scale (Setup).
-   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.9)”.
+   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.10)”.
 2. Onboard control → **Read from device** (knobs), then **Apply these onboard-run limits to RAM**:
    run length (`maxDuration`, e.g. 20 s), maximum duty 50 %, slew 10000 %/s (= 100 /s; the old default
    is far too slow for feedback) and current trip 4 A (the default; A. Note: the current sensor reaches the top of the ESP32 ADC at about +3.2 A, where ADC_INVALID_OR_CLIPPED stops the motor first; the TB6612 is rated 1.2 A continuous / 3.2 A peak.). Travel stays as commissioned on Motor tests
