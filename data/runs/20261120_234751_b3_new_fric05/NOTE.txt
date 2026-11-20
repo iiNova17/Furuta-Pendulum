@@ -1,0 +1,2 @@
+NOTE: during this run the person at the rig pushed the pendulum by hand to see the reaction (disturbance test).
+Not comparable with the other b3 runs for steady-state numbers (pendulum rms, arm range).
