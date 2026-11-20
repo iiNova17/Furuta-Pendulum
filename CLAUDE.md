@@ -2,7 +2,8 @@
 
 > **Branch `onboard-control`:** only the firmware and the Furuta Lab app are on this branch (plus the
 > protocol, config and the app's MATLAB backend). The harness, model, report, twin and data sections below
-> refer to files on `sim-harness` / `main`. `firmware/include/onboard_design.h` is generated there by
+> refer to files on `sim-harness` / `main`. The in-app digital twin (tab Digital twin, `desktop/furuta_lab/twin_*.py`,
+> `docs/TWIN.md`) is on this branch; its meshes are copied from `main:twin/`. `firmware/include/onboard_design.h` is generated on `sim-harness` by
 > `export_onboard.m`; copy it here, never hand-edit it. The app's Onboard control tab is
 > `desktop/furuta_lab/onboard_page.py`; new onboard controllers are one `CONTROLLERS` entry there.
 
@@ -61,7 +62,7 @@ See README.md for the folder map.
 - All settings are parameters: rig/rates/limits in `harness_config.m`, controller knobs in the
   design file. Keep it that way (no constants buried in blocks).
 - Two ways to run the controller on the rig (`docs/ONBOARD_CONTROL.md`): HIL (Simulink on the laptop,
-  not built yet) and onboard (ESP32 firmware 1.10, `firmware/include/onboard.h`). The onboard numbers are
+  not built yet) and onboard (ESP32 firmware 1.11, `firmware/include/onboard.h`). The onboard numbers are
   generated: `export_onboard.m` writes `firmware/include/onboard_design.h` (never hand-edit) and the
   replay files for `firmware/test/native_onboard.cpp`, which must keep passing (same duty as Simulink).
   Build that test with `-static` (Git's libstdc++ on PATH crashes it).

@@ -1,7 +1,7 @@
 # Furuta Pendulum: onboard control (branch `onboard-control`)
 
 This branch holds only what runs on and next to the rig: the **ESP32 firmware** and the **Furuta Lab app**.
-It is where the onboard controllers are brought up on hardware: swing-up + LQR now (firmware 1.10), PID and
+It is where the onboard controllers are brought up on hardware: swing-up + LQR now (firmware 1.11), PID and
 pole placement next. The model, the Simulink harness (where the controllers are designed), the report,
 the CAD and the recorded data live on `sim-harness` / `main`.
 
@@ -12,6 +12,7 @@ the CAD and the recorded data live on `sim-harness` / `main`.
 | `firmware/` | ESP32-S3 firmware (PlatformIO). `include/onboard.h` is the onboard controller; `include/onboard_design.h` is **generated** on `sim-harness` by `matlab/harness/controllers/hybrid/export_onboard.m` (copy it here, never hand-edit); `test/native_onboard.cpp` replays harness runs and requires the same duty as Simulink |
 | `desktop/` | Furuta Lab (Python/Qt) app. Tab **Onboard control** (`furuta_lab/onboard_page.py`) starts the onboard controller, shows its state, edits its knobs and records the run |
 | `docs/ONBOARD_CONTROL.md` | How onboard control works and the hardware bring-up procedure |
+| `docs/TWIN.md` | The app's Digital twin tab (Qt Quick 3D, model ghost, latency, UDP to the Unreal twin) |
 | `docs/` | App guides, hardware notes, earlier implementation plans |
 | `protocol/`, `config/` | Serial protocol spec and golden vectors; device profile and schema |
 | `matlab/furuta_backend.m`, `matlab/+furuta/` | Only the MATLAB backend the app calls for its speed-model fit |
@@ -24,6 +25,8 @@ the CAD and the recorded data live on `sim-harness` / `main`.
 3. Onboard replay test after any design change:
    `g++ -std=c++17 -O2 -static -o native_onboard firmware/test/native_onboard.cpp && ./native_onboard firmware/test`
 4. Bring-up on hardware: follow `docs/ONBOARD_CONTROL.md`, using the app's Onboard control tab.
+5. Digital twin: tab **Digital twin** (`docs/TWIN.md`). For the lowest delay set the FTDI latency timer of COM11
+   to 1 ms (Device Manager → USB Serial Port → Port Settings → Advanced).
 
 ## Adding a controller (PID, pole placement)
 

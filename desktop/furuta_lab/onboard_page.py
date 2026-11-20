@@ -141,7 +141,7 @@ class OnboardPage:
     # ------------------------------------------------------------------ layout
     def build(self, v):
         a = self.app
-        a.text(v, 'The ESP32 runs the controller itself (firmware 1.10: every 4, 2 or 1 ms, pendulum read at 1 kHz, all firmware trips active). '
+        a.text(v, 'The ESP32 runs the controller itself (firmware 1.11: every 4, 2 or 1 ms, pendulum read at 1 kHz, all firmware trips active). '
                   'This page starts it, keeps the heartbeat, shows its state and records the run. '
                   'STOP / DISABLE, unticking the 12 V box or closing the app stops the motor (heartbeat within 300 ms).', small=True)
 

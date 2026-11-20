@@ -21,6 +21,9 @@ class Device:
         self.last_rx=0.;self.max_io_gap=0.;self.record=None;self.record_count=0
         self.progress='';self.meta={};self.boot=None;self.thread=None
         self.last_event=None;self.event_count=0
+        # (perf_counter at arrival, device_us of the newest record) per stream packet: the digital twin uses it to
+        # estimate how old the pose on screen is (the clocks differ, so only the added delay is measurable)
+        self.rx_log=collections.deque(maxlen=4000)
 
     def log(self,message):
         with self.lock:self.events.append((time.time(),str(message)))
@@ -28,7 +31,7 @@ class Device:
     def connect(self,port):
         self.close();self.closed.clear();self.parser=wire.Parser();self.sequence=0
         self.session=secrets.randbits(63)+1;self.boot=None;self.blocks.clear();self.rows=0
-        self.config={};self.identity={};self.inhibit=True;self.max_io_gap=0
+        self.config={};self.identity={};self.inhibit=True;self.max_io_gap=0;self.rx_log.clear()
         p=serial.Serial(baudrate=460800,timeout=.01,write_timeout=.3)
         p.dtr=False;p.rts=False;p.port=port;p.open();p.reset_input_buffer();self.port=p
         self.connected=True;self.status={'state':'CONNECTING'}
@@ -87,6 +90,7 @@ class Device:
                     for kind,session,seq,payload in self.parser.feed(b):
                         if kind==4 and self.ready and session==self.session:
                             rows,meta=wire.core_batch(payload)
+                            if len(rows):self.rx_log.append((time.perf_counter(),int(rows['device_us'][-1])))
                             if meta['boot']!=self.boot:raise RuntimeError('MCU restarted; reconnect and re-center')
                             # The MCU bumps configId whenever its profile changes
                             # (SET_CONFIG, CALIBRATE down/upright/arm, current zero),
