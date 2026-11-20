@@ -44,3 +44,12 @@ Point it at the PC's IP instead of 127.0.0.1.
 
 Build notes: the Target files pin VS 2022 MSVC 14.40 (VS 18 is also installed and UE 5.3 can't use it).
 The C++ compile needs ~3 GB of free commit memory per job — close SolidWorks if it fails with C1060.
+
+## Packaged build (no editor needed)
+
+`powershell -File twin\package_twin.ps1` builds a standalone Shipping app into `dist\RIPTwin\Windows\` (about 230 MB;
+`dist\` is not committed). Run it with `dist\RIPTwin\Windows\RIPTwin.exe -windowed -ResX=1600 -ResY=900`: it needs no
+Unreal editor, Visual Studio or build cache. Furuta Lab's twin tab "Forward to the Unreal twin" feeds it live (port 7400).
+Rendering is kept light (DefaultEngine.ini): Lumen global illumination and reflections off, virtual shadow maps off,
+60 fps cap. Checked 2026-11-21: started standalone, both sources received at 95 Hz, scripted screenshot
+(packaged builds save to `%LOCALAPPDATA%\RIPTwin\Saved\Screenshots`).

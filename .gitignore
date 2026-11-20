@@ -43,3 +43,6 @@ matlab.mat
 
 # Packaged harness releases (matlab/harness/export_release.m)
 dist/
+
+# Unreal packaging output (twin/package_twin.ps1)
+twin/RIPTwin/Build/

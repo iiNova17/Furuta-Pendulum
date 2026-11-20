@@ -69,6 +69,9 @@ the default 16 ms; a re-measurement after the change is not done yet.
 ## Requirements
 
 `PySide6-Addons==6.12.0` (Qt Quick 3D), listed in `desktop/requirements.txt`; `Setup-Furuta-Lab.ps1` installs it.
+The pinned numpy 2.5.4 needs Python 3.12+. On Python 3.11 (2026-11-21, laptop with 3.11 only):
+`.venv\Scripts\python -m pip install PySide6-Essentials==6.12.0 PySide6-Addons==6.12.0 pyqtgraph==0.14.0 pyserial==3.5 "numpy<2.5" "scipy<1.18"`
+(all 39 app tests pass with numpy 2.4.6 / scipy 1.17.1).
 Without it the tab shows why the view is unavailable and the rest of the app works as before.
 Note: while the rig balances, the ghost (open loop, driven by the applied duty) falls off the unstable upright within
 the re-sync time; that is expected. Fixed 2026-11-20: the controller state (SWING-UP / STABILIZE) was never shown in the
