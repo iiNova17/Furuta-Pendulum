@@ -11,7 +11,7 @@ function export_onboard()
 %   Re-run after any change to ctrl_hybrid_design.m, then rebuild and re-flash the firmware.
 here = fileparts(mfilename('fullpath'));
 fwdir = fullfile(here, '..', '..', '..', '..', 'firmware');
-cfg = harness_config();
+cfg = harness_config('realistic', 'Model', '20261120');   % replays on the rig as re-identified (the design model)
 P = ctrl_hybrid_design(cfg);
 assert(P.stab == 3, 'export_onboard: the on-board copy implements the LQR stabilizer (ctrlP.stab = 3)');
 
@@ -40,8 +40,13 @@ for f = {'E0', 'k_E', 'a_push', 'wc', 'zc', 'a_kick', 'kick_E', 'w_sign', 'w_fri
          'stick_gain', 'w_stick', 'a_stick'}
     L{end+1} = add(['sw_' f{1}], s.(f{1}), ''); %#ok<AGROW>
 end
+L{end+1} = add('estKind', P.est.kind, '        // 1.12: 0 filtered differences, 1 model observer, 2 its fallback');
+L{end+1} = add('estLag', P.est.nd*P.Ts, '       // lag the observer compensates [s] (nd ticks at the design period)');
+L{end+1} = add('estFab', P.est.f_ab, '');
+L{end+1} = add('estFtrk', P.est.f_trk, '');
+L{end+1} = add('estSub', P.est.sub, '           // RK4 substeps per tick in the observer model');
 m = P.plant;
-for f = {'Jp', 'G', 'Ja', 'Beq', 'tcp', 'tcn', 'Rm', 'Kb', 'Vs', 'tsp', 'tsn'}
+for f = {'Jp', 'G', 'Ja', 'Beq', 'tcp', 'tcn', 'Rm', 'Kb', 'Vs', 'tsp', 'tsn', 'h', 'b1', 'tp', 'eps', 'eps1', 'stick_band', 'stick_T'}
     L{end+1} = add(['pl_' f{1}], m.(f{1}), ''); %#ok<AGROW>
 end
 L{end+1} = 'constexpr int modelArmSign = 1;    // device profile signs the identified model was fitted with';
