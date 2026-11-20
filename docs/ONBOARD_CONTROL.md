@@ -10,7 +10,7 @@ safety function: duty clip and slew, arm travel trip, overcurrent trip, heartbea
 | In the loop | USB, both directions (delay not measured yet) | nothing: 1, 2 or 4 ms inside the 1 kHz firmware loop (firmware 1.7) |
 | Laptop does | runs the controller | commands, knobs, heartbeat, telemetry, digital twin |
 | Change a law | edit the Simulink file | edit `ctrl_hybrid_design.m`, re-export, rebuild, flash |
-| Status | **not built**: needs the harness Hardware variant and a compact duty message in the firmware | **built** (firmware 1.6, faster in 1.7), equivalent to the harness, **not yet run on the rig** |
+| Status | **not built**: needs the harness Hardware variant and a compact duty message in the firmware | **built and run on the rig** (firmware 1.12, 2026-11-20: swing-up and balance with the model observer), equivalent to the harness |
 
 HIL is what the course brief asks for (Simulink/Stateflow against real hardware). Onboard is the
 finished device: the laptop is only the GUI and the twin.
@@ -61,6 +61,53 @@ controller with the pendulum read every 2 ms failed the swing-up (every other sp
 reading), which is why the read rate went up with the controller rate. The cost of 1 ms is about twice the
 high-frequency duty switching (5.1 vs 2.2 %/ms rms), well inside the slew limit. The 4 ms setting is still the one
 validated in Simulink and replayed by `native_onboard.cpp`.
+
+## Firmware 1.12: model observer, retune on the re-identified rig (2026-11-20)
+
+**Why.** Rig runs of 2026-11-19/20 with 1.9-1.11 balanced but chattered at 9-10 Hz: duty at the ±50 % limit about
+half the time, pendulum 4.9° rms, current 1.62 A rms (above the TB6612's 1.2 A continuous). Cause, measured with the
+rig suite (`desktop/rig_suite*.py`): the pendulum reading lags the arm encoder by 9-15 ms (14.7 ms for small, 9.1 ms
+for large arm motion: play and flex in the shaft coupling between motor and arm). The 1.11 LQR tolerates about 6 ms
+of that lag on the re-identified model. No 4-gain LQR reaches more than about 12 ms (sweep of every Bryson knob, the
+period and the velocity filter). The rig had also changed after it was moved: arm breakaway 6 % instead of 13 / 14 %,
+model `matlab/model/furuta_params_20261120.m` (`data/estimation/suite_20261120`).
+
+**Change.**
+
+| | 1.11 | 1.12 |
+|---|---|---|
+| Estimator | filtered differences, 40 Hz | **model observer** (`est_observer.slx` / `est_observer_ref.m`): estimate at the pendulum sample time, alpha-beta correction (10 Hz), rolled forward 3 ticks (12 ms) through the sent duties with the model; `estKind` 0 = 1.11 estimator, 2 = tracking-loop fallback |
+| LQR | Bryson [30° 8° 20 30], duty 0.10 on Table 6: K = [-0.1795 -2.155 -0.1256 -0.1586] | same limits on the 20 Nov model: **K = [-0.1789 -1.8906 -0.1132 -0.1347]** |
+| Friction compensation | on, breakaway 13 / 14 % | **off** (`fricGain` 0; breakaway / Coulomb numbers now 6.0 / 6.3 %) |
+| Swing-up motor inverse | breakaway 13 / 14 % | 6 % (from the model): the kick is no longer oversized |
+| Knobs | | `estKind`, `estLag` (0.012 s), `estFab` (10 Hz), `estFtrk` (25 Hz), `estSub` (1) |
+
+**Timing.** The ESP32-S3 FPU is single precision only. The observer's model runs in float with one RK4 substep per
+tick, and only the active law (LQR or swing-up) is computed. `ONBOARD_BENCH`: 0.55 ms mean, 0.73-0.80 ms worst per
+step at 4 ms (the first double-precision build took 2.65 / 3.32 ms). The observer is refused at 1 and 2 ms periods.
+Armed dry run (12 V off, centre rod in, 10 s): 0 control overruns.
+
+**Equivalence.** `native_onboard.cpp` replays the harness runs: with `-DONBOARD_OBSERVER_DOUBLE` the C++ equals
+Simulink to 1.2e-14; the float build (as flashed) to 3e-6 duty (tolerance 1e-4, one PWM step is 1/1023). Simulink
+`est_observer.slx` equals `est_observer_ref.m` exactly (`tests/test_observer.m`).
+
+**Rig results** (swing-up + balance from the hanging rest, 15 s, 4 ms, 2026-11-20; balance numbers from 1 s after the catch):
+
+| Run | Firmware, compensation | Caught after | Arm in swing-up | Pendulum rms | Arm during balance | Duty at limit | Current rms |
+|---|---|---|---|---|---|---|---|
+| `b2_default` | 1.11, on (13 / 14 %) | 0.83 s | −37…+83° | 4.94° | −65…+29° | 49 % | 1.62 A |
+| `b3_new` | 1.12, on (6 %) | 2.16 s | −33…+43° | 2.10° | −22…−9° | 0 % | 0.31 A |
+| `b3_new` (repeat) | 1.12, on | 1.84 s | −32…+43° | 1.73° | −18…−8° | 0 % | 0.30 A |
+| `b3_new_nocomp` | 1.12, off | 1.43 s | −28…+44° | 1.33° | −36…+15° | 0 % | 0.31 A |
+| `b3_new_nocomp` (repeat) | 1.12, off | 1.42 s | −32…+43° | 1.22° | −36…+15° | 0 % | 0.27 A |
+
+With compensation on, the switching term and the coupling play make a 2.9 Hz wobble (1-5 Hz band 2.0° vs 1.0° off);
+off, the arm wanders more. Default: off (reasons in `ctrl_hybrid_design.m`). `b3_new_fric05` (half compensation) had
+a hand push during the run (disturbance test: 13.5° knocked, back within 3° after 0.70 s, no fault); not comparable.
+The remaining arm offset (about −10 to −15°) follows the pendulum's upright reading of +0.7-1° (not yet corrected).
+
+**Unverified:** 1.12 with the defaults of the final export (fricGain 0 in `onboard_design.h`) was run on the rig as
+the knob override `fricGain 0`, not as a reflashed default; long runs (> 15 s) with 1.12.
 
 ## Firmware 1.11: stream records sent immediately
 
@@ -145,7 +192,7 @@ when the arm is at rest, blending to the sliding Coulomb friction as it speeds u
 simulation on the model with breakaway: the 1.7 law never moves the arm (as on the rig); with the feedforward
 the swing-up is caught after 1.44 s (4 ms) / 1.45 s (2 ms), arm within 47°. The Simulink replay test runs with
 `stickGain` 0 (the harness runs predate it) and still matches to 6e-15; the C++ law equals the simulated one to 2e-11.
-The Simulink swing-up block does not have the feedforward yet (see `docs/HANDOFF_BREAKAWAY.md` on `sim-harness`).
+Since 2026-11-20 the Simulink blocks have both breakaway terms and the replay runs with them on (1.3e-15).
 
 **Run length.** `maxDuration` 0 = no limit for onboard runs (and experiments): the run lasts until STOP / DISABLE,
 a trip, a fault, SafeStop or heartbeat loss. App: “No run-length limit”.
@@ -185,10 +232,11 @@ shows every item below with ✓ / ✗ / ! (advisory), and the Start button stays
 is DISARMED, connected to firmware 1.6 or newer and the 12 V box is ticked. The firmware refuses `START_ONBOARD`
 on its own gates as well (see above).
 
-1. Flash firmware 1.11 (`cd firmware && pio run -t upload --upload-port COM11`). Flashing reboots the MCU:
+1. Flash firmware 1.12 (`cd firmware && pio run -t upload --upload-port COM11`; the FTDI port, COM9 on the 2026-11-20 laptop). Flashing reboots the MCU:
    redo arm centre, pendulum-down reference and current zero on the Live tab (References), and check
    the encoder scale (Setup).
-   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.11)”.
+   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.12)”.
+   With the model observer (estKind 1, the 1.12 default) only the 4 ms controller period is accepted.
 2. Onboard control → **Read from device** (knobs), then **Apply these onboard-run limits to RAM**:
    run length (`maxDuration`, e.g. 20 s), maximum duty 50 %, slew 10000 %/s (= 100 /s; the old default
    is far too slow for feedback) and current trip 4 A (the default; A. Note: the current sensor reaches the top of the ESP32 ADC at about +3.2 A, where ADC_INVALID_OR_CLIPPED stops the motor first; the TB6612 is rated 1.2 A continuous / 3.2 A peak.). Travel stays as commissioned on Motor tests

@@ -49,7 +49,7 @@ with `cfg.p` equals the old model to 5e-9 on 300 states. **Not run:** `test_harn
   regenerated and the firmware reads these from it (the interim `onboard_stiction.h` is gone). The replay files
   are the old ones; `native_onboard.cpp` replays them with `stickGain = 0`, `fricGain = 0`.
 
-## To do (R2026a)
+## To do (R2026a) — steps 1, 2, 3, 5 done 2026-11-20; step 4 (report) open
 
 1. **Simscape plant friction.** In `build_harness.m`, replace the arm Coulomb blocks ("Friction (eq. 78 ...)",
    `tanh`, `tau_c+`, `arm Coulomb`) by one MATLAB Function block that returns the arm friction torque exactly as
@@ -96,12 +96,22 @@ with `cfg.p` equals the old model to 5e-9 on 300 states. **Not run:** `test_harn
 |---|---|---|
 | Breakaway values from the dead zone | 0.4554 / 0.4905 A | yes (arithmetic) |
 | Model without / with breakaway at 11.1 % from rest | 285° / 0° in 6 s (rig: stuck) | yes, Python model vs recorded runs |
-| Validation fits with breakaway | within 2 points of Table 4 | yes, Python |
+| Validation fits with breakaway | within 2 points of Table 4 (Python); harness replay: arm 86.5 % vs 89.0 % (2.5 points), others within 0.3 | yes, Python and R2026a |
 | `furuta_rhs.m` = Python model (with breakaway) | 1.3e-8 on 400 states (133 stuck) | yes, R2023b |
 | Harness uses the model without breakaway (`cfg.p`) | equals the old model to 5e-9 | yes, R2023b (`.m` only) |
-| `tests/test_harness.m` after this change | — | **unverified** (R2026a) |
+| `tests/test_harness.m` after this change | 11/11 pass; Simscape = `furuta_rhs` with breakaway to round-off; 11 % stays stuck, 20 % moves | yes, R2026a (2026-11-20) |
 | Firmware 1.8 feedforward = simulated law | 2e-11 over 1500 steps; kick 24.1 % duty | yes (native C++) |
 | Swing-up from rest on the model with breakaway | old law stuck, new law caught at 1.44 s | yes, Python closed loop |
-| Swing-up from rest on the rig with firmware 1.8 | — | **unverified** (not run with power yet) |
+| Swing-up from rest on the rig with firmware 1.8 | caught in 0.81–1.18 s in 9/9 runs (1.8–1.10, 2026-11-19), arm overshoot to 86–101° | yes (rig runs on `onboard-control`, now in `data/runs/20261119_*`) |
 | Firmware 1.9 balance compensation = simulated law | 1.5e-13; arm stuck 4 % vs 41-49 % (simulation) | yes (native C++, Python) |
-| Simscape plant / Simulink swing-up and balance with breakaway | — | **to do** (steps 1–5) |
+| Simscape plant / Simulink swing-up and balance with breakaway | steps 1, 2, 3, 5 done: swing-up caught 1.46 s, arm 47° (old law: never moves); balance arm stuck 5–6 % (Coulomb only 79 %, none 42–44 %); replay C++ = Simulink 1.3e-15 with both terms on | yes, R2026a (2026-11-20) |
+| Report section 10 and the validation-fit sentence (arm fit 89 → 86.5 % with breakaway, not < 2 points) | — | **to do** (step 4) |
+| Breakaway re-measured after the rig was moved | **6 % / 6 %** duty (first moving pulse, median over arm positions +2 / −24 / +31°; always moves from 5–7.5 %), was 13 % / 14 % | yes, rig runs `b1_breakaway_low` (2026-11-20) |
+| Breakaway values in the model and the design | 0.2675 A (6 % at Rm 2.69 Ω) in `furuta_params_20261120.m`, the default model since 2026-11-20; friction compensation default off (`fricGain` 0), swing-up feedforward kept | yes (files); rig results in `docs/ONBOARD_CONTROL.md`, Firmware 1.12 |
+
+## Update 2026-11-20
+
+The breakaway measured on 2026-11-07 no longer holds: after the rig was moved the arm breaks free at 5–7.5 % duty
+(about the old sliding friction), and the model was re-identified (`data/estimation/suite_20261120`). The swing-up
+feedforward and the friction-compensation code stay; their numbers come from the new model. Report step 4 is still open.
+

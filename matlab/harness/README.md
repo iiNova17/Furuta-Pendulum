@@ -9,7 +9,7 @@ each owner fills in.
 ref --> [Controller] --duty--> [Rig] --y = [theta0; theta1; i]--+
              ^--------------------------------------------------+
 Controller: hybrid template = estimator -> PID / pole placement / LQR / swing-up -> Stateflow supervisor
-Rig (Variant Subsystem):  Simulation = HIL link -> firmware -> plant (report model) -> sensors
+Rig (Variant Subsystem):  Simulation = HIL link -> firmware -> plant (identified model) -> sensors
                           Hardware   = USB link to the ESP32 (placeholder until the bridge is built)
 ```
 
@@ -17,13 +17,23 @@ Rig (Variant Subsystem):  Simulation = HIL link -> firmware -> plant (report mod
 
 | | 1. Hardware in the loop | 2. Onboard (product mode) |
 |---|---|---|
-| Controller runs in | Simulink on the laptop, this harness with `cfg.rig = 'Hardware'` | ESP32 firmware 1.10 (`firmware/include/onboard.h`), started from the app's Onboard control tab |
+| Controller runs in | Simulink on the laptop, this harness with `cfg.rig = 'Hardware'` | ESP32 firmware 1.12 (`firmware/include/onboard.h`), started from the app's Onboard control tab |
 | Loop | USB both ways (delay unmeasured) | inside the 1 kHz firmware loop, 4 ms period |
-| Status | not built (Hardware variant + firmware duty message) | built, equal to the harness to 7e-13 with the breakaway terms off; first rig runs 2026-11-19 (caught, balanced, then stuck below the breakaway: fixed in 1.9, `docs/ONBOARD_CONTROL.md`) |
+| Status | not built (Hardware variant + firmware duty message) | built and run on the rig: firmware 1.12 with the model observer (2026-11-20), equal to the harness to 1.2e-14 (observer in double) / 3e-6 duty (float, as flashed); results in `docs/ONBOARD_CONTROL.md` |
 
-Breakaway friction: the design (`ctrl_hybrid_design.m`) and the firmware have the swing-up breakaway feedforward and
-the breakaway-aware balance compensation; the Simscape plant and the Simulink blocks do not yet, so the harness
-plant runs without the breakaway (`harness_config.m`) until `docs/HANDOFF_BREAKAWAY.md` steps 1, 2 and 5 are done.
+Breakaway friction (stick-slip; 6 % duty in the 20 Nov model, 13 % / 14 % in Table 6) is everywhere: the Simscape plant ("arm friction" block =
+`lib/arm_friction.m` = `furuta_rhs`), the swing-up's motor inverse (`swingup_energy.slx`, `D.swing.stick_gain`), the
+balance friction compensation (`ctrl_hybrid.slx`, `D.fric.gain` / `D.fric.stick`) and firmware 1.8 / 1.9. A plant
+without it: `run_sim(..., 'Plant', struct('tsp', 0, 'tsn', 0))`.
+
+Estimator (`ctrl_hybrid.slx`, switch on `ctrlP.est.kind`): 0 = filtered differences, 1 = the model-assisted observer
+(`controllers/hybrid/est_observer.slx`, reference `est_observer_ref.m`, test `tests/test_observer.m`), 2 = its
+tracking-loop fallback. The observer predicts the state 3 ticks (12 ms) forward through the sent duties: the rig's
+pendulum reading lags the motor encoder by 9-15 ms (shaft coupling). Harness comparison on the 20 Nov plant, lag
+9 / 12 / 15 ms: old controller 50-65 % of the time at the duty limit, 1.65 A rms; observer + retuned LQR 0.24-0.97° rms,
+no saturation, about 0.2 A (`controllers/hybrid/observer_compare.m`). The pendulum lag of the simulated sensor
+comes from the parameter set (`p.pend_delay`, 10 ms for the 20 Nov model, 7 ms for Table 6). Firmware current trip:
+4 A, as on the rig.
 
 One design, two copies: `controllers/hybrid/export_onboard.m` writes `firmware/include/onboard_design.h`
 from `ctrl_hybrid_design.m`, plus replay files that `firmware/test/native_onboard.cpp` uses to require the
@@ -36,7 +46,7 @@ same duty as Simulink. Re-run it after any change to the design file, then rebui
 | Rig, rates, HIL link, sensors, firmware limits, metric bands | `harness_config.m` | `cfg.Ts` (controller period, 4 ms), `cfg.fw.Ts` (firmware, 1 ms), `cfg.link.y_delay`, `cfg.rig`, `cfg.act.max_duty` |
 | Controller knobs, one section per owner | `controllers/hybrid/ctrl_hybrid_design.m` | `stab`, `pid.*`, `pp.poles`, `lqr.Q/R`, `swing.*`, `sup.*` (Stateflow guards) |
 | Test cases | `furuta_scenario.m` | `balance`, `push` (standard disturbance), `arm_step`, `swingup` |
-| Plant | `matlab/model/furuta_params.m` (report Table 6) | never edited here |
+| Plant | `matlab/model/furuta_params_20261120.m` (default) or `furuta_params.m` (Table 6): `harness_config(mode, 'Model', '20261120' / 'table6')` | never edited here |
 
 Per run without editing files: `run_sim(..., 'Params', struct('lqr', struct('R', 50)))` (nested overrides
 merge) and `cfg = harness_config(); cfg.Ts = 2e-3; run_sim(..., 'Cfg', cfg)`.
