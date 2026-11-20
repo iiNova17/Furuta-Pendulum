@@ -100,18 +100,22 @@ for k = 1:numel(kids)
     if ~strcmp(kids{k}, V), delete_block(kids{k}); end
 end
 delete_line(find_system(V, 'SearchDepth', 1, 'FindAll', 'on', 'Type', 'line'));
-add_block('simulink/Sources/In1', [V '/duty'], 'Position', [20 100 50 114]);
+delete(find_system(V, 'SearchDepth', 1, 'FindAll', 'on', 'Type', 'annotation'));   % library help text
+add_block('simulink/Sources/In1', [V '/duty'], 'Position', [60 213 90 227]);
 outs = {'y', 'x', 'i', 'd', 'fault'};
-for k = 1:numel(outs)
-    add_block('simulink/Sinks/Out1', [V '/' outs{k}], 'Position', [500 40 + 40*k 530 54 + 40*k]);
+for k = 1:numel(outs)           % level with the Simulation block's output ports
+    y = 70 + 300*k/6;
+    add_block('simulink/Sinks/Out1', [V '/' outs{k}], 'Position', [440 y - 7 470 y + 7]);
 end
+note(V, sprintf(['Active choice: cfg.rig in harness_config.m (''Simulation'' or ''Hardware'').\n' ...
+    'Ports are matched by name; no lines at this level.']), [60 20]);
 set_param(V, 'VariantControlMode', 'label');
 S = [V '/Simulation'];
-add_block('simulink/Ports & Subsystems/Subsystem', S, 'Position', [200 40 350 160]);
+add_block('simulink/Ports & Subsystems/Subsystem', S, 'Position', [200 70 350 370]);
 build_sim_rig(S, outs);
 set_param(S, 'VariantControl', 'Simulation');
 Hw = [V '/Hardware'];
-add_block('simulink/Ports & Subsystems/Subsystem', Hw, 'Position', [200 200 350 320]);
+add_block('simulink/Ports & Subsystems/Subsystem', Hw, 'Position', [200 430 350 730]);
 build_hw_placeholder(Hw, outs);
 set_param(Hw, 'VariantControl', 'Hardware');
 set_param(V, 'LabelModeActiveChoice', 'Simulation');
@@ -137,21 +141,23 @@ area(S, 'ESP32 sensors (fw.Ts)', [830 10 1150 330], [0.92 0.97 0.92]);
 
 % measurements back to the controller (top row)
 tag('From', 'y_fw to link', 'y_fw', 45, 20);
-B('simulink/Signal Attributes/Rate Transition', 'to controller rate', [110 30 150 60], ...
-    'OutPortSampleTime', 'hcfg.Ts');
-B('simulink/Discrete/Delay', 'measurement delay', [190 30 230 60], 'DelayLength', 'hcfg.link.y_delay', ...
+B('simulink/Signal Attributes/Rate Transition', 'to controller rate', [100 30 140 60], ...
+    'OutPortSampleTime', 'hcfg.Ts', 'Integrity', 'off', 'Deterministic', 'off');
+B('simulink/Discrete/Delay', 'measurement delay', [215 30 255 60], 'DelayLength', 'hcfg.link.y_delay', ...
     'SampleTime', 'hcfg.Ts');
-B('simulink/Sinks/Out1', 'y', [280 38 310 52]);
+B('simulink/Sinks/Out1', 'y', [290 38 320 52]);
 W('y_fw to link', 1, 'to controller rate', 1);
 W('to controller rate', 1, 'measurement delay', 1);
 W('measurement delay', 1, 'y', 1);
 
 % commands to the firmware (second row, y = 122)
 B('simulink/Sources/In1', 'duty', [20 115 50 129]);
-B('simulink/Discrete/Delay', 'command delay', [110 107 150 137], 'DelayLength', 'hcfg.link.u_delay', ...
+B('simulink/Discrete/Delay', 'command delay', [100 107 140 137], 'DelayLength', 'hcfg.link.u_delay', ...
     'SampleTime', 'hcfg.Ts');
-B('simulink/Signal Attributes/Rate Transition', 'to firmware rate', [190 107 230 137], ...
-    'OutPortSampleTime', 'hcfg.fw.Ts');
+B('simulink/Signal Attributes/Rate Transition', 'to firmware rate', [215 107 255 137], ...
+    'OutPortSampleTime', 'hcfg.fw.Ts', 'Integrity', 'off', 'Deterministic', 'off');
+% Rate Transitions as plain holds: in 'deterministic' mode Simulink delays slow-to-fast data by one
+% controller period (4 ms) that the rig does not have. Real link delays go in hcfg.link instead.
 W('duty', 1, 'command delay', 1);
 W('command delay', 1, 'to firmware rate', 1);
 
@@ -213,7 +219,7 @@ add_line(Hw, 'duty/1', 'to ESP32 (TODO)/1');
 dims = {'zeros(3,1)', 'zeros(4,1)', '0', '0', '0'};
 for k = 1:numel(outs)
     add_block('simulink/Sources/Constant', [Hw '/' outs{k} ' (TODO)'], 'Value', dims{k}, ...
-        'SampleTime', 'hcfg.Ts', 'Position', [300 40 + 50*k 360 60 + 50*k]);
+        'SampleTime', 'hcfg.Ts', 'Position', [240 40 + 50*k 360 60 + 50*k]);
     add_block('simulink/Sinks/Out1', [Hw '/' outs{k}], 'Position', [420 43 + 50*k 450 57 + 50*k]);
     add_line(Hw, [outs{k} ' (TODO)/1'], [outs{k} '/1']);
 end
@@ -237,10 +243,10 @@ tag = @(kind, name, tg, y, x) B(['simulink/Signal Routing/' kind], name, [x y - 
 
 area(S, 'Motor + driver (report eq. 71, 88):  i = (d Vs - Kb w0) / Rm,  i = 0 when d = 0', ...
     [10 5 600 212], [1.0 0.95 0.85]);
-area(S, 'Friction (eq. 78; Coulomb smoothed as in 3.2) and joint torques', ...
-    [10 220 600 570], [1.0 0.9 0.9]);
+area(S, 'Friction (eq. 78 + breakaway stick-slip, lib/arm_friction.m) and joint torques', ...
+    [10 220 600 620], [1.0 0.9 0.9]);
 area(S, 'Arm + pendulum: report eq. 89 as Simscape Multibody (parameters from plant_bodies; meshes visual only)', ...
-    [630 10 1560 570], [0.88 0.92 1.0]);
+    [630 10 1560 620], [0.88 0.92 1.0]);
 
 % --- motor + driver ---------------------------------------------------------------------------
 B('simulink/Sources/In1', 'd', [30 70 60 84]);
@@ -248,13 +254,13 @@ B('simulink/Math Operations/Gain', 'Vs', [120 62 170 92], 'Gain', 'hp.Vs');
 tag('From', 'w0 to motor', 'w0', 135, 40);
 B('simulink/Math Operations/Gain', 'Kb', [120 120 170 150], 'Gain', 'hp.Kb');
 B('simulink/Math Operations/Sum', 'V - Kb w0', [220 48 250 164], 'Inputs', '+-', 'IconShape', 'rectangular');
-B('simulink/Math Operations/Gain', 'divide by Rm', [290 91 350 121], 'Gain', '1/hp.Rm');
+B('simulink/Math Operations/Gain', 'divide by Rm', [290 93 350 123], 'Gain', '1/hp.Rm');
 tag('Goto', 'd goto', 'd', 40, 120);
-tag('From', 'd to switch', 'd', 146, 360);
-B('simulink/Sources/Constant', 'standby: i = 0', [360 176 410 196], 'Value', '0');
-B('simulink/Signal Routing/Switch', 'driver on?', [450 86 480 206], 'Criteria', 'u2 ~= 0');
-B('simulink/Sinks/Out1', 'i', [540 139 570 153]);
-tag('Goto', 'i goto', 'i', 180, 520);
+tag('From', 'd to switch', 'd', 136, 360);
+B('simulink/Sources/Constant', 'standby: i = 0', [360 155 410 173], 'Value', '0');
+B('simulink/Signal Routing/Switch', 'driver on?', [450 81 480 191], 'Criteria', 'u2 ~= 0');
+B('simulink/Sinks/Out1', 'i', [540 129 570 143]);
+tag('Goto', 'i goto', 'i', 172, 520);
 W('d', 1, 'Vs', 1);
 L(H('d').Outport(1), H('d goto').Inport(1));
 W('w0 to motor', 1, 'Kb', 1);
@@ -268,35 +274,31 @@ W('driver on?', 1, 'i', 1);
 W('driver on?', 1, 'i goto', 1);
 
 % --- friction and torques -----------------------------------------------------------------------
-tag('From', 'w0 to friction', 'w0', 270, 40);
-B('simulink/Math Operations/Gain', 'divide by eps', [110 255 185 285], 'Gain', '1/hp.eps');
-B('simulink/Math Operations/Trigonometric Function', 'tanh', [200 255 240 285], 'Operator', 'tanh');
-B('simulink/Sources/Constant', 'tau_c+', [120 302 170 318], 'Value', 'hp.tcp');
-tag('From', 'w0 to sign', 'w0', 330, 120);
-B('simulink/Sources/Constant', 'tau_c-', [120 342 170 358], 'Value', 'hp.tcn');
-B('simulink/Signal Routing/Switch', 'w0 > 0 ?', [210 300 240 360], 'Criteria', 'u2 > Threshold', ...
-    'Threshold', '0');
-B('simulink/Math Operations/Product', 'arm Coulomb', [300 240 330 360]);
-W('w0 to friction', 1, 'divide by eps', 1);
-W('divide by eps', 1, 'tanh', 1);
-W('tanh', 1, 'arm Coulomb', 1);
-W('tau_c+', 1, 'w0 > 0 ?', 1);
-W('w0 to sign', 1, 'w0 > 0 ?', 2);
-W('tau_c-', 1, 'w0 > 0 ?', 3);
-W('w0 > 0 ?', 1, 'arm Coulomb', 2);
+% Arm dry friction: Coulomb while sliding plus the breakaway (stick-slip, report eq. stick), computed by
+% lib/arm_friction.m, the same function harness_plant_rhs uses (so the plant equals furuta_rhs).
+B('simulink/User-Defined Functions/MATLAB Function', 'arm friction', [180 245 330 425]);
+set_fn_script([S '/arm friction'], sprintf([ ...
+    'function fr = arm_dry_friction(w0, th1, w1, i, dist0, dist1, hp)\n' ...
+    '%% Arm dry friction [A]: sliding Coulomb + breakaway stick-slip (lib/arm_friction.m, = furuta_rhs).\n' ...
+    'fr = arm_friction(w0, th1, w1, i, [dist0; dist1], hp);\n']), {'hp'});
+fin = {'w0', 'th1', 'w1', 'i', 'dist0', 'dist1'};
+for k = 1:numel(fin)
+    tag('From', [fin{k} ' to arm friction'], fin{k}, 245 + 180*(2*k - 1)/12, 110);   % port heights
+    W([fin{k} ' to arm friction'], 1, 'arm friction', k);
+end
 
-tag('From', 'w1 to friction', 'w1', 430, 40);
-B('simulink/Math Operations/Gain', 'divide by eps1', [110 415 185 445], 'Gain', '1/hp.eps1');
-B('simulink/Math Operations/Trigonometric Function', 'tanh (pendulum)', [200 415 240 445], 'Operator', 'tanh');
-B('simulink/Math Operations/Gain', 'pendulum dry', [300 415 350 445], 'Gain', 'hp.tp');
+tag('From', 'w1 to friction', 'w1', 490, 40);
+B('simulink/Math Operations/Gain', 'divide by eps1', [110 475 185 505], 'Gain', '1/hp.eps1');
+B('simulink/Math Operations/Trigonometric Function', 'tanh (pendulum)', [225 475 265 505], 'Operator', 'tanh');
+B('simulink/Math Operations/Gain', 'pendulum dry', [300 475 350 505], 'Gain', 'hp.tp');
 W('w1 to friction', 1, 'divide by eps1', 1);
 W('divide by eps1', 1, 'tanh (pendulum)', 1);
 W('tanh (pendulum)', 1, 'pendulum dry', 1);
 
-B('simulink/Sources/In1', 'dist', [30 513 60 527]);
-B('simulink/Signal Routing/Demux', 'dist demux', [110 495 115 545], 'Outputs', '2');
-tag('Goto', 'dist0 goto', 'dist0', 507, 150);
-tag('Goto', 'dist1 goto', 'dist1', 533, 150);
+B('simulink/Sources/In1', 'dist', [30 568 60 582]);
+B('simulink/Signal Routing/Demux', 'dist demux', [110 550 115 600], 'Outputs', '2');
+tag('Goto', 'dist0 goto', 'dist0', 562, 150);
+tag('Goto', 'dist1 goto', 'dist1', 588, 150);
 W('dist', 1, 'dist demux', 1);
 W('dist demux', 1, 'dist0 goto', 1);
 W('dist demux', 2, 'dist1 goto', 1);
@@ -304,12 +306,12 @@ W('dist demux', 2, 'dist1 goto', 1);
 tag('From', 'i to torque', 'i', 270, 380);
 tag('From', 'dist0 to torque', 'dist0', 330, 380);
 B('simulink/Math Operations/Sum', 'arm torque', [460 255 490 345], 'Inputs', '+-+', 'IconShape', 'rectangular');
-tag('From', 'dist1 to torque', 'dist1', 460, 380);
-B('simulink/Math Operations/Sum', 'pendulum torque', [460 415 490 475], 'Inputs', '-+', 'IconShape', 'rectangular');
+tag('From', 'dist1 to torque', 'dist1', 520, 380);
+B('simulink/Math Operations/Sum', 'pendulum torque', [460 475 490 535], 'Inputs', '-+', 'IconShape', 'rectangular');
 tag('Goto', 'tau0 goto', 'tau0', 300, 520);
-tag('Goto', 'tau1 goto', 'tau1', 445, 520);
+tag('Goto', 'tau1 goto', 'tau1', 505, 520);
 W('i to torque', 1, 'arm torque', 1);
-W('arm Coulomb', 1, 'arm torque', 2);
+W('arm friction', 1, 'arm torque', 2);
 W('dist0 to torque', 1, 'arm torque', 3);
 W('pendulum dry', 1, 'pendulum torque', 1);
 W('dist1 to torque', 1, 'pendulum torque', 2);
@@ -413,4 +415,14 @@ a = Simulink.Annotation([sys '/' strtok(txt, ':')]);
 a.Text = txt;
 a.Position = [xy xy + [700 50]];
 a.HorizontalAlignment = 'left';
+end
+
+function set_fn_script(blk, code, params)
+% Code of a MATLAB Function block; the listed arguments become parameters (workspace variables).
+ch = sfroot().find('-isa', 'Stateflow.EMChart', 'Path', blk);
+ch.Script = code;
+for k = 1:numel(params)
+    d = ch.find('-isa', 'Stateflow.Data', 'Name', params{k});
+    d.Scope = 'Parameter';
+end
 end

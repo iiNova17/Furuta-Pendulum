@@ -16,15 +16,19 @@ inline const char* stateName(State s) {
 }
 struct Config {
   double maxDuty=0,slewPerSecond=.5,maxDuration=10,travelCounts=0,velocityCountsPerSecond=0;
-  double currentTripA=0,currentTripMs=10,currentZeroMv=NAN,sensitivityMvA=185,countsPerRev=NAN;
+  double currentTripA=4,currentTripMs=10,currentZeroMv=NAN,sensitivityMvA=185,countsPerRev=NAN;
   int armSign=1,pendSign=1,pendDownRaw=-1;
   // Measured breakaway duty (fraction, NaN = unknown). Stored only; not applied to commands.
   double deadzonePos=NAN,deadzoneNeg=NAN;
+  // 1.10: false = ignore the current sensor in runs (no ADC_INVALID_OR_CLIPPED, no overcurrent trip, no zero
+  // needed to arm). The current is still measured and recorded. Asked for because positive currents above
+  // about 3.2 A clip the sensor at the top of the ADC and ended balancing runs.
+  bool currentChecks=true;
   double assumedBusV=12;uint32_t heartbeatMs=300,streamHz=250,adcHz=2000,pwmHz=20000;
   std::string filterType="bypass"; double alpha=.1;unsigned window=8;std::array<double,6> sos{{1,0,0,1,0,0}};
   bool valid(std::string& why)const {
     if(!std::isfinite(maxDuty)||maxDuty<0||maxDuty>1||!std::isfinite(slewPerSecond)||slewPerSecond<=0||slewPerSecond>100 ||
-       !std::isfinite(maxDuration)||maxDuration<=0||maxDuration>3600 ||
+       !std::isfinite(maxDuration)||maxDuration<0||maxDuration>3600 ||      // 0 = no run-length limit (1.8)
        !std::isfinite(travelCounts)||travelCounts<0||travelCounts>1e9||
        !std::isfinite(velocityCountsPerSecond)||velocityCountsPerSecond<0||
        !std::isfinite(currentTripA)||currentTripA<0||currentTripA>50||
@@ -88,7 +92,7 @@ struct Segment {
     if(allowed.find(" "+kind+" ")==std::string::npos){why="Unknown waveform";return false;}
     for(double x:{duration,amplitude,offset,f0,f1,phase,duty,end,bitPeriod,tablePeriod})
       if(!std::isfinite(x)){why="Nonfinite waveform";return false;}
-    if(duration<=0||duration>cfg.maxDuration||f0<=0||f1<=0||f0>=500||f1>=500||
+    if(duration<=0||(cfg.maxDuration>0&&duration>cfg.maxDuration)||f0<=0||f1<=0||f0>=500||f1>=500||
        duty<=0||duty>1||bitPeriod<.002||tablePeriod<.001){why="Waveform timing out of range";return false;}
     double peak=std::abs(amplitude);
     if(kind=="ramp")peak=std::max(peak,std::abs(end));
@@ -111,7 +115,7 @@ struct Experiment {
   std::vector<Segment> segments;
   double duration()const {double t=0;for(const auto&s:segments)t+=s.duration;return t;}
   bool validate(const Config& c,std::string&w)const {
-    if(segments.empty()||segments.size()>kMaxSegments||duration()>c.maxDuration){w="Experiment length/segments exceed limits";return false;}
+    if(segments.empty()||segments.size()>kMaxSegments||(c.maxDuration>0&&duration()>c.maxDuration)){w="Experiment length/segments exceed limits";return false;}
     for(const auto&s:segments)if(!s.validate(c,w))return false;
     return true;
   }
@@ -133,21 +137,30 @@ struct Filter {
   }
 };
 struct Controller {
-  State state=State::Disarmed;Config cfg;Experiment experiment;
+  // Where a run's duty request comes from: an uploaded experiment, or a closed-loop controller
+  // (Onboard: include/onboard.h, set every controller period through `external`). The safety
+  // checks, clip, slew and reversal logic below are the same for every source.
+  enum class Source:uint8_t { Experiment,Onboard };
+  State state=State::Disarmed;Config cfg;Experiment experiment;Source source=Source::Experiment;double external=0;
   int64_t center=0;bool centered=false;uint64_t session=0,lastHeartbeat=0,started=0,lastTick=0,tripSince=0,reverseUntil=0;
   uint32_t run=0;double requested=0,applied=0;std::string fault;uint32_t flags=0;
   void stop(){applied=requested=0;if(state!=State::Fault)state=State::Disarmed;session=0;reverseUntil=0;}
   void fail(const char*s){applied=requested=0;state=State::Fault;fault=s;session=0;}
   bool arm(uint64_t s,uint64_t now,std::string&w) {
     if(state!=State::Disarmed||!fault.empty()||!centered||!s||cfg.maxDuty<=0||cfg.travelCounts<=0){w="Disarmed state, cleared fault, centered arm and commissioned limits required";return false;}
-    if(cfg.currentTripA>0&&!std::isfinite(cfg.currentZeroMv)){w="Current trip requires zero calibration";return false;}
+    if(cfg.currentChecks&&cfg.currentTripA>0&&!std::isfinite(cfg.currentZeroMv)){w="Current trip requires zero calibration";return false;}
     if(!cfg.valid(w))return false;
     session=s;lastHeartbeat=now;state=State::Armed;return true;
   }
   bool start(uint64_t now,std::string&w) {
     if(state!=State::Armed){w="ARM required";return false;}
     if(!experiment.validate(cfg,w))return false;
-    started=lastTick=now;tripSince=0;run++;state=State::Running;return true;
+    source=Source::Experiment;started=lastTick=now;tripSince=0;run++;state=State::Running;return true;
+  }
+  // Closed-loop run: the duty request is `external`; the run ends after cfg.maxDuration.
+  bool startExternal(uint64_t now,Source s,std::string&w) {
+    if(state!=State::Armed){w="ARM required";return false;}
+    source=s;external=0;started=lastTick=now;tripSince=0;run++;state=State::Running;return true;
   }
   // mv is the latest (oversampled) conversion, used for clip/validity checks.
   // tripMv is the MCU-filtered current used for the overcurrent trip; when it
@@ -158,15 +171,18 @@ struct Controller {
     if(!encoderOk){fail("ENCODER_INVALID");return;}
     if(std::abs((double)(count-center))>cfg.travelCounts){fail("ARM_TRAVEL");return;}
     if(cfg.velocityCountsPerSecond>0&&std::abs(cps)>cfg.velocityCountsPerSecond){fail("ARM_VELOCITY");return;}
-    if(adcAge>20000||!std::isfinite(mv)||mv<100||mv>3100){fail("ADC_INVALID_OR_CLIPPED");return;}
+    if(cfg.currentChecks&&(adcAge>20000||!std::isfinite(mv)||mv<100||mv>3100)){fail("ADC_INVALID_OR_CLIPPED");return;}
     const double tm=std::isfinite(tripMv)?tripMv:mv;
-    if(cfg.currentTripA>0&&std::abs((tm-cfg.currentZeroMv)/cfg.sensitivityMvA)>cfg.currentTripA) {
+    if(cfg.currentChecks&&cfg.currentTripA>0&&std::abs((tm-cfg.currentZeroMv)/cfg.sensitivityMvA)>cfg.currentTripA) {
       if(!tripSince)tripSince=now;
       if(now-tripSince>=cfg.currentTripMs*1000){fail("OVERCURRENT");return;}
     }else tripSince=0;
     if(state!=State::Running)return;
-    if((now-started)*1e-6>=experiment.duration()){stop();return;}
-    requested=experiment.value((now-started)*1e-6);
+    // Experiments end with their sequence; closed-loop runs at maxDuration, or never when it is 0 (heartbeat,
+    // STOP and every trip still apply).
+    const double length=source==Source::Experiment?experiment.duration():cfg.maxDuration;
+    if((source==Source::Experiment||cfg.maxDuration>0)&&(now-started)*1e-6>=length){stop();return;}
+    requested=source==Source::Experiment?experiment.value((now-started)*1e-6):(std::isfinite(external)?external:0.);
     double target=std::max(-cfg.maxDuty,std::min(cfg.maxDuty,requested));
     if(target!=requested)flags|=1;
     double dt=std::min(.01,(now-lastTick)*1e-6);lastTick=now;

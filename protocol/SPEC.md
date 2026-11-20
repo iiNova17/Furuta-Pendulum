@@ -189,6 +189,12 @@ not link errors. The stream is left running on disconnect.
   reading leaves 100–3100 mV or is older than 20 ms.
 - HELLO reports `firmware: "FurutaWorkbench/1.5"`. Wire format unchanged.
 
+## Firmware 1.11 change
+
+- Stream packets are sent as soon as one record is queued (before: 4 records or 20 ms). HELLO reports
+  `firmware: "FurutaWorkbench/1.11"` and `streamBatching: "immediate"`. Wire format unchanged; a packet may
+  carry one or more records as before.
+
 ## Burst chunks (type 5)
 
 Firmware 1.1 advertises adcChunkMax=64 and coreChunkMax=16 in HELLO. Older

@@ -13,8 +13,8 @@ end
 
 function test_linearization_matches_report_eq104(tc)
 % Jacobian of the report equations (the reference the Simscape plant is tested against) at upright, Coulomb friction off (as in the report's linear model).
-cfg = tc.TestData.cfg;
-p = cfg.p; p.tcp = 0; p.tcn = 0; p.tp = 0;
+cfg = harness_config('ideal', 'Model', 'table6');             % the report's Table 6 model (eq. 104, 110)
+p = cfg.p; p.tcp = 0; p.tcn = 0; p.tp = 0; p.tsp = 0; p.tsn = 0;   % no dry friction, no breakaway
 x0 = zeros(4, 1); d0 = 1e-12;            % d ~= 0: driver on, back-EMF acts (eq. 88)
 f = @(x, d) harness_plant_rhs(x, d, [0; 0], p);
 A = zeros(4); h = 1e-7;
@@ -27,6 +27,25 @@ tc.verifyEqual(A, cfg.lin.A_up, 'RelTol', 1e-4, 'AbsTol', 1e-6);
 tc.verifyEqual(Bd, cfg.lin.Bd_up, 'RelTol', 1e-4);
 % report eq. 110: poles 0, +12.26, -12.63, -29.23
 tc.verifyEqual(sort(real(eig(A))), sort([0; 12.26; -12.63; -29.23]), 'AbsTol', 0.01);
+end
+
+function test_linearization_20261120_model(tc)
+% The default model (furuta_params_20261120.m, re-identified 2026-11-20): its linear model equals the Jacobian of
+% furuta_rhs with its own parameters (Coulomb friction and breakaway off), and its unstable upright pole is 12.13 rad/s.
+cfg = harness_config('ideal');
+tc.verifyEqual(cfg.model, '20261120');
+p = cfg.p; p.tcp = 0; p.tcn = 0; p.tp = 0; p.tsp = 0; p.tsn = 0;
+x0 = zeros(4, 1); d0 = 1e-12;
+f = @(x, d) harness_plant_rhs(x, d, [0; 0], p);
+A = zeros(4); h = 1e-7;
+for k = 1:4
+    e = zeros(4, 1); e(k) = h;
+    A(:, k) = (f(x0 + e, d0) - f(x0 - e, d0))/(2*h);
+end
+Bd = (f(x0, 1e-4) - f(x0, -1e-4))/2e-4;
+tc.verifyEqual(A, cfg.lin.A_up, 'RelTol', 1e-4, 'AbsTol', 1e-6);
+tc.verifyEqual(Bd, cfg.lin.Bd_up, 'RelTol', 1e-4);
+tc.verifyEqual(max(real(eig(A))), 12.13, 'AbsTol', 0.01);
 end
 
 function test_simscape_plant_is_the_report_model(tc)
@@ -55,6 +74,46 @@ x = x(1:numel(R.t), :);
 tc.verifyLessThan(max(abs(rad2deg(R.x(:, 1:2) - x(:, 1:2))), [], 'all'), 1e-5);   % degrees
 tc.verifyLessThan(max(abs(R.x(:, 3:4) - x(:, 3:4)), [], 'all'), 1e-5);            % rad/s
 tc.verifyGreaterThan(max(abs(rad2deg(wrap_pi(R.x(:, 2) - pi)))), 20);            % it did swing
+end
+
+function test_plant_rhs_is_furuta_rhs_with_breakaway(tc)
+% harness_plant_rhs (and so arm_friction, which the Simscape block calls) equals furuta_rhs with the arm
+% breakaway, on random states of which many are inside the stick band, and a stuck arm stays stuck
+% under a disturbance smaller than the breakaway.
+p = tc.TestData.cfg.p;
+tc.verifyGreaterThan(p.tsp, 0);                                   % the harness plant has the breakaway
+rs = RandStream('mt19937ar', 'Seed', 3);
+err = 0; nstuck = 0;
+for n = 1:400
+    x = [rs.randn; 2*pi*rs.rand; 0.06*rs.randn; 3*rs.randn];       % w0 often inside the 0.05 rad/s band
+    d = 0.3*(rs.rand - 0.5)*(rs.rand > 0.2);
+    dx = harness_plant_rhs(x, d, [0; 0], p);
+    err = max(err, max(abs(dx - furuta_rhs(x, d, p))));
+    [~, i] = furuta_rhs(x, d, p);
+    nstuck = nstuck + (abs(x(3)) < p.stick_band && ...
+        arm_friction(x(3), x(2), x(4), i, [0; 0], p) ~= p.tcp*(x(3) > 0)*tanh(x(3)/p.eps) + ...
+        p.tcn*(x(3) <= 0)*tanh(x(3)/p.eps));
+end
+tc.verifyLessThan(err, 1e-12);
+tc.verifyGreaterThan(nstuck, 50);
+dx = harness_plant_rhs([0; pi; 0; 0], 0, [0.7*p.tsp; 0], p);      % push of 70 % of the breakaway
+tc.verifyLessThan(abs(dx(3)), 1e-9);
+end
+
+function test_simscape_arm_breakaway(tc)
+% From the hanging rest, a duty of 80 % of the model's breakaway (Rm tsp / Vs: 6 % on the 20 Nov model, 13 % on
+% Table 6) for 2 s leaves the Simscape arm at rest, as on the rig (onboard runs 20261119); 20 % moves it.
+p = tc.TestData.cfg.p;
+moved = zeros(1, 2);
+duty = [0.8*p.Rm*p.tsp/p.Vs 0.20];
+for k = 1:2
+    sc = struct('name', 'breakaway', 'T', 2, 'x0', [0; pi; 0; 0], 'ref', @(t) zeros(size(t)), ...
+        'dist', @(t) zeros(numel(t), 2), 'check', @(R) true, 'text', 'breakaway');
+    R = run_sim('OpenLoopDuty', sc, 'Mode', 'ideal', 'Params', struct('t', [0; 10], 'd', duty(k)*[1; 1]));
+    moved(k) = max(abs(rad2deg(R.x(:, 1))));
+end
+tc.verifyLessThan(moved(1), 0.01);
+tc.verifyGreaterThan(moved(2), 20);
 end
 
 function test_bodies_reproduce_lumped_parameters(tc)
@@ -107,8 +166,9 @@ end
 
 function test_hybrid_template_plumbing(tc)
 % The hybrid template (ctrl_hybrid.slx + its four law files) runs, the Stateflow supervisor switches
-% modes, and every stabilizer path reaches the output. Placeholder gains, so nothing balances.
-R = run_sim('ctrl_hybrid.slx', 'balance');
+% modes, and every stabilizer path reaches the output. The LQR is zeroed (empty Q -> K = 0) so the
+% pendulum falls whatever gains the owners have filled in.
+R = run_sim('ctrl_hybrid.slx', 'balance', 'Params', struct('stab', 3, 'lqr', struct('Q', [])));
 tc.verifyEqual(unique(R.mode(:)', 'stable'), [2 1]);     % starts in Stabilize, falls, SwingUp
 for s = 1:3                                               % 1 PID, 2 pole placement, 3 LQR
     P = struct('stab', s, 'pid', struct('Kp', 1), 'pp', struct('poles', [-5 -6 -7 -8]), ...
@@ -130,4 +190,20 @@ tc.verifyEqual(m.th1_max, 10, 'AbsTol', 1e-9);
 tc.verifyEqual(m.th1_tsettle, 0.2*log(10/cfg.metrics.band_th1), 'AbsTol', 2e-3);   % 10 deg -> band
 tc.verifyEqual(m.IAE, deg2rad(10)*0.2, 'RelTol', 1e-2);                           % integral of exp
 tc.verifyEqual(m.u_peak, 0.1, 'AbsTol', 1e-12);
+end
+
+function test_replay_matches_report_table4(tc)
+% Simulation vs measured: validation run 1 replayed through the harness plant reproduces the report's
+% Table 4 open-loop fits (arm 89, pendulum 90, arm speed 92, current 88 %) without the arm breakaway;
+% with it the arm fit is 2.5 points lower (86.5 %), the others within 0.3. Needs the export:
+%   python matlab/harness/replay/export_runs.py
+f = fullfile(tc.TestData.root, 'replay', 'runs', '20261115_100519_238300.mat');
+tc.assumeTrue(isfile(f), 'recording not exported (run replay/export_runs.py)');
+addpath(fullfile(tc.TestData.root, 'replay'));
+C = compare_to_run('20261115_100519_238300', 'Plot', false, 'Plant', struct('tsp', 0, 'tsn', 0), 'Model', 'table6');
+tc.verifyEqual([C.fit.arm_angle C.fit.pendulum_angle C.fit.arm_speed C.fit.current], ...
+    [89.0 89.6 92.0 88.3], 'AbsTol', 0.5);                       % Table 4: model without the breakaway
+C = compare_to_run('20261115_100519_238300', 'Plot', false, 'Model', 'table6');   % Table 6 with the breakaway
+tc.verifyEqual([C.fit.arm_angle C.fit.pendulum_angle C.fit.arm_speed C.fit.current], ...
+    [86.5 89.8 91.7 88.1], 'AbsTol', 0.5);
 end

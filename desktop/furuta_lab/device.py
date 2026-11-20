@@ -21,6 +21,9 @@ class Device:
         self.last_rx=0.;self.max_io_gap=0.;self.record=None;self.record_count=0
         self.progress='';self.meta={};self.boot=None;self.thread=None
         self.last_event=None;self.event_count=0
+        # (perf_counter at arrival, device_us of the newest record) per stream packet: the digital twin uses it to
+        # estimate how old the pose on screen is (the clocks differ, so only the added delay is measurable)
+        self.rx_log=collections.deque(maxlen=4000)
 
     def log(self,message):
         with self.lock:self.events.append((time.time(),str(message)))
@@ -28,7 +31,7 @@ class Device:
     def connect(self,port):
         self.close();self.closed.clear();self.parser=wire.Parser();self.sequence=0
         self.session=secrets.randbits(63)+1;self.boot=None;self.blocks.clear();self.rows=0
-        self.config={};self.identity={};self.inhibit=True;self.max_io_gap=0
+        self.config={};self.identity={};self.inhibit=True;self.max_io_gap=0;self.rx_log.clear()
         p=serial.Serial(baudrate=460800,timeout=.01,write_timeout=.3)
         p.dtr=False;p.rts=False;p.port=port;p.open();p.reset_input_buffer();self.port=p
         self.connected=True;self.status={'state':'CONNECTING'}
@@ -45,7 +48,7 @@ class Device:
     def _send(self,op,args=None,waiter=False):
         with self.write_lock:
             if not self.connected:raise RuntimeError('Device disconnected')
-            if op in ('ARM','START') and self.inhibit:raise RuntimeError('Run canceled / motion disabled')
+            if op in ('ARM','START','START_ONBOARD') and self.inhibit:raise RuntimeError('Run canceled / motion disabled')
             self.sequence+=1
             if self.sequence>0xffffffff:raise RuntimeError('Reconnect to renew command sequence')
             seq=self.sequence;b=wire.command(self.session,seq,op,**(args or {}))
@@ -87,6 +90,7 @@ class Device:
                     for kind,session,seq,payload in self.parser.feed(b):
                         if kind==4 and self.ready and session==self.session:
                             rows,meta=wire.core_batch(payload)
+                            if len(rows):self.rx_log.append((time.perf_counter(),int(rows['device_us'][-1])))
                             if meta['boot']!=self.boot:raise RuntimeError('MCU restarted; reconnect and re-center')
                             # The MCU bumps configId whenever its profile changes
                             # (SET_CONFIG, CALIBRATE down/upright/arm, current zero),
@@ -147,7 +151,31 @@ class Device:
     def apply(self,config):
         if self.status.get('state')!='DISARMED':raise RuntimeError('Disarm before changing settings')
         if self.record:raise RuntimeError('Finish recording before changing its calibration/profile')
-        self.config=self.rpc('SET_CONFIG',config=config)['config']
+        try:self.config=self.rpc('SET_CONFIG',config=config)['config']
+        except RuntimeError as e:
+            # A capture armed for a run that never started stays pending on the MCU and blocks every profile change
+            # ("Capture/calibration in progress" with nothing visible). Drop it and retry once (firmware 1.10+).
+            if 'Capture/calibration in progress' not in str(e):raise
+            info=self.rpc('BURST_INFO')
+            if info.get('pending') and not info.get('active') and self.identity.get('burstCancel'):
+                self.rpc('BURST_CANCEL');self.log('Stale pending capture cancelled')
+                self.config=self.rpc('SET_CONFIG',config=config)['config'];return
+            raise RuntimeError(self.busy_text(info)) from e
+
+    def busy_text(self,info=None):
+        """Why the MCU says 'Capture/calibration in progress', in words."""
+        info=info or self.rpc('BURST_INFO')
+        if info.get('active'):
+            return ('A high-rate capture is still recording on the device (it ends 0.5 s after a run with firmware 1.10, '
+                    'or after its full length with older firmware). Wait a moment, or Setup → “Cancel device capture”.')
+        if info.get('pending'):
+            return 'A high-rate capture is armed for a run that has not started. Setup → “Cancel device capture”.'
+        return 'A current-zero calibration is running (1 s, motor unpowered). Try again in a moment.'
+
+    def cancel_burst(self):
+        """Drop a pending capture or stop a running one (firmware 1.10+). Returns the reply, or None if unsupported."""
+        if not self.identity.get('burstCancel'):return None
+        return self.rpc('BURST_CANCEL')
 
     def run(self,segments,metadata):
         if self.inhibit:raise RuntimeError('Powered motion is not enabled in the interface')
@@ -158,6 +186,37 @@ class Device:
         for i,s in enumerate(segments):check();self.rpc('SET_SEGMENT',index=i,segment=s)
         check();self.rpc('VALIDATE');check();self.rpc('ARM');check();self.rpc('START')
         self.log('Finite experiment started')
+
+    def onboard_params(self,params=None,defaults=False):
+        """Read or change the onboard controller's knobs (firmware 1.6, product mode).
+
+        params: dict of knob -> value (see ONBOARD_CONFIG in firmware/src/main.cpp), merged over the
+        current values on the MCU; defaults=True restores the values generated from ctrl_hybrid_design.m.
+        """
+        if not self.identity.get('onboardControl'):raise RuntimeError('Firmware without onboard control (flash 1.6)')
+        if defaults:return self.rpc('ONBOARD_DEFAULTS')['params']
+        if params:
+            if self.status.get('state')!='DISARMED':raise RuntimeError('Disarm before changing controller knobs')
+            return self.rpc('ONBOARD_CONFIG',params=params)['params']
+        return self.rpc('ONBOARD_GET')['params']
+
+    def run_onboard(self,swing_up=None,**start):
+        """Product mode: the ESP32 runs swing-up + LQR (or LQR only) until maxDuration, STOP or a trip.
+
+        The laptop only keeps the heartbeat going (_loop) and receives telemetry; the 'ctrl' field of
+        every core row shows the controller state (wire.CTRL_NAMES). Extra keyword arguments are sent
+        with START_ONBOARD as they are (e.g. swingUp=False, or a controller selector in later firmware).
+        """
+        if self.inhibit:raise RuntimeError('Powered motion is not enabled in the interface')
+        if not self.identity.get('onboardControl'):raise RuntimeError('Firmware without onboard control (flash 1.6)')
+        if swing_up is not None:start['swingUp']=bool(swing_up)
+        start.setdefault('swingUp',True)
+        generation=self.generation
+        def check():
+            if self.inhibit or generation!=self.generation:raise RuntimeError('Run canceled by STOP')
+        check();self.rpc('ARM');check();r=self.rpc('START_ONBOARD',**start)
+        self.log(f"Onboard controller started: {r.get('mode')}, up to {r.get('seconds')} s"+(f" ({r['warning']})" if r.get('warning') else ''))
+        return r
 
     def capture(self,seconds,progress=None,cancel=None,adc_rate=None):
         original=copy.deepcopy(self.config);changed=False
@@ -179,12 +238,29 @@ class Device:
     def _capture(self,seconds,progress=None,cancel=None):
         if self.status.get('state')!='DISARMED':raise RuntimeError('Still capture requires DISARMED')
         self.rpc('CAPTURE_BURST',seconds=seconds,withRun=False)
-        deadline=time.monotonic()+seconds+5
+        result=self.download_burst(seconds+5,progress,cancel,'Recording still data')
+        if len(result['core']) and np.any(result['core']['applied']!=0):raise RuntimeError('Still recording contained motor drive')
+        return result
+
+    def arm_burst(self,seconds):
+        """High-rate capture that starts with the next run (500 Hz core records, current at adcHz) into MCU memory."""
+        if self.status.get('state')!='DISARMED':raise RuntimeError('Disarm before arming a capture')
+        return self.rpc('CAPTURE_BURST',seconds=float(seconds),withRun=True)
+
+    def onboard_bench(self,steps=2000):
+        """Microseconds per onboard controller step on the MCU (private copy; no effect on runs)."""
+        if not self.identity.get('onboardControl'):raise RuntimeError('Firmware without onboard control')
+        return self.rpc('ONBOARD_BENCH',steps=int(steps))
+
+    def download_burst(self,timeout=10.,progress=None,cancel=None,label='Waiting for the capture'):
+        """Wait until the MCU capture is complete, then download it: {'adc','core','config','status','info'}."""
+        deadline=time.monotonic()+timeout
         while True:
             if cancel and cancel.is_set():raise RuntimeError('Capture download canceled')
             info=self.rpc('BURST_INFO')
-            if not info['active']:break
-            if progress:progress(f'Recording still data: {max(0,deadline-time.monotonic()-5):.1f} s remaining')
+            if not info['active'] and not info.get('pending'):break
+            if info.get('pending') and not info['active']:raise RuntimeError('The capture never started (no run reached RUNNING)')
+            if progress:progress(f'{label}: {max(0,deadline-time.monotonic()-5):.1f} s remaining')
             if time.monotonic()>deadline:raise TimeoutError('Capture did not finish')
             time.sleep(.1)
         if info.get('overflow'):raise RuntimeError('Capture overflow; reduce duration')
@@ -205,7 +281,6 @@ class Device:
         finally:
             if self.connected:self.rpc('START_STREAM')
         result['config']=copy.deepcopy(self.config);result['status']=copy.deepcopy(self.status);result['info']=info
-        if len(result['core']) and np.any(result['core']['applied']!=0):raise RuntimeError('Still recording contained motor drive')
         return result
 
     def start_record(self,path,metadata):

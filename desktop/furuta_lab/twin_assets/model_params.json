@@ -1,0 +1,20 @@
+{
+  "source": "data/estimation/suite_20261120 (sim-harness, 2026-11-20): re-identified after the rig was moved, claude_loop chain with Ja, Beq, tc+, tc- also refined by simulation (desktop/reidentify_variants.py variant E), breakaway 6 %/6 % (b1_breakaway_low runs); same as matlab/model/furuta_params_20261120.m",
+  "Vs": 12.0,
+  "params": {
+    "Rm": 2.6915932067428177,
+    "Kb": 0.44274391430329607,
+    "Ja": 0.005488376462563231,
+    "Jp": 0.0002800612977566104,
+    "h": 0.00031115392018247334,
+    "G": 0.043779624499189686,
+    "Beq": 0.005421571760314566,
+    "b1": 0.000273693311780155,
+    "tcp": 0.27978791561843025,
+    "tcn": 0.27835803019381095,
+    "tp": 0.0003147328152843652,
+    "tsp": 0.2674995605562903,
+    "tsn": 0.2674995605562903
+  },
+  "Larm_m": 0.06969857842005771
+}

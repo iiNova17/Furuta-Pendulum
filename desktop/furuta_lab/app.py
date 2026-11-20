@@ -18,6 +18,8 @@ from . import signals as S
 from .viewer import SignalView
 from .fitview import FitView
 from .estimate_page import EstimatePage
+from .onboard_page import OnboardPage
+from .twin_page import TwinPage
 from .backend import ROOT,MatlabBackend,jsonable,save_capture,load_capture,load_run
 
 pg.setConfigOptions(useOpenGL=False,antialias=False,background='w',foreground='#263649')
@@ -100,10 +102,10 @@ class LabApp(W.QMainWindow):
         pr.addWidget(self.progress_label,1);pr.addWidget(self.progress_bar);pr.addWidget(self.cancel_button)
         self.progress_row.setStyleSheet('background:#eaf2ff;border-radius:5px;');self.progress_row.hide();v.addWidget(self.progress_row)
         self.nav=W.QTabBar();self.nav.setExpanding(False)
-        for title in ['Live && recordings','Still noise && filters','Motor tests','Parameter estimation','Setup && guide']:self.nav.addTab(title)
+        for title in ['Live && recordings','Still noise && filters','Motor tests','Parameter estimation','Onboard control','Digital twin','Setup && guide']:self.nav.addTab(title)
         self.nav.currentChanged.connect(self.page_changed);v.addWidget(self.nav)
         split=W.QSplitter();v.addWidget(split,1);self.pages=W.QStackedWidget();self.pages.setMinimumWidth(450);split.addWidget(self.pages)
-        for build in [self.live_page,self.noise_page,self.motor_page,self.model_page,self.setup_page]:
+        for build in [self.live_page,self.noise_page,self.motor_page,self.model_page,self.onboard_page,self.twin_page,self.setup_page]:
             area=W.QScrollArea();area.setWidgetResizable(True);area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff);page=W.QWidget();layout=W.QVBoxLayout(page);layout.setSpacing(9)
             build(layout);layout.addStretch();area.setWidget(page);self.pages.addWidget(area)
         right=W.QSplitter(QtCore.Qt.Vertical)
@@ -113,6 +115,9 @@ class LabApp(W.QMainWindow):
         self.line=self.plot.plot(pen=pg.mkPen('#126cb1',width=1));self.second=self.plot.plot(pen=pg.mkPen('#d16d21',width=1))
         self.right_stack.addWidget(self.plot)
         self.fitview=FitView();self.right_stack.addWidget(self.fitview)
+        if self.twin.view is None:
+            slot=W.QLabel('3D view not available:\n'+self.twin.error);slot.setAlignment(QtCore.Qt.AlignCenter);slot.setWordWrap(True)
+        self.right_stack.addWidget(self.twin.view or slot)   # index 3: digital twin
         right.addWidget(self.right_stack)
         self.bottom=W.QTabWidget();self.output=W.QTextBrowser();self.output.setOpenExternalLinks(False);self.bottom.addTab(self.output,'Messages')
         raw=W.QWidget();rl=W.QVBoxLayout(raw);rl.setContentsMargins(4,4,4,4);row=W.QHBoxLayout();rl.addLayout(row)
@@ -222,7 +227,7 @@ class LabApp(W.QMainWindow):
         self.max_duty=self.number(g,'Maximum duty (%)',0,0,100,1)
         self.travel=self.number(g,'Travel each side (counts)',0,0,1e9,0)
         self.max_duration=self.number(g,'Maximum run seconds',10,.1,3600,1)
-        self.current_trip=self.number(g,'Current trip A (0 = off)',0,0,50,3)
+        self.current_trip=self.number(g,'Current trip A (0 = off)',4,0,50,3)
         self.speed_trip=self.number(g,'Speed trip counts/s (0 = off)',0,0,1e7,0)
         self.slew=self.number(g,'Slew rate (%/s) — how fast duty may change',1000,.1,10000,1)
         self.button(g,'Apply these limits to RAM',self.apply_limits)
@@ -253,6 +258,10 @@ class LabApp(W.QMainWindow):
         self.button(g,'Fit / validate speed model in MATLAB (open recording)',self.fit_matlab)
         self.button(g,'Export latest analysis JSON',self.export_result)
         self.text(g,'MATLAB starts in a separate process on demand and uses the output-shaft arm speed; live sensors and STOP stay independent.',small=True)
+    def onboard_page(self,v):
+        self.onboard=OnboardPage(self);self.onboard.build(v)
+    def twin_page(self,v):
+        self.twin=TwinPage(self);self.twin.build(v)
     def setup_page(self,v):
         g=self.group(v,'Encoder scale')
         self.gear=self.number(g,'Reduction (provisional)',34,.1,10000,4)
@@ -270,6 +279,7 @@ class LabApp(W.QMainWindow):
         g=self.group(v,'Device profile')
         self.bus_voltage=self.number(g,'Assumed motor supply (V)',12,.1,30,2)
         self.button(g,'Clear a resolved fault',lambda:self.submit(lambda:self.device.rpc('CLEAR_FAULT')))
+        self.button(g,'Cancel device capture (stuck “Capture/calibration in progress”)',self.cancel_capture)
         self.button(g,'Save current profile to device NVS',lambda:self.submit(lambda:self.device.rpc('SAVE_CONFIG')))
         self.button(g,'Show device / link details (raw units)',self.details)
         g=self.group(v,'Help')
@@ -332,7 +342,7 @@ class LabApp(W.QMainWindow):
         self.raw_info.setText(info);self.raw_table.setRowCount(len(idx))
         for r,i in enumerate(idx):
             self.raw_table.setItem(r,0,W.QTableWidgetItem(f'{t[i]:.4f}'))
-            for c,n in enumerate(S.RAW_FIELDS):self.raw_table.setItem(r,c+1,W.QTableWidgetItem(S.raw_text(n,rows[i][n])))
+            for c,n in enumerate(S.RAW_FIELDS):self.raw_table.setItem(r,c+1,W.QTableWidgetItem(S.raw_text(n,S.field(rows[i],n))))
         if force:self.raw_table.resizeColumnsToContents()
     def export_csv(self):
         src=self.raw_source()
@@ -349,8 +359,10 @@ class LabApp(W.QMainWindow):
     def page_changed(self,index):
         self.pages.setCurrentIndex(index)
         if index==3:self.right_stack.setCurrentIndex(2 if self.fit_drawn else 0)
+        elif index==4:self.right_stack.setCurrentIndex(3 if self.twin.on_onboard.isChecked() else 0)   # onboard control: live signals or the twin
+        elif index==5:self.right_stack.setCurrentIndex(3)      # digital twin
         else:self.right_stack.setCurrentIndex(1 if index and self.analysis_drawn else 0)
-        self.live=self.right_stack.currentIndex()==0
+        self.live=self.right_stack.currentIndex()==0;self.twin.set_active(self.right_stack.currentIndex()==3)
     def show_fit_view(self):
         self.fit_drawn=True;self.live=False;self.right_stack.setCurrentIndex(2)
     def show_analysis(self):
@@ -578,7 +590,6 @@ class LabApp(W.QMainWindow):
         u=r['unit'];sens=self.capture_sensitivity() if r['sensor']=='current_mv' else None
         amps=lambda x:f' = **{x/sens:.4g} A**' if sens else ''
         if sens:r.update(sd_a=r['sd']/sens,peak_to_peak_a=r['peak_to_peak']/sens,sensitivity_mv_a=sens)
-        over=(self.capture_data.get('config',{}) or {})
         self.report('Stationary noise',f'**SD:** {r["sd"]:.5g} {u}{amps(r["sd"])} · **Peak-to-peak:** {r["peak_to_peak"]:.5g} {u}{amps(r["peak_to_peak"])}\n\n'
                     +(f'Amperes use {sens:g} mV/A from the capture profile.\n\n' if sens else '')+
                     f'Mean {r["mean"]:.5g} {u}; drift {r["drift"]:.5g} {u}. Sample rate {r["fs"]:.2f} Hz; PSD bin spacing {r["resolution"]:.3g} Hz.\n\n'
@@ -662,7 +673,7 @@ class LabApp(W.QMainWindow):
     def start_sequence(self,segments,purpose,extra=None):
         c=self.device.config;total=sum(s['duration'] for s in segments);peak=max(abs(s['amplitude']) for s in segments)
         problem=None
-        if total>c['maxDuration']:problem=f'Sequence lasts {total:.2f} s but the device maximum run is {c["maxDuration"]:g} s (step 2 “Maximum run seconds”, then Apply).'
+        if c['maxDuration']>0 and total>c['maxDuration']:problem=f'Sequence lasts {total:.2f} s but the device maximum run is {c["maxDuration"]:g} s (step 2 “Maximum run seconds”, then Apply).'
         elif peak>c['maxDuty']+1e-12:problem=(f'Sequence needs {peak*100:g} % duty but the device maximum duty is {c["maxDuty"]*100:g} %. '
                                               'Raise “Maximum duty (%)” and Apply, or lower the amplitude / “Maximum test duty”.')
         if problem:
@@ -683,11 +694,11 @@ class LabApp(W.QMainWindow):
     def load_recorded(self,path):
         rows,manifest=load_run(path);self.set_run(path,rows,manifest)
         self.report('Run saved',f'{len(rows)} samples.\n\n{path}\n\nView it with Open recording….')
-        self.estimate.recording_finished(path,manifest)
+        self.estimate.recording_finished(path,manifest);self.onboard.recording_finished(path,rows,manifest)
     def set_run(self,path,rows,manifest):
         self.run_data,self.run_manifest,self.run_path=rows,manifest,Path(path)
         meta=manifest.get('metadata',{});self.dead_windows=meta.get('dead_windows');self.run_start=None
-        self.set_model_source(Path(path).name)
+        self.set_model_source(Path(path).name);self.twin.run_changed()
     def set_model_source(self,name):
         meta=self.run_manifest.get('metadata',{})
         self.model_source.setText(f'Open recording: {name} · {len(self.run_data)} samples · {meta.get("purpose","recording")}')
@@ -697,7 +708,7 @@ class LabApp(W.QMainWindow):
         if self.auto_deadzone_path is not None and Path(path)==Path(self.auto_deadzone_path):
             self.auto_deadzone_path=None
             if meta.get('purpose')=='breakaway':self.analyze_deadzone(save=True)
-        self.estimate.recording_finished(path,manifest)
+        self.estimate.recording_finished(path,manifest);self.onboard.recording_finished(path,rows,manifest)
     def require_run(self):
         if self.run_data is None or len(self.run_data)<150:raise ValueError('Finish or open a sufficiently long recorded run first')
         return self.run_data,self.run_manifest['config'],self.run_manifest.get('metadata',{})
@@ -758,6 +769,12 @@ class LabApp(W.QMainWindow):
                     'status':self.device.status,'config':self.device.config,'last_sample_raw':last,
                     'link_errors':self.device.parser.errors,'bad_frames':self.device.parser.bad_frames[-3:],
                     'max_serial_loop_gap_s':self.device.max_io_gap,'max_gui_refresh_s':self.max_refresh}),indent=2))
+    def cancel_capture(self):
+        if not self.device.ready:raise RuntimeError('Connect first')
+        def done(r):
+            if r is None:self.report('Cancel capture','This firmware has no BURST_CANCEL (flash 1.10). A capture ends by itself after its length.')
+            else:self.report('Cancel capture',f'Device capture cancelled (was {"recording" if r.get("wasActive") else "armed" if r.get("wasPending") else "idle"}).')
+        self.submit(self.device.cancel_burst,done,'Cancelling the device capture…')
     def guide(self):
         self.output.setMarkdown((ROOT/'docs'/'FOCUSED_GUIDE.md').read_text(encoding='utf-8'))
     def cancel_job(self):self.cancel.set();self.stop();threading.Thread(target=self.backend.cancel,daemon=True).start()
@@ -771,7 +788,8 @@ class LabApp(W.QMainWindow):
             if series:
                 last=a[-1];key=S.best_current_key(d.config);cur=series[key];m,sd=S.stats(t,cur.values,t[-1]-READOUT_WINDOW_S)
                 self.sensors.setText(f'Current {S.fmt(m,sd,cur.unit)}  ·  magnet {S.magnet_text(last["mag_status"])}  ·  '
-                                     f'{len(a)} samples  ·  link errors {d.parser.errors}  ·  dropped {d.meta.get("dropped",0)}')
+                                     f'{len(a)} samples  ·  link errors {d.parser.errors}  ·  dropped {d.meta.get("dropped",0)}'
+                                     +('  ·  capture recording' if s.get('burstActive') else '  ·  capture armed' if s.get('burstPending') else ''))
                 if self.right_stack.currentIndex()==0:
                     self.viewer.show_series(t,series,self.selected_keys(),self.view_mode(),'Live — latest %g s'%self.window_s.value(),follow=self.window_s.value())
                 self.set_readouts(series,t,t[-1]-READOUT_WINDOW_S,None);self.update_raw_table()
@@ -797,10 +815,10 @@ class LabApp(W.QMainWindow):
             allow=d.ready and self.power.isChecked() and state=='DISARMED'
             self.run_button.setEnabled(allow);self.dead_button.setEnabled(allow)
             for w in self.estimate.preset_widgets.values():w['run'].setEnabled(allow)
-        self.estimate.update_status()
+        self.estimate.update_status();self.onboard.update_status()
         self.max_refresh=max(self.max_refresh,time.perf_counter()-begin)
     def closeEvent(self,event):
-        self.closing=True;self.timer.stop();self.cancel.set();self.device.close();self.backend.cancel();self.executor.shutdown(wait=False,cancel_futures=True);event.accept()
+        self.closing=True;self.timer.stop();self.twin.close();self.cancel.set();self.device.close();self.backend.cancel();self.executor.shutdown(wait=False,cancel_futures=True);event.accept()
 
 def main():
     app=W.QApplication(sys.argv);app.setFont(QtGui.QFont('Segoe UI',10))

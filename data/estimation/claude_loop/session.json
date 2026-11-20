@@ -198,7 +198,9 @@
       "b1": 0.00012082467779221844,
       "tcp": 0.25814434959899374,
       "tcn": 0.25689427222221056,
-      "tp": 0.0006378819055238683
+      "tp": 0.0006378819055238683,
+      "tsp": 0.4554200120482439,
+      "tsn": 0.4904523206673396
     },
     "se": {
       "Rm": 0.012115053575231552,
@@ -214,7 +216,14 @@
       "tp": 5.235300515094148e-05
     },
     "source": "refined (h, b1, tp)",
-    "Larm": 0.06807680699429053
+    "Larm": 0.06807680699429053,
+    "breakaway": {
+      "deadzone_pct": [
+        13,
+        14
+      ],
+      "source": "Motor tests breakaway pulses 2026-11-07 (deadzonePos/Neg), added 2026-11-19: tsp/tsn = deadzone * Vs / Rm; not fitted (stick-slip, see estimation.STICK)"
+    }
   },
   "scale": {
     "mode": "nominal"

@@ -12,6 +12,7 @@ __pycache__/
 *.slxc
 *.mexw64
 slprj/
+par_mdl_ref/
 
 # LaTeX build files (the compiled report PDF is tracked)
 report/*.aux
@@ -39,3 +40,6 @@ twin/RIPTwin/*.sln
 
 # MATLAB workspace dumps
 matlab.mat
+
+# Packaged harness releases (matlab/harness/export_release.m)
+dist/

@@ -1,17 +1,22 @@
-function cfg = harness_config(mode)
+function cfg = harness_config(mode, opts)
 %HARNESS_CONFIG Every rig-side setting of the harness, in one place: edit here.
 %   cfg = harness_config()          'realistic': sensors and firmware behave as on the rig
 %   cfg = harness_config('ideal')   perfect sensors and actuator (first design steps only)
 %   Per run, without editing this file:  cfg = harness_config(); cfg.Ts = 2e-3; run_sim(..., 'Cfg', cfg)
 %
-%   The plant parameters are NOT set here: they are read from matlab/model/furuta_params.m,
-%   the identified model of the report (Table 6). Change the model there, never here.
+%   The plant parameters are NOT set here: they are read from matlab/model/. Default (since 2026-11-20):
+%   furuta_params_20261120.m, the rig re-identified after it was moved (data/estimation/suite_20261120), the
+%   model the team works with. cfg = harness_config(mode, 'Model', 'table6') uses furuta_params.m instead, the
+%   report's Table 6 model of 2026-11-15, kept for comparison (Table 4 replay, eq. 110 poles).
+%   Change a model in its file, never here.
 %   Controller gains are not here either: they live in the controller's design function
 %   (e.g. controllers/hybrid/ctrl_hybrid_design.m).
 arguments
     mode (1,:) char {mustBeMember(mode, {'realistic', 'ideal'})} = 'realistic'
+    opts.Model (1,:) char {mustBeMember(opts.Model, {'table6', '20261120'})} = '20261120'
 end
-[cfg.p, cfg.lin] = load_identified_model();
+[cfg.p, cfg.lin, cfg.breakaway] = load_identified_model(opts.Model);   % breakaway: measured arm stiction, for the controller design
+cfg.model = opts.Model;
 cfg.mode = mode;
 
 % timing: three rates
@@ -37,6 +42,7 @@ s.arm_cpr = 1496;        % arm encoder counts/rev: 11 PPR x4 on the motor, 34:1 
 s.pend_cpr = 4096;       % AS5600, 12 bit
 s.pend_period = 2e-3;    % AS5600 read at 500 Hz
 s.pend_delay = 7e-3;     % pendulum angle lags the arm and current by t_d = 7 ms (report 5.2.1)
+if isfield(cfg.p, 'pend_delay'), s.pend_delay = cfg.p.pend_delay; end   % 20261120 model: 10 ms (shaft coupling)
 s.i_noise_sd = 0.05;     % current noise before the MCU filter [A] -- ASSUMED, not measured
 s.i_fc = 40;             % MCU current filter: 2nd-order Butterworth, 40 Hz (report Table 1)
 s.quantize = true;
@@ -50,8 +56,9 @@ a.slew = 100;              % duty per second. 100 is the firmware maximum; the p
 a.standby = 1e-3;          % the duty passes through zero (TB6612 standby) for one tick when reversing
 a.duty_levels = 1023;      % 10-bit PWM
 a.travel = deg2rad(120);   % ARM_TRAVEL trip, measured arm angle from centre
-a.i_trip = 1.5;            % OVERCURRENT trip on the filtered current [A]
+a.i_trip = 4;              % OVERCURRENT trip on the filtered current [A]: the rig default since firmware 1.9 (1.5 before)
 a.i_trip_time = 10e-3;     % ... after this long above it [s]
+a.reverse_through_zero = true;   % false only to replay a recorded applied duty unchanged
 cfg.act = a;
 
 if strcmp(mode, 'ideal')
@@ -75,11 +82,17 @@ assert(isMult(cfg.Ts, cfg.fw.Ts) && isMult(cfg.fw.Ts, cfg.dt), 'harness_config:r
     cfg.Ts, cfg.fw.Ts, cfg.dt);
 end
 
-function [p, lin] = load_identified_model()
+function [p, lin, breakaway] = load_identified_model(model)
 % Run furuta_params.m in an isolated workspace and keep the struct p and the linear models.
 here = fileparts(mfilename('fullpath'));
-S = run_script(fullfile(here, '..', 'model', 'furuta_params.m'));
+file = 'furuta_params.m';
+if strcmp(model, '20261120'), file = 'furuta_params_20261120.m'; end
+S = run_script(fullfile(here, '..', 'model', file));
 p = S.p;
+% Arm breakaway (stick-slip): in the plant (Simscape block "arm friction" = lib/arm_friction.m = furuta_rhs)
+% and, through cfg.breakaway, in the controllers' motor inverse and friction compensation. A plant without it:
+% run_sim(..., 'Plant', struct('tsp', 0, 'tsn', 0)).
+breakaway = struct('tsp', p.tsp, 'tsn', p.tsn);
 lin = struct('A_up', S.A_up, 'B_up', S.B_up, 'Bd_up', S.Bd_up, ...
              'A_down', S.A_down, 'B_down', S.B_down, 'Bd_down', S.Bd_down, ...
              'C', S.C_up, 'D', S.D_up);
