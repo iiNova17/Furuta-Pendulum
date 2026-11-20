@@ -58,7 +58,7 @@ Item {
                 geometry: RipGeometry { source: "housing" }
                 castsShadows: true
                 receivesShadows: true
-                materials: PrincipledMaterial { baseColor: "#56616c"; roughness: 0.55; metalness: 0.1 }
+                materials: PrincipledMaterial { baseColor: "#8c959e"; roughness: 0.55; metalness: 0.1 }
             }
             Node {
                 id: armJoint
@@ -67,7 +67,7 @@ Item {
                     geometry: RipGeometry { source: "arm" }
                     castsShadows: true
                     receivesShadows: true
-                    materials: PrincipledMaterial { baseColor: "#d2691e"; roughness: 0.45 }
+                    materials: PrincipledMaterial { baseColor: "#1c1d21"; roughness: 0.5 }
                 }
                 Node {
                     objectName: "pendJoint"
@@ -76,7 +76,7 @@ Item {
                         geometry: RipGeometry { source: "pendulum" }
                         castsShadows: true
                         receivesShadows: true
-                        materials: PrincipledMaterial { baseColor: "#2f74c0"; roughness: 0.4 }
+                        materials: PrincipledMaterial { baseColor: "#c62828"; roughness: 0.4 }
                     }
                 }
             }

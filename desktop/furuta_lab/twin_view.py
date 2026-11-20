@@ -86,8 +86,9 @@ class TwinView(QQuickWidget):
             return
         self.pose[which] = (q_arm, q_pend)
         arm, pend = ('armJoint', 'pendJoint') if which == 'rig' else ('ghostArm', 'ghostPend')
-        self.nodes[arm].setProperty('rotation', QQuaternion.fromAxisAndAngle(QVector3D(0, 0, 1), math.degrees(q_arm)))
-        self.nodes[pend].setProperty('rotation', QQuaternion.fromAxisAndAngle(self.axis, math.degrees(q_pend)))
+        sa, sp = T.DISPLAY_SIGN
+        self.nodes[arm].setProperty('rotation', QQuaternion.fromAxisAndAngle(QVector3D(0, 0, 1), math.degrees(sa * q_arm)))
+        self.nodes[pend].setProperty('rotation', QQuaternion.fromAxisAndAngle(self.axis, math.degrees(sp * q_pend)))
 
     def show_ghost(self, on):
         if self.ok and bool(self.nodes['ghostArm'].property('visible')) != bool(on):

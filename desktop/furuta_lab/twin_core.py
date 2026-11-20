@@ -19,6 +19,10 @@ ASSETS = Path(__file__).resolve().parent / 'twin_assets'
 BODIES = ('housing', 'arm', 'pendulum')
 UDP_PORT = 7400
 _PACKET = struct.Struct('<4sB3xff')            # 'RIP1', source (0 rig, 1 model), q_arm, q_pend
+# Drawing signs (q_arm, q_pend): on the rig, positive theta0 / theta1 turn the opposite way to the CAD frame's
+# right-hand rule about +Z / the pendulum axis (both seen reversed in the twin, checked at the rig 2026-11-20).
+# Flipping both is a mirror symmetry of the dynamics, so only the drawing changes; packets keep the convention.
+DISPLAY_SIGN = (-1., -1.)
 
 
 # ------------------------------------------------------------------ geometry

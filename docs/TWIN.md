@@ -28,6 +28,10 @@ The UE twin still works: “Forward to the Unreal twin” sends the same RIP1 pa
 - **Rig (solid):** θ0 and θ1 of the newest stream record, computed exactly as the firmware does
   (`onboard_page.angles`). Twin convention (`twin/README.md`): q_arm = θ0, q_pend = θ1 − π (0 hanging).
   If the arm is not centered, the arm is drawn at 0 (the HUD says so).
+  On the rig, positive θ0 and θ1 turn opposite to the CAD frame's right-hand rule, so the view draws both
+  angles with the opposite sign (`twin_core.DISPLAY_SIGN`, checked at the rig 2026-11-20). Flipping both is a
+  mirror symmetry of the dynamics, so the model is unchanged; UDP packets keep the `twin/README.md` convention.
+  Colors as on the rig: black arm, red pendulum.
 - **Model ghost (cyan)**, one of:
   1. *Identified model*: `twin_core.ModelGhost` integrates the identified equations (RK4, ≤ 1 ms steps,
      breakaway friction included) driven by the duty the firmware applied, and is put back on the measured

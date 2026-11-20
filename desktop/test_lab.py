@@ -343,6 +343,8 @@ class TwinTests(unittest.TestCase):
         p.src_rec.setChecked(True);self.assertEqual(len(p.frames[0]),200)
         p.play['t']=.5;p.play['wall']=__import__('time').perf_counter();p.tick()
         self.assertAlmostEqual(p.view.pose['rig'][0],np.radians(125*360/1496),2)  # record at 0.5 s
+        q=p.view.nodes['armJoint'].property('rotation')                     # drawn reversed (DISPLAY_SIGN, seen at the rig)
+        self.assertLess(q.z()*q.scalar(),0)
         p.on_onboard.setChecked(False);w.close()
 
 from test_estimation import *  # noqa: E402,F401,F403
