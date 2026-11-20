@@ -3,3 +3,4 @@ pyqtgraph==0.14.0
 numpy==2.5.4
 scipy==1.18.1
 pyserial==3.5
+PySide6-Addons==6.12.0

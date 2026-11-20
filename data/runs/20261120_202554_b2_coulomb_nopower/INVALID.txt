@@ -1,0 +1,3 @@
+INVALID: no motor power from 0.3 s to 13.9 s (current about 0.01 A at 23 % duty; a stalled motor at 12 V draws 0.81 A).
+The first 0.3 s ran on the driver capacitor; power returned at 13.9 s and the swing-up then caught at 15.1 s.
+Cause not known yet: supply switched on late, or the supply cut out after the previous run (b2_default, 1.62 A rms).

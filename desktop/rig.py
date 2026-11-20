@@ -1,7 +1,7 @@
 """Command-line access to the rig for the estimation loop (used by Claude; the GUI does the same).
 
     rig.py status
-    rig.py setup [--trip 1.5] [--travel-deg 120] [--max-duty 50] [--max-s 60] [--slew 1000]
+    rig.py setup [--trip 4] [--travel-deg 120] [--max-duty 50] [--max-s 60] [--slew 1000]
     rig.py swing SECONDS [--tag swing|loaded_swing]                     passive, motor never driven
     rig.py run NAME AMP_PCT F1,F2,... [--each 4] [--tag fit|validation] MOVES THE MOTOR
     rig.py restore                                                       100 Hz stream, bypass filter
@@ -67,7 +67,7 @@ def main():
     ap = argparse.ArgumentParser(); ap.add_argument('cmd'); ap.add_argument('args', nargs='*')
     ap.add_argument('--port', default='COM11'); ap.add_argument('--session', default='claude_loop')
     ap.add_argument('--tag', default=None); ap.add_argument('--each', type=float, default=4.)
-    ap.add_argument('--trip', type=float, default=1.5); ap.add_argument('--travel-deg', type=float, default=120.)
+    ap.add_argument('--trip', type=float, default=4.); ap.add_argument('--travel-deg', type=float, default=120.)
     ap.add_argument('--max-duty', type=float, default=50.); ap.add_argument('--max-s', type=float, default=60.)
     ap.add_argument('--slew', type=float, default=1000.); ap.add_argument('--yes-motor', action='store_true')
     a = ap.parse_args()
@@ -108,7 +108,7 @@ def main():
             st = d.status; c = d.config
             if st.get('state') != 'DISARMED' or not st.get('centered'):
                 raise SystemExit(f'Not ready: state {st.get("state")}, centered {st.get("centered")}')
-            if total > c['maxDuration'] or amp / 100 > c['maxDuty'] + 1e-9 or not c.get('travelCounts'):
+            if (c['maxDuration'] > 0 and total > c['maxDuration']) or amp / 100 > c['maxDuty'] + 1e-9 or not c.get('travelCounts'):
                 raise SystemExit('Limits too small: run setup first')
             meta = {'purpose': 'estimation', 'estimation_step': tag, 'preset': name, 'amplitude_pct': amp, 'freqs_hz': freqs,
                     'segments': seg, 'source_tool': 'rig.py', 'setup': 'full_assembly', 'gear': 34, '12v_declared': True}

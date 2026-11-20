@@ -16,6 +16,10 @@ p.tp = 0.0006378819055;
 p.Vs = 12;
 p.eps = 0.1;  % arm friction smoothing (rad/s) used by furuta_rhs
 p.eps1 = 0.05;  % pendulum friction smoothing (rad/s)
+p.tsp = 0.455420012;  % arm breakaway friction, positive (A): measured dead zone
+p.tsn = 0.4904523207;  % arm breakaway friction, negative (A)
+p.stick_band = 0.05;  % rad/s, the arm can stick inside |dtheta0| < stick_band
+p.stick_T = 0.002;  % s, time constant that brings a stuck arm to rest
 p.Larm = 0.06807680699;  % m, from the data
 p.Ktau = 0.4813691365;  % N*m/A (nominal scale); SI value = per-Ktau value * Ktau
 p.eta_g = 1;

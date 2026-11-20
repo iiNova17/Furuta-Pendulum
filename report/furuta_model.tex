@@ -10,7 +10,31 @@
 \usepackage[american]{circuitikz}
 \usetikzlibrary{arrows.meta,positioning,calc,shapes.geometric}
 \usepackage{booktabs}
-\usepackage[hidelinks]{hyperref}
+\usepackage{xcolor}
+\definecolor{navy}{HTML}{143C6E}
+\definecolor{steel}{HTML}{43638B}
+\usepackage[labelfont=bf]{caption}
+\usepackage{titlesec}
+\titleformat*{\section}{\Large\bfseries\color{navy}}
+\titleformat*{\subsection}{\large\bfseries\color{navy}}
+\titleformat*{\subsubsection}{\normalsize\bfseries\color{steel}}
+\usepackage{fancyhdr}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\color{steel} Furuta Pendulum: Model and Controller Design}
+\fancyhead[R]{\small\color{steel} Control II}
+\fancyfoot[C]{\small\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\setlength{\headheight}{14pt}
+% Every figure and table stays inside its own (sub)section: flafter keeps a float from appearing
+% before the point where it is written, and a float barrier at every heading flushes the floats of
+% the previous (sub)section before the next one starts.
+\usepackage{flafter}
+\usepackage[section]{placeins}
+\usepackage{etoolbox}
+\pretocmd{\subsection}{\FloatBarrier}{}{}
+\pretocmd{\subsubsection}{\FloatBarrier}{}{}
+\usepackage[colorlinks=true, linkcolor=navy, urlcolor=navy, citecolor=navy]{hyperref}
 \setlength{\emergencystretch}{1.5em}
 
 \newcommand{\La}{L_{\mathrm{arm}}}
@@ -49,7 +73,7 @@ The pendulum is modeled using its mass $m$, located at a distance $L_p$ from the
 
 The arm length, from the motor axis to the pendulum pivot, is denoted by $\La$.
 
-The two generalized coordinates of our system are:
+The two generalized coordinates are:
 \begin{itemize}
   \item $\theta_0$: rotation angle of the horizontal arm about the vertical axis.
   \item $\theta_1$: pendulum angle measured from the upright vertical position.
@@ -108,7 +132,7 @@ The angular velocity of the pendulum is the sum of the arm rotation $\dot\theta_
   \item $\dot\theta_0 \sin\theta_1$ about the axis perpendicular to both the arm and the pendulum;
   \item $\dot\theta_0 \cos\theta_1$ about the long axis of the pendulum.
 \end{itemize}
-Since the pendulum is a thin rod, it will be treated as a slender rod, so its moment of inertia about its long axis is neglected and $J_1$ applies to both perpendicular axes. Therefore, the rotational kinetic energy of the pendulum is:
+Since the diameter of the pendulum is small compared with its length, it will be treated as a slender rod, so its moment of inertia about its long axis is neglected and $J_1$ applies to both perpendicular axes. Therefore, the rotational kinetic energy of the pendulum is:
 \begin{equation}
   T_{\mathrm{rotational}} = \frac{1}{2} J_1 \left(\dot\theta_1^2 + \dot\theta_0^2 \sin^2\theta_1\right).
   \label{eq:Trot}
@@ -147,7 +171,7 @@ Taking the zero of gravitational potential energy at the horizontal plane throug
 \end{equation}
 
 \subsection{Total Kinetic Energy and Lagrangian}
-To form the Lagrangian of our system, the energies of the two bodies are added. The total kinetic energy is:
+To form the Lagrangian, the energies of the two bodies are added. The total kinetic energy is:
 \begin{equation}
   T = T_0 + T_1 .
 \end{equation}
@@ -174,7 +198,7 @@ The Lagrangian is defined as the difference between the kinetic and the potentia
 \begin{equation}
   \mathcal{L} = T - U .
 \end{equation}
-Substituting equations~\ref{eq:T} and~\ref{eq:U}, the complete Lagrangian of our system becomes:
+Substituting equations~\ref{eq:T} and~\ref{eq:U}, the complete Lagrangian becomes:
 \begin{equation}
 \begin{aligned}
   \therefore\; \mathcal{L} = {}& \frac{1}{2}\left(J_0 + m \La^2\right)\dot\theta_0^2\\
@@ -312,7 +336,7 @@ Starting from equation~\ref{eq:pend_nl}, the term containing $\dot\theta_0^2$ is
 \begin{equation}
   m \La L_p \ddot\theta_0 + \left(J_1 + m L_p^2\right)\ddot\theta_1 + b_1 \dot\theta_1 - m g L_p \theta_1 = 0 .
 \end{equation}
-Collecting both, the linearized equations of our system are:
+Collecting both, the linearized equations are:
 \begin{equation}
 \begin{aligned}
   \therefore\; \left(J_0 + m \La^2\right)\ddot\theta_0 + m \La L_p \ddot\theta_1 + b_0 \dot\theta_0 &= T_m ,\\
@@ -432,7 +456,7 @@ Therefore, the complete state-space model is
 \end{equation}
 
 \subsection{Output Equations}
-Both joint angles of our system are measured. The arm angle $\theta_0$ is measured by the motor encoder (11 PPR quadrature encoder on the motor shaft, read in $\times4$ mode), and the pendulum angle $\theta_1$ by the pendulum encoder (AS5600 12-bit magnetic angle sensor). Therefore, the output vector is
+Both joint angles are measured. The arm angle $\theta_0$ is measured by the motor encoder (11 PPR quadrature encoder on the motor shaft, read in $\times4$ mode), and the pendulum angle $\theta_1$ by the pendulum encoder (AS5600 12-bit magnetic angle sensor). Therefore, the output vector is
 \begin{equation}
   \mathbf{y} = \begin{bmatrix} \theta_0 \\ \theta_1 \end{bmatrix}.
 \end{equation}
@@ -446,7 +470,7 @@ where
   D = \begin{bmatrix} 0 \\ 0 \end{bmatrix}.
 \end{equation}
 
-The positive directions of our system follow from equation~\ref{eq:pos}: $\theta_0 > 0$ is counter-clockwise when viewed from above, and $\theta_1 > 0$ means that the pendulum leans in the direction in which the arm tip moves when $\theta_0$ increases. Consequently, $B_4 < 0$, which means that a positive motor torque initially tips the pendulum backward.
+The positive directions follow from equation~\ref{eq:pos}: $\theta_0 > 0$ is counter-clockwise when viewed from above, and $\theta_1 > 0$ means that the pendulum leans in the direction in which the arm tip moves when $\theta_0$ increases. Consequently, $B_4 < 0$, which means that a positive motor torque initially tips the pendulum backward.
 
 Therefore, the counting direction of the motor encoder, the sign of the pendulum encoder and the motor polarity must all follow this convention.
 
@@ -627,13 +651,20 @@ To obtain a single model of our system with the armature voltage as its input, t
 \end{equation}
 where $J_a$ is the total inertia about the motor axis (arm, reflected rotor and pendulum mass at the arm tip), $J_p$ is the pendulum inertia about its pivot, $h$ is the inertial coupling, and $B_{eq}$ is the total viscous friction at the arm.
 
-Two friction effects observed on the experimental setup (see section~\ref{sec:estimation}) are added at this point.
+Three friction effects observed on the experimental setup (see section~\ref{sec:estimation}) are added at this point.
 
 The Coulomb friction of the gearmotor is allowed to differ between the two directions of rotation, $\tau_c = \tau_{c+}$ for $\dot\theta_0 > 0$ and $\tau_c = \tau_{c-}$ for $\dot\theta_0 < 0$.
 
+Furthermore, a gearmotor at rest does not start to turn as soon as the motor torque exceeds the sliding friction: it holds until the torque exceeds a larger breakaway friction $\tau_{s\pm}$ (static friction, see section~\ref{sec:lsresults}). Therefore, while the arm is at rest the friction takes whatever value keeps it at rest, up to $\tau_{s+}$ or $\tau_{s-}$, and only a larger torque makes it slip, after which the Coulomb friction $\tau_{c\pm}$ applies:
+\begin{equation}
+  \tau_f = \begin{cases} \tau_{hold} & \dot\theta_0 = 0 \text{ and } -\tau_{s-} \le \tau_{hold} \le \tau_{s+} \\ \tau_{c\pm} \sgn(\dot\theta_0) & \text{otherwise} \end{cases}
+  \label{eq:stick}
+\end{equation}
+where $\tau_{hold}$ is the friction torque for which $\ddot\theta_0 = 0$ in the arm equation below. In the equations that follow, $\tau_{c\pm} \sgn(\dot\theta_0)$ stands for $\tau_f$ of equation~\ref{eq:stick}.
+
 In addition, the pendulum joint has dry friction as well as viscous friction, since a free swing loses a nearly constant amplitude per half period on top of the exponential decay (see section~\ref{sec:swingresults}). Its generalized torque therefore becomes $Q_1 = -b_1 \dot\theta_1 - \tau_p \sgn(\dot\theta_1)$ instead of the purely viscous one used in equation~\ref{eq:pend_nl}, where $\tau_p$ is the dry-friction torque of the pendulum joint. Since this torque acts about the pendulum axis, which is perpendicular to the motor axis, it does not enter the arm equation.
 
-Thus, the full nonlinear model of our system, with the armature voltage $V$ as input, is:
+Thus, the full nonlinear model, with the armature voltage $V$ as input, is:
 \begin{equation}
 \boxed{
 \begin{aligned}
@@ -728,9 +759,9 @@ Since the effect of the inductance is both much faster than the mechanical motio
 where the second case is the open circuit of the driver at zero duty (see section~\ref{sec:motor}).
 
 \subsection{Model Scaled by the Torque Constant}
-Since only the current $i$ is measured, and not the torque $K_\tau i$ it produces, it is desired to write the model in a form that contains no unknown torque scale.
+Since only the current $i$ is measured, and not the torque $K_\tau i$ it produces, the model is rewritten in a form that contains no unknown torque scale.
 
-By dividing both equations of equation~\ref{eq:full_nl} by $K_\tau$ and writing $G = m g L_p$ for the gravity torque coefficient of the pendulum, every torque-like parameter appears divided by $K_\tau$. These scaled parameters are denoted by a tilde, for example $\tilde J_a = J_a/K_\tau$, and can be understood as the motor current needed to produce the corresponding torque. With the inductance neglected, the model of our system becomes:
+By dividing both equations of equation~\ref{eq:full_nl} by $K_\tau$ and writing $G = m g L_p$ for the gravity torque coefficient of the pendulum, every torque-like parameter appears divided by $K_\tau$. These scaled parameters are denoted by a tilde, for example $\tilde J_a = J_a/K_\tau$, and can be understood as the motor current needed to produce the corresponding torque. With the inductance neglected, the model becomes:
 \begin{equation}
 \boxed{
 \begin{aligned}
@@ -892,12 +923,12 @@ A free swing with the arm locked gives the pendulum ratios. Square-wave experime
   arr/.style={-{Stealth}, thick},
   node distance=0.3cm]
   \node[box] (sw) {Free swing\\arm locked\\$\theta_1$};
-  \node[box, right=of sw] (fsw) {Least squares\\Eq.~\eqref{eq:swing}};
+  \node[box, right=of sw] (fsw) {Least squares\\equation~\ref{eq:swing}};
   \node[res, right=of fsw] (psw) {$\tilde J_p/\tilde G,\ \tilde b_1/\tilde G$\\$\tilde\tau_p/\tilde G$};
   \node[box, below=1.0cm of sw] (sq) {Square waves\\pendulum hanging\\$d,\ i,\ \theta_0,\ \theta_1$};
   \node[box, right=of sq] (pr) {Timing,\\filtering,\\derivatives};
-  \node[box, right=of pr] (ls) {Least squares\\Eqs.~\eqref{eq:elec_reg},\\\eqref{eq:pend_reg} and~\eqref{eq:arm_reg}};
-  \node[box, right=of ls] (oe) {Refinement\\Eq.~\eqref{eq:oe}};
+  \node[box, right=of pr] (ls) {Least squares\\equations~\ref{eq:elec_reg},\\\ref{eq:pend_reg} and~\ref{eq:arm_reg}};
+  \node[box, right=of ls] (oe) {Refinement\\equation~\ref{eq:oe}};
   \node[res, below=0.9cm of oe] (val) {Validation on\\separate runs};
   \draw[arr] (sw) -- (fsw); \draw[arr] (fsw) -- (psw);
   \draw[arr] (sq) -- (pr); \draw[arr] (pr) -- (ls); \draw[arr] (ls) -- (oe); \draw[arr] (oe) -- (val);
@@ -995,7 +1026,7 @@ The lag may come from the internal filter of the AS5600 or from the arm lagging 
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.55\textwidth]{figures/fig_delay.pdf}
-\caption{Coefficient of determination of the pendulum equation~\eqref{eq:pend_reg} on the three fit runs against the timing correction of the pendulum angle.}
+\caption{Coefficient of determination of the pendulum equation (equation~\ref{eq:pend_reg}) on the three fit runs against the timing correction of the pendulum angle.}
 \label{fig:delay}
 \end{figure}
 
@@ -1029,7 +1060,7 @@ Equivalent length $g\,\tilde J_p/\tilde G$ & 6.27\,cm & \\
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{figures/fig_swing.pdf}
-\caption{Measured free swing (released from $40^\circ$) and the simulated swing of Eq.~\eqref{eq:swing} with the fitted viscous and dry friction. The shaded interval, before the release, is not used in the fit.}
+\caption{Measured free swing (released from $40^\circ$) and the simulated swing of equation~\ref{eq:swing} with the fitted viscous and dry friction. The shaded interval, before the release, is not used in the fit.}
 \label{fig:swing}
 \end{figure}
 
@@ -1037,17 +1068,17 @@ Equivalent length $g\,\tilde J_p/\tilde G$ & 6.27\,cm & \\
 \label{sec:lsresults}
 
 \subsubsection{Electrical Parameters}
-Equation~\ref{eq:elec_reg} fitted on 911 driven samples of the three fit runs gives \textbf{\boldmath$R_m = 3.425\,\Omega$} and \textbf{\boldmath$K_b = 0.4814\,\mathrm{V\,s/rad}$}, with a coefficient of determination of 0.995. With $V$ on the left-hand side instead, $R_m = 3.387\,\Omega$ and $K_b = 0.4848\,\mathrm{V\,s/rad}$.
+Equation~\ref{eq:elec_reg} fitted on 911 driven samples of the three fit runs gives $R_m = 3.425\,\Omega$ and $K_b = 0.4814\,\mathrm{V\,s/rad}$, with a coefficient of determination of 0.995. With $V$ on the left-hand side instead, $R_m = 3.387\,\Omega$ and $K_b = 0.4848\,\mathrm{V\,s/rad}$.
 
 Fitted run by run, $R_m$ varies between 3.34 and 3.83\,$\Omega$ and $K_b$ between 0.42 and 0.50\,V\,s/rad. This is because in a square-wave run the voltage and the speed rise and fall together, which makes the two regressors of equation~\ref{eq:elec_reg} partly collinear. Pooling the three runs averages this out.
 
 The stall test measured $V/i$ directly, since there is no back-EMF at standstill, and gave $4.13\,\Omega$. The higher resistance at standstill is expected for a brushed motor, where the brush contact resistance depends on the rotor position and on the commutation. Therefore, the value obtained during motion is the one that describes the running motor.
 
 \subsubsection{Pendulum Coupling}
-Fitting equation~\ref{eq:pend_reg} with the free-swing ratios fixed gives \textbf{\boldmath$\tilde h/\tilde G = 6.22\times10^{-3}\,\mathrm{s^2}$} on 1820 samples, with a coefficient of determination of the whole equation of 0.933. By equation~\ref{eq:Larm}, this corresponds to an arm length of \textbf{6.10\,cm}.
+Fitting equation~\ref{eq:pend_reg} with the free-swing ratios fixed gives $\tilde h/\tilde G = 6.22\times10^{-3}\,\mathrm{s^2}$ on 1820 samples, with a coefficient of determination of the whole equation of 0.933. By equation~\ref{eq:Larm}, this corresponds to an arm length of 6.10\,cm.
 
 \subsubsection{Arm Parameters}
-Equation~\ref{eq:arm_reg} gives \textbf{\boldmath$\tilde J_a = 5.634\times10^{-3}\,\mathrm{A\,s^2/rad}$}, \textbf{\boldmath$\tilde G = 0.0290\,\mathrm{A}$}, \textbf{\boldmath$\tilde B_{eq} = 0.0161\,\mathrm{A\,s/rad}$}, \textbf{\boldmath$\tilde\tau_{c+} = 0.258\,\mathrm{A}$} and \textbf{\boldmath$\tilde\tau_{c-} = 0.257\,\mathrm{A}$}, with a coefficient of determination of 0.995.
+Equation~\ref{eq:arm_reg} gives $\tilde J_a = 5.634\times10^{-3}\,\mathrm{A\,s^2/rad}$, $\tilde G = 0.0290\,\mathrm{A}$, $\tilde B_{eq} = 0.0161\,\mathrm{A\,s/rad}$, $\tilde\tau_{c+} = 0.258\,\mathrm{A}$ and $\tilde\tau_{c-} = 0.257\,\mathrm{A}$, with a coefficient of determination of 0.995.
 
 The pendulum reaction $\tilde G\, T_r$ is only a few percent of the arm equation, so $\tilde G$ is the least certain of these values ($\pm 9\,\%$). As shown in section~\ref{sec:stability}, this matters little, since the dynamics depend on $\tilde G$ mainly through the coupling ratio $\tilde h^2/(\tilde J_a \tilde J_p)$, which is only about 4\,\%.
 
@@ -1060,6 +1091,15 @@ At low speed, the plotted values are smeared by the filtering during the fast re
 
 Thus, the friction of this gearmotor behaves like Coulomb friction with very little viscous part, and the straight line of the model is a fit over the speed range of the experiments. This explains why the 30\,\% experiment, which reaches 6\,rad/s, gives different friction values (and a negative $\tilde G$) when it is added to the fit, and it is the reason why the fit and validation experiments were kept at 20--28\,\% duty.
 
+The breakaway friction cannot be seen in the driven experiments, since their square waves of 20--28\,\% duty are all above it. It was measured separately with short duty pulses that each start from rest: the arm first moved at 13\,\% duty in the positive direction and 14\,\% in the negative one. Since the arm is at rest there is no back-EMF, so the breakaway friction is the current $d\,V_s/R_m$ at that duty:
+\begin{equation}
+  \tilde\tau_{s+} = \frac{0.13 \cdot 12}{3.425} = 0.455\,\mathrm{A}, \qquad \tilde\tau_{s-} = \frac{0.14 \cdot 12}{3.425} = 0.490\,\mathrm{A},
+  \label{eq:breakaway}
+\end{equation}
+about 1.76 times the sliding friction $\tilde\tau_{c\pm}$.
+
+The first swing-up experiments on the hardware confirmed it: starting from rest, the controller applied 11.1\,\% duty and the arm stayed still for 9 to 27\,s. Simulating that duty with the sliding friction alone moves the arm by $285^\circ$ in 6\,s, while the model with the breakaway friction of equation~\ref{eq:stick} keeps it at rest, as observed. With the breakaway, the validation fits of Table~\ref{tab:validation} change by less than 2 percentage points in the Python simulation of the estimation, since the validation experiments are above the breakaway as well. In the Simscape plant of the harness (section~\ref{sec:harness_plant}), replaying the first validation run, the arm-angle fit drops from 89.0 to 86.5\,\% (2.5 points), while the pendulum, arm-speed and current fits change by less than 0.3 points.
+
 \begin{figure}[h]
 \centering
 \includegraphics[width=0.55\textwidth]{figures/fig_friction.pdf}
@@ -1070,7 +1110,7 @@ Thus, the friction of this gearmotor behaves like Coulomb friction with very lit
 \subsection{Refinement Results}
 Refining $\tilde h$, $\tilde b_1$ and $\tilde\tau_p$ with equation~\ref{eq:oe} on nine 4\,s windows of the fit runs reduced the cost from 336 to 270 and changed the three parameters by $+11.6\,\%$, $+10.3\,\%$ and $+26.3\,\%$.
 
-The increase of $\tilde h$ is the expected correction of the errors-in-variables bias previously discussed in section~\ref{sec:estmodels}, and the corrected coupling gives an arm length of \textbf{6.81\,cm}.
+The increase of $\tilde h$ is the expected correction of the errors-in-variables bias previously discussed in section~\ref{sec:estmodels}, and the corrected coupling gives an arm length of 6.81\,cm.
 
 The increase of the pendulum damping shows that the pendulum is damped more strongly while the arm moves than in the free swing with the arm locked.
 
@@ -1147,7 +1187,7 @@ Several other methods were tested in the same way and did not improve the valida
 \end{enumerate}
 
 \subsection{Identified Parameters}
-The final parameters of our system are listed in Table~\ref{tab:params}.
+The final parameters are listed in Table~\ref{tab:params}.
 
 \begin{table}[h]
 \centering
@@ -1169,14 +1209,16 @@ $\tilde b_1^*$ & $1.208\times10^{-4}$ & A\,s/rad & 11\,\% & pendulum viscous fri
 $\tilde\tau_{c+}$ & 0.2581 & A & 1.3\,\% & arm Coulomb friction, $\dot\theta_0>0$ & \\
 $\tilde\tau_{c-}$ & 0.2569 & A & 1.3\,\% & arm Coulomb friction, $\dot\theta_0<0$ & \\
 $\tilde\tau_p^*$ & $6.38\times10^{-4}$ & A & 8\,\% & pendulum joint dry friction & $5.05\times10^{-4}$ \\
+$\tilde\tau_{s+}$ & 0.4554 & A & & arm breakaway friction, $+$ & \\
+$\tilde\tau_{s-}$ & 0.4905 & A & & arm breakaway friction, $-$ & \\
 \midrule
-$\La$ & 6.81 & cm & & arm length, Eq.~\eqref{eq:Larm} & 6.10 \\
+$\La$ & 6.81 & cm & & arm length, equation~\ref{eq:Larm} & 6.10 \\
 $t_d$ & 7 & ms & & pendulum timing correction & \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-In terms of the duty cycle, the Coulomb friction corresponds to $R_m \tilde\tau_{c\pm}/V_s = 7.4\,\%$ and $7.3\,\%$, which is the friction compensation previously described in section~\ref{sec:full}.
+In terms of the duty cycle, the Coulomb friction corresponds to $R_m \tilde\tau_{c\pm}/V_s = 7.4\,\%$ and $7.3\,\%$, which is the friction compensation previously described in section~\ref{sec:full}, while the breakaway friction corresponds to 13\,\% and 14\,\%.
 
 The back-EMF damping $K_b/R_m = 0.141\,\mathrm{A\,s/rad}$ is almost nine times the mechanical viscous friction $\tilde B_{eq}$, so the damping of the arm is set mainly by the motor.
 
@@ -1191,7 +1233,8 @@ Limitations of the presented model and estimation are:
   \item The friction model is a straight line:
   \begin{enumerate}
     \item it is modeled as Coulomb plus viscous friction, which fits the speed range of the experiments (up to about 5\,rad/s);
-    \item at higher speeds the friction stays constant, so the model overestimates it there.
+    \item at higher speeds the friction stays constant, so the model overestimates it there;
+    \item the breakaway friction was measured at one arm position, while it varies with the rotor position (the motor shaft was seen to creep through the gearbox play at 11.7--12.8\,\% duty).
   \end{enumerate}
   \item The open-loop arm angle drifts over long simulations because of the small run-to-run variation of the friction in the two directions (see Table~\ref{tab:validation}).
   \item The gearbox play, felt by hand to be below $2^\circ$ at the arm, is not modeled. It may contribute to the slightly overestimated pendulum response at the highest excitation frequencies.
@@ -1203,7 +1246,7 @@ Limitations of the presented model and estimation are:
 \section{Identified State-Space Models}
 \label{sec:ssmodels}
 %======================================================================
-Substituting the parameters of Table~\ref{tab:params} into equations~\ref{eq:beta} to~\ref{eq:outputs} gives the numerical linear models of our system, which are the starting point for the controller design. The nonlinear model used for simulation follows in section~\ref{sec:nlmodel}. The angles are in radians, the voltage in volts, the duty cycle as a fraction $d \in [-1, 1]$ and the current in amperes.
+Substituting the parameters of Table~\ref{tab:params} into equations~\ref{eq:beta} to~\ref{eq:outputs} gives the numerical linear models, which are the starting point for the controller design. The nonlinear model used for simulation follows in section~\ref{sec:nlmodel}. The angles are in radians, the voltage in volts, the duty cycle as a fraction $d \in [-1, 1]$ and the current in amperes.
 
 \subsection{Upright Equilibrium}
 With $\mathbf{x} = \begin{bmatrix} \theta_0 & \theta_1 & \dot\theta_0 & \dot\theta_1 \end{bmatrix}^T$,
@@ -1260,19 +1303,19 @@ and
 \label{sec:nlmodel}
 The linear models above are only valid for small deviations from an equilibrium. Since the swing-up, large pendulum swings, the friction band of the arm and the switching of the driver at zero duty all lie outside that range, the nonlinear model is needed for simulation in Simulink and for the digital twin.
 
-This is the model that was simulated in the validation of section~\ref{sec:estimation} (see Table~\ref{tab:validation}). It is obtained by substituting the parameters of Table~\ref{tab:params} into equation~\ref{eq:scaled}, with the inductance neglected (equation~\ref{eq:qs}) and the sign functions replaced by the smooth functions of section~\ref{sec:full}.
+This is the model that was simulated in the validation of section~\ref{sec:estimation} (see Table~\ref{tab:validation}). It is obtained by substituting the parameters of Table~\ref{tab:params} into equation~\ref{eq:scaled}, with the inductance neglected (equation~\ref{eq:qs}), the sign functions replaced by the smooth functions of section~\ref{sec:full}, and the breakaway friction of equation~\ref{eq:stick}.
 
 With the state $\mathbf{x} = \begin{bmatrix} \theta_0 & \theta_1 & \dot\theta_0 & \dot\theta_1 \end{bmatrix}^T$, where $\theta_1 = 0$ is upright and $\theta_1 = \pi$ is hanging, and the duty cycle $d$ as input, the armature current is
 \begin{equation}
   i = \begin{cases} \dfrac{12\, d - 0.4814\, \dot\theta_0}{3.425} & d \neq 0 \\[6pt] 0 & d = 0 \end{cases}
   \label{eq:nl_current}
 \end{equation}
-where $12\,d$ is the armature voltage $V$ in volts. The friction torque of the arm is
+where $12\,d$ is the armature voltage $V$ in volts. While the arm slips, its friction torque is
 \begin{equation}
   \tilde\tau_c(\dot\theta_0) = \begin{cases} 0.2581 \tanh\left(\dot\theta_0 / 0.1\right) & \dot\theta_0 > 0 \\ 0.2569 \tanh\left(\dot\theta_0 / 0.1\right) & \dot\theta_0 \le 0 \end{cases}
   \label{eq:nl_friction}
 \end{equation}
-in amperes, with $\dot\theta_0$ in rad/s.
+in amperes, with $\dot\theta_0$ in rad/s. While $|\dot\theta_0| < 0.05\,\mathrm{rad/s}$, the friction instead holds the arm (it takes the value that makes $\ddot\theta_0 = -\dot\theta_0 / 0.002\,\mathrm{s}$, bringing the arm to rest), as long as that value stays between $-0.4905$ and $0.4554\,\mathrm{A}$ (equation~\ref{eq:stick}).
 
 By collecting all terms that do not contain an acceleration on the right-hand side of equation~\ref{eq:scaled}, the two mechanical equations become
 \begin{equation}
@@ -1295,7 +1338,7 @@ The determinant of this mass matrix is
 \begin{equation}
   \delta(\theta_1) = 1.0441\times10^{-6} + 3.434\times10^{-8} \sin^2\theta_1 - 4.049\times10^{-8} \cos^2\theta_1 \ \ge\ 1.0036\times10^{-6} ,
 \end{equation}
-which is positive for every pendulum angle, so the mass matrix can always be inverted. Inverting it gives the nonlinear state equations of our system:
+which is positive for every pendulum angle, so the mass matrix can always be inverted. Inverting it gives the nonlinear state equations:
 \begin{equation}
 \therefore\;\boxed{
 \begin{aligned}
@@ -1308,7 +1351,7 @@ which is positive for every pendulum angle, so the mass matrix can always be inv
 \end{equation}
 with the outputs $\theta_0$, $\theta_1$ and $i$ (equation~\ref{eq:nl_current}).
 
-Linearizing equation~\ref{eq:nl_num} about $\theta_1 = 0$ or $\theta_1 = \pi$, with the friction left out, gives back the matrices of equations~\ref{eq:ss_up_num} and~\ref{eq:ss_hang_num}, which is a good check of the consistency of the two forms.
+Linearizing equation~\ref{eq:nl_num} about $\theta_1 = 0$ or $\theta_1 = \pi$, with the friction left out, gives back the matrices of equations~\ref{eq:ss_up_num} and~\ref{eq:ss_hang_num}, which confirms that the two forms are consistent.
 
 In Simulink, equation~\ref{eq:nl_num} can be implemented with a MATLAB Function block that evaluates the state derivative and the current, followed by an integrator for the four states, with the initial condition $\mathbf{x}(0) = \begin{bmatrix} 0 & \pi & 0 & 0 \end{bmatrix}^T$ for a pendulum hanging at rest. The validation simulations used a fourth-order Runge--Kutta method with a step of 2\,ms, so a fixed step of 2\,ms or smaller (or a variable-step solver) should be used to reproduce them.
 
@@ -1368,7 +1411,7 @@ For $A_h$ of equation~\ref{eq:ss_hang_num},
 \end{equation}
 with poles at $0$, $-28.76$ and $-0.422 \pm 12.54j\,\mathrm{rad/s}$.
 
-The complex pair is the pendulum swing, with a natural frequency of \textbf{\boldmath$\sqrt{157.3} = 12.54\,\mathrm{rad/s}$} (2.00\,Hz) and a damping ratio of $0.422/12.54 = 0.034$. The frequency agrees with the free swing of section~\ref{sec:swingresults} (12.51\,rad/s) within 0.3\,\%, which is a good indication of the consistency of the identified parameters.
+The complex pair is the pendulum swing, with a natural frequency of $\sqrt{157.3} = 12.54\,\mathrm{rad/s}$ (2.00\,Hz) and a damping ratio of $0.422/12.54 = 0.034$. The frequency agrees with the free swing of section~\ref{sec:swingresults} (12.51\,rad/s) within 0.3\,\%, which is a good indication of the consistency of the identified parameters.
 
 The damping is higher than the free-swing value of 0.024, because the swinging pendulum now also moves the free arm, whose motion is damped by the back-EMF.
 
@@ -1387,5 +1430,1124 @@ The linear models leave out the friction terms, so they describe motions in whic
 The models also neglect the inductance. With an electrical time constant of the order of a millisecond (see section~\ref{sec:estmodels}), the neglected electrical pole lies near $-1000\,\mathrm{rad/s}$, more than thirty times faster than the fastest mechanical pole of $-29.2\,\mathrm{rad/s}$.
 
 Thus, the four-state models of section~\ref{sec:ssmodels} are suitable for controller design as long as the closed-loop poles remain well below this value.
+
+%======================================================================
+\section{Re-identification after the Rig Was Moved (2026-11-20)}
+\label{sec:reid}
+%======================================================================
+After the rig was moved to a different location, the first closed-loop runs with the onboard controller of section~\ref{sec:harness_modes} (firmware 1.9--1.11) balanced the pendulum, but only inside a saturated oscillation at 9--11\,Hz, with the duty cycle at its $\pm 50\,\%$ limit about half of the time and an armature current of about 1.6\,A rms. Since the controller had been designed on the model of section~\ref{sec:estimation}, the question was whether the model still described the rig. The objective of this section is to describe the measurement suite recorded on 2026-11-20, what it showed about the rig, and the model identified from it, which replaces the model of Table~\ref{tab:params} for the controller design from this point on. The model of Table~\ref{tab:params} is kept unchanged as the reference of sections~\ref{sec:estimation} to~\ref{sec:stability}.
+
+\subsection{Measurement Suite}
+\label{sec:reid_suite}
+All runs were recorded with the lab application's device interface (\nolinkurl{desktop/rig_suite*.py}) and are stored in \nolinkurl{data/runs/20261120_*}. They were taken in three batches:
+\begin{enumerate}
+  \item passive, motor unpowered: references, a 30\,s noise record, free swings with the arm locked, and the arm moved by hand;
+  \item open loop, pendulum hanging: 6\,Hz sine waves of 18\,\% and 35\,\% duty, a 1\,Hz sine of 18\,\% duty, a logarithmic chirp from 1.5 to 15\,Hz at 25\,\% duty, breakaway pulses from 3 to 16\,\% duty at three arm positions, and exact repeats of the fit and validation experiments of section~\ref{sec:estimation};
+  \item closed loop: swing-up and LQR of the onboard controller, 15\,s each.
+\end{enumerate}
+Every powered sequence was first simulated on the model to check the arm travel and the current, and validated by the firmware before it was armed. Two runs in which the 12\,V supply was off (the driver received no power, which the firmware cannot sense) were detected from the measured current and are kept only as a record.
+
+The sensors were unchanged: the arm encoder did not move during the noise record, the pendulum reading had a standard deviation of $0.019^\circ$, and the filtered current $0.026$\,A. The free swing gave a period of 0.5063\,s for amplitudes of 10--20$^\circ$, against 0.5048\,s for the model of Table~\ref{tab:params} (0.3\,\%), so the ratio $\tilde J_p/\tilde G$ is unchanged.
+
+\subsection{Findings}
+\label{sec:reid_findings}
+\paragraph{The model of Table~\ref{tab:params} no longer fits.} On the repeat of the first validation run, the model of Table~\ref{tab:params} gave fits of 65.5\,\% (arm angle), 52.6\,\% (pendulum angle), 76.1\,\% (arm speed) and 71.5\,\% (current), against 89, 90, 92 and 88\,\% on the original run, which the same code still reproduces exactly.
+
+\paragraph{The arm breakaway friction has halved.} The breakaway pulses of Table~\ref{tab:reid_breakaway} moved the arm from 5--7.5\,\% duty in both directions, with only a weak dependence on the arm position, against 13\,\% and 14\,\% measured on 2026-11-07 (equation~\ref{eq:breakaway}). The median of the first moving pulse, \textbf{6\,\%} in both directions, is used as the new breakaway.
+
+\begin{table}[h]
+\centering
+\caption{Breakaway pulses of 2026-11-20 (0.25\,s each, alternating, 0.5\,\% steps): lowest duty that moved the arm, and the duty from which every pulse moved it.}
+\label{tab:reid_breakaway}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Arm position & $+$, first move & $+$, always & $-$, first move & $-$, always \\
+\midrule
+$+2^\circ$ & 6.0\,\% & 7.5\,\% & 6.0\,\% & 7.0\,\% \\
+$-24^\circ$ & 5.0\,\% & 5.0\,\% & 5.0\,\% & 7.5\,\% \\
+$+31^\circ$ & 6.5\,\% & 6.5\,\% & 6.0\,\% & 6.0\,\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{The supply is unchanged.} On the pulses that did not move the arm, there is no back-EMF, so the current is $d\,V_s/\tilde R_m$. The measured stall currents were on average 1.09 times the prediction for 12\,V and the resistance of Table~\ref{tab:params}, with an asymmetry between the two directions that points to a small current offset. With the driver in standby, the current sensor read $+0.01$\,A on both 2026-11-15 and 2026-11-20, so the change is not in the sensor offset or the supply but in the rig itself.
+
+\paragraph{The pendulum reading lags the arm encoder by 9--15\,ms.} The lag was measured by simulating the pendulum equation of the model driven by the measured arm motion over short windows and finding the time shift of the measured pendulum angle that fits best. On the motor-driven runs it was 10.2, 12.7 and 11.1\,ms (balance runs of 2026-11-19), and on the open-loop runs of 2026-11-20 it depended on the size of the arm motion: \textbf{14.7\,ms} for the 6\,Hz sine of 18\,\% duty (arm motion of about $7^\circ$) and \textbf{9.1\,ms} for 35\,\% duty (about $32^\circ$). A frequency-domain comparison of the arm-to-pendulum transfer with the mechanics of the model gave 10--12\,ms between 3 and 15\,Hz with a coherence close to one, while the pendulum samples were only 0.4--0.8\,ms old when the controller used them. A delay in the sensor would be the same for small and large motions, so the amplitude dependence points to the shaft coupling between the motor and the arm: the encoder is on the motor shaft, and the arm follows it only after the play and the flex of the coupling have been taken up. The 7\,ms of the original identification (Table~\ref{tab:params}) therefore underestimated the effective lag of the rig as it is now.
+
+A dead band in the arm motion explained part of this: about $3^\circ$ of play plus 3--4\,ms of delay for the small and slow motions, but only $0.5$--$0.75^\circ$ plus 7--10\,ms for the large and fast ones. A two-mass model of the coupling (motor side and arm side joined by $1.1^\circ$ of play and a spring with a 27.5\,Hz resonance) reduced the simulation error on the fit runs by 31\,\%, but on runs that were not used in the fit it reproduced the pendulum worse than the rigid model (25.7\,\% instead of 46.4\,\% on the small 6\,Hz sine). It was therefore not adopted: the coupling is treated as an effective lag in the controller design (section~\ref{sec:cu}).
+
+\subsection{Identification}
+\label{sec:reid_ident}
+The estimation chain of section~\ref{sec:estimation} was run without the application, by \nolinkurl{desktop/reidentify.py}, with the settings of the final session. Run on the recordings of that session, it reproduced the eleven least-squares parameters of Table~\ref{tab:params} to round-off and the refined $\tilde b_1$ and $\tilde\tau_p$ within 1\,\%. Identification variants were then compared only on the three validation runs, which none of the fits used (Table~\ref{tab:reid_variants}).
+
+\begin{table}[h]
+\centering
+\caption{Identification variants on the 2026-11-20 recordings: mean open-loop fit over the three validation runs.}
+\label{tab:reid_variants}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Variant & Arm angle & Pendulum & Arm speed & Current & Mean \\
+\midrule
+A: chain of section~\ref{sec:estimation} (refine $\tilde h$, $\tilde b_1$, $\tilde\tau_p$), 7\,ms & $-163.0$ & 79.1 & 88.0 & 71.7 & 18.9 \\
+B: as A, timing correction 10\,ms & $-162.6$ & 78.4 & 87.9 & 71.7 & 18.9 \\
+C: also refine $\tilde J_a$, $\tilde B_{eq}$, $\tilde\tau_{c\pm}$, 7\,ms & 58.8 & 78.9 & 89.9 & 71.9 & 74.9 \\
+D: as C, timing correction 10\,ms & 59.6 & 79.0 & 90.0 & 72.0 & 75.2 \\
+\textbf{E: as D, without the 15\,\% fit run} & \textbf{62.6} & \textbf{78.8} & \textbf{90.0} & \textbf{72.0} & \textbf{75.9} \\
+F: as D, also refine $\tilde G$, $\tilde J_p$ & 59.4 & 78.4 & 90.0 & 72.0 & 74.9 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Refining the arm parameters by simulation removed the drift of the open-loop arm angle, which the least-squares arm equation alone could not, and the pendulum timing correction that fits the pendulum equation best was now 10\,ms instead of 7\,ms. Leaving out the 15\,\% duty run, in which the arm moves mostly inside the play and the stiction, helped slightly, as it had in the original session. Variant~E, fitted on the repeats of the 25\,\%, 20\,\% and 30\,\% fit runs, is the new model. Its parameters are compared with Table~\ref{tab:params} in Table~\ref{tab:reid_params}; the uncertainties are the standard errors of the least-squares fit on the same runs, before the refinement.
+
+\begin{table}[h]
+\centering
+\caption{Model of 2026-11-20 (variant E) against the model of Table~\ref{tab:params}. Torque-like parameters are divided by $K_\tau$.}
+\label{tab:reid_params}
+\small
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Parameter & 2026-11-15 & 2026-11-20 & Uncertainty & Unit \\
+\midrule
+$R_m$ & 3.425 & 2.692 & 0.3\,\% & $\Omega$ \\
+$K_b$ & 0.4814 & 0.4427 & 0.2\,\% & V\,s/rad \\
+$\tilde J_a$ & $5.634\times10^{-3}$ & $5.488\times10^{-3}$ & 0.3\,\% & A\,s$^2$/rad \\
+$\tilde J_p$ & $1.853\times10^{-4}$ & $2.801\times10^{-4}$ & 3.8\,\% & A\,s$^2$/rad \\
+$\tilde h$ & $2.012\times10^{-4}$ & $3.112\times10^{-4}$ & 3.7\,\% & A\,s$^2$/rad \\
+$\tilde G$ & $2.899\times10^{-2}$ & $4.378\times10^{-2}$ & 3.8\,\% & A \\
+$\tilde B_{eq}$ & $1.612\times10^{-2}$ & $5.422\times10^{-3}$ & 11.7\,\% & A\,s/rad \\
+$\tilde b_1$ & $1.208\times10^{-4}$ & $2.737\times10^{-4}$ & 4.4\,\% & A\,s/rad \\
+$\tilde\tau_{c+}$ & 0.2581 & 0.2798 & 1.0\,\% & A \\
+$\tilde\tau_{c-}$ & 0.2569 & 0.2784 & 1.0\,\% & A \\
+$\tilde\tau_p$ & $6.38\times10^{-4}$ & $3.15\times10^{-4}$ & 19\,\% & A \\
+$\tilde\tau_{s\pm}$ & 0.4554 / 0.4905 & 0.2675 / 0.2675 & & A \\
+\midrule
+$\La$ & 6.81 & 6.97 & & cm \\
+$t_d$ & 7 & 10 & & ms \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+In terms of the duty cycle, the sliding friction is now $6.3\,\%$ and $6.2\,\%$ and the breakaway $6.0\,\%$, so the extra static friction of section~\ref{sec:estimation} has practically disappeared. The ratio $\tilde J_p/\tilde G$ is unchanged ($6.397\times10^{-3}$ against $6.393\times10^{-3}\,\mathrm{s^2}$), while $\tilde G$, $\tilde J_p$ and $\tilde h$ rose together by 51--55\,\%, and $R_m$ and $K_b$ fell by 21\,\% and 8\,\%. Since all these parameters are identified per torque constant and the torque scale is not identified (section~\ref{sec:estimation}), the data cannot separate a heavier pendulum from a change in the motor circuit or the coupling; for controller design, which needs only the lumped parameters, this does not matter.
+
+The upright poles of the new model are $+12.13$, $0$, $-12.71$ and $-33.50\,\mathrm{rad/s}$ (Table~\ref{tab:poles_up}: $+12.26$, $0$, $-12.63$, $-29.23$), and the hanging pendulum mode is $-0.636 \pm 12.53j\,\mathrm{rad/s}$, so the unstable mode that the controller has to stabilize is essentially the same.
+
+\begin{table}[h]
+\centering
+\caption{Validation on the three validation runs of 2026-11-20: mean open-loop fit.}
+\label{tab:reid_validation}
+\small
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Model & Arm angle & Pendulum angle & Arm speed & Current \\
+\midrule
+2026-11-15 (Table~\ref{tab:params}) & 54.7\,\% & 45.3\,\% & 76.0\,\% & 71.4\,\% \\
+2026-11-20 (Table~\ref{tab:reid_params}) & 62.6\,\% & 78.8\,\% & 90.1\,\% & 72.0\,\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+As Table~\ref{tab:reid_validation} shows, the new model predicts the pendulum and the arm speed of the rig much better than the previous one. The current fit is about 72\,\% with both models, which is consistent with the shaft coupling: the current and the encoder are on the motor side, which partly moves on its own within the play. The model is stored in \nolinkurl{matlab/model/furuta_params_20261120.m} with the same fields and linear models as \nolinkurl{furuta_params.m}, and the harness uses it with \texttt{harness\_config(\ldots, 'Model', '20261120')}.
+
+\subsection{Consequence for the LQR}
+\label{sec:reid_lqr}
+For the gain of equation~\ref{eq:K_final}, with the controller period of 4\,ms, the hold, the 40\,Hz velocity filter and a pure delay on the pendulum reading, the largest pendulum lag that keeps the loop stable is 8.5\,ms on the model of Table~\ref{tab:params} and \textbf{6.25\,ms} on the new model; above it the loop becomes unstable at 11--14\,Hz. The measured lag of 9--15\,ms is beyond this margin, so the loop is linearly unstable and the duty-cycle limit holds it in a limit cycle, which is the oscillation observed on the rig. A simulation of the new model with a 12\,ms lag reproduced it: pendulum 4.6\,$^\circ$ rms, duty at the limit 56\,\% of the time and 1.54\,A rms, against $4.9^\circ$, 49\,\% and 1.62\,A on the rig. The controller was therefore redesigned (section~\ref{sec:cu}).
+
+%======================================================================
+\section{Controller Simulation Harness}
+\label{sec:harness}
+%======================================================================
+Since every powered experiment on the rig risks a current trip, a collision of the arm with its travel limit or a damaged pendulum, it is desired to develop and test the controllers in simulation first, against a plant that behaves like the real rig and not only like its linear model. The objective of this section is to describe the Simulink harness in which the LQR (section~\ref{sec:lqr}) and the swing-up (section~\ref{sec:swingup}) were designed and tested. The harness contains no controller design of its own: it connects a controller to a model of the rig that includes the identified plant of equation~\ref{eq:nl_num}, the firmware and the sensors, runs a set of standard tests, and computes the same performance metrics for every controller. All files are in \nolinkurl{matlab/harness}.
+
+\subsection{Structure}
+\label{sec:harness_structure}
+The top level of the harness (\texttt{furuta\_harness.slx}, see Figure~\ref{fig:harness_top}) consists of only two blocks, connected as a feedback loop. The Controller block receives the measurement $\mathbf{y} = \begin{bmatrix} \theta_0 & \theta_1 & i \end{bmatrix}^T$ and the arm reference $r$, and returns the duty cycle $d$, the active state of the supervisor (mode 0 for the safety stop, 1 for the swing-up and 2 for stabilizing) and a vector of internal signals for debugging. The Rig block receives the duty cycle and returns the measurement, together with the true state $\mathbf{x}$, the true current, the duty cycle actually applied by the firmware and its fault code, which are logged but never fed back.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_harness_top.pdf}
+\caption{Top level of the controller harness in Simulink: the controller slot (left) and the rig (right), which is a variant subsystem with a simulated and a hardware-in-the-loop implementation.}
+\label{fig:harness_top}
+\end{figure}
+
+The Rig block is a variant subsystem with two choices. The Simulation variant contains the model of the rig described below, and the Hardware variant is reserved for the USB link to the ESP32, so that the same controller file can run against the real rig in the hardware-in-the-loop mode of section~\ref{sec:harness_modes} without any change. Since the USB bridge has not been built yet, all results of sections~\ref{sec:lqr} and~\ref{sec:swingup} were obtained with the Simulation variant.
+
+The harness runs at three nested rates, which follow from the hardware:
+\begin{enumerate}
+  \item the controller period $T_s = 4\,\mathrm{ms}$, the rate at which the firmware streams measurements (see section~\ref{sec:lqr_disc});
+  \item the firmware and sensor period of 1\,ms, the loop rate of the ESP32;
+  \item the plant integration step of 0.5\,ms, using the fixed-step fourth-order Runge--Kutta method that was used for the validation in section~\ref{sec:estimation}, with a quarter of its step.
+\end{enumerate}
+Since each rate must be an integer multiple of the next one, this condition is checked before every run by \texttt{harness\_config.m}, the configuration file of the rig.
+
+\subsection{Two Ways to Run the Controller}
+\label{sec:harness_modes}
+The controllers of this work are designed once, in the harness, but there are two places where they can run on the real rig (see Figure~\ref{fig:modes} and Table~\ref{tab:modes}). In both, the ESP32 firmware keeps every safety function of the experiments: the duty limit and slew limit, the arm travel trip, the overcurrent trip and the heartbeat from the computer, which stops the motor if the computer stops responding.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw, thick, rounded corners=2pt, fill=gray!10, align=center, font=\small, minimum height=1.25cm, text width=3.3cm},
+  ctl/.style={box, fill=gray!30},
+  arr/.style={-{Stealth}, thick},
+  lab/.style={font=\small\bfseries, anchor=west},
+  node distance=0.7cm]
+  \node[lab] at (-1.9, 1.25) {(a) Hardware in the loop};
+  \node[ctl] (pc1) {Computer: Simulink\\estimator, laws,\\Stateflow};
+  \node[box, right=2.7cm of pc1] (fw1) {ESP32 firmware\\sensors, safety,\\PWM};
+  \node[box, right=of fw1] (rig1) {Motor, arm\\and pendulum};
+  \draw[arr] ([yshift=3mm]pc1.east) -- node[above, font=\scriptsize] {duty, every 4\,ms} ([yshift=3mm]fw1.west);
+  \draw[arr] ([yshift=-3mm]fw1.west) -- node[below, font=\scriptsize] {$\theta_0,\ \theta_1,\ i$} ([yshift=-3mm]pc1.east);
+  \draw[arr] ([yshift=3mm]fw1.east) -- ([yshift=3mm]rig1.west);
+  \draw[arr] ([yshift=-3mm]rig1.west) -- ([yshift=-3mm]fw1.east);
+  \node[lab] at (-1.9, -1.95) {(b) Onboard};
+  \node[box, below=2.0cm of pc1] (pc2) {Computer, GUI\\commands, knobs,\\digital twin};
+  \node[ctl, right=2.7cm of pc2] (fw2) {ESP32 firmware\\estimator, laws,\\supervisor, safety};
+  \node[box, right=of fw2] (rig2) {Motor, arm\\and pendulum};
+  \draw[arr] ([yshift=3mm]pc2.east) -- node[above, font=\scriptsize] {start, stop, knobs} ([yshift=3mm]fw2.west);
+  \draw[arr] ([yshift=-3mm]fw2.west) -- node[below, font=\scriptsize] {telemetry} ([yshift=-3mm]pc2.east);
+  \draw[arr] ([yshift=3mm]fw2.east) -- ([yshift=3mm]rig2.west);
+  \draw[arr] ([yshift=-3mm]rig2.west) -- ([yshift=-3mm]fw2.east);
+\end{tikzpicture}
+\caption{The two ways to run the controller on the rig. The darker block runs the controller: (a) Simulink on the computer, closing the loop over USB; (b) the ESP32 itself, with the computer only sending commands and showing the telemetry.}
+\label{fig:modes}
+\end{figure}
+
+\subsubsection{Hardware in the Loop}
+The controller, including its Stateflow supervisor, runs in Simulink on the computer, using the Hardware variant of the Rig. Every 4\,ms the firmware streams the measurements, and Simulink answers with the duty cycle, which the firmware applies through its safety path. This mode runs exactly the files that were designed and tested in the harness, so a change to a law can be tried on the rig without touching the firmware, and it is the mode required by the project brief, in which the hybrid controller runs against the real hardware. However, the USB link is inside the control loop, and its delay has not been measured yet. The worst cases with one additional controller period of delay (sections~\ref{sec:lqr_corners} and~\ref{sec:su_corners}) represent this mode.
+
+\subsubsection{Onboard}
+The same controller runs on the ESP32, inside the 1\,kHz firmware loop: every fourth firmware period by default (every first or second period can be selected, with the LQR gain of the same weights for that period), the estimator, the LQR, the energy swing-up and the supervisor are evaluated from the encoder count and the latest AS5600 reading (read at 1\,kHz, timed to finish just before the control tick), and the resulting duty request passes through the same safety path as before. The computer only sends commands (the controller knobs, start and stop), keeps the heartbeat going and receives the telemetry, in which a spare byte of every record now carries the state of the supervisor, so the lab application and the digital twin can show it. Since no USB link is inside the loop, this mode has the nominal timing of the designs, which is why it is the intended mode for the finished device.
+
+On the ESP32, one evaluation of the complete controller takes 143\,$\mu$s on average and 352\,$\mu$s at most (measured on the rig with the motor unpowered). No overrun of the 1\,ms firmware loop was recorded, and the pendulum reading is 0.45\,ms old (median) when the controller uses it. Since firmware 1.11, every record of the telemetry is sent as soon as it is taken, and the lab application draws the rig and the identified model side by side in a three-dimensional view that is posed directly from this stream.
+
+\begin{table}[h]
+\centering
+\caption{Comparison of the two ways to run the controller on the rig.}
+\label{tab:modes}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+ & Hardware in the loop & Onboard \\
+\midrule
+Controller runs in & Simulink on the computer & ESP32 firmware (C++) \\
+Inside the loop & USB link, both directions & nothing \\
+Loop timing & 4\,ms plus the USB delay & 4\,ms (2 or 1\,ms selectable) \\
+Computer & runs the controller & commands, knobs, telemetry, twin \\
+Changing a law & edit the Simulink file & re-export and flash the firmware \\
+Status & Hardware variant not built & firmware 1.11, used on the rig \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Since the onboard mode is a second copy of the controller, both copies must compute the same duty cycle, otherwise the simulation results of sections~\ref{sec:lqr} and~\ref{sec:swingup} would not apply to it. To ensure this, every number of the onboard copy (the gain $K$, the swing-up knobs, the guards of the supervisor, the estimator and the plant constants) is written by the script \texttt{export\_onboard.m} from the design file \texttt{ctrl\_hybrid\_design.m} into a generated header of the firmware, so the design exists only once. Furthermore, the same script records the measured angles that the Simulink controller received in a swing-up test and in a push test, together with the duty cycle it commanded, and a native test of the firmware (\nolinkurl{firmware/test/native_onboard.cpp}) feeds the same angles to the C++ controller. Over the 3751 periods of the swing-up and the 1501 periods of the push test, the largest difference in the duty cycle was $7\times10^{-15}$, and the supervisor was in the same state in every period, which shows that the two copies are the same controller up to the round-off of floating-point arithmetic. Since then, the first hardware runs led to two additions that deal with the breakaway friction of the arm (equation~\ref{eq:stick}): a breakaway feedforward in the swing-up (section~\ref{sec:su_law}) and a breakaway part in the friction compensation of the LQR (section~\ref{sec:lqr_fric}). Their knobs are in the design file and in the generated header as well, but the Simulink blocks do not have them yet, so the replay test runs with both switched off.
+
+Before an onboard run starts, the firmware requires, in addition to the arming conditions of the experiments (centered arm, commissioned limits and, with the current trip enabled, a calibrated current zero), the encoder scale, the pendulum-down reference, a fresh pendulum reading, and the arm and pendulum signs of the device profile to be those with which the model was identified ($+1$ and $-1$, see section~\ref{sec:estimation}), since a flipped sign would make the controller push the pendulum the wrong way. During the run, the firmware stops the motor if the pendulum reading is older than 20\,ms, when the supervisor enters SafeStop, and at the end of the run length set in the profile. A balance-only option skips the swing-up and ends the run as soon as the pendulum leaves the catch region, which allows the LQR to be tested on its own first, by releasing the pendulum near upright by hand.
+
+\subsection{The Simulated Rig}
+\label{sec:harness_rig}
+The Simulation variant reproduces the path from the duty cycle commanded by the controller to the measurements it receives, in the four groups described below (see Figure~\ref{fig:harness_rig}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_harness_rig.pdf}
+\caption{Simulation variant of the rig: link to the controller with its delays and rate changes, firmware actuator, plant, and sensors.}
+\label{fig:harness_rig}
+\end{figure}
+
+\subsubsection{Link}
+The duty cycle passes a command delay and a rate change from 4\,ms to 1\,ms, and the measurement passes the opposite rate change and a measurement delay. Both delays are given as a whole number of controller periods. Since the delay of the USB link has not been measured, both are zero in the nominal configuration, and one additional period of command delay is one of the worst cases of sections~\ref{sec:lqr_corners} and~\ref{sec:su_corners}.
+
+\subsubsection{Firmware}
+The block \texttt{FirmwareActuator} reproduces the safety and output logic of the firmware (\nolinkurl{firmware/include/engine.h}) every millisecond:
+\begin{enumerate}
+  \item the duty cycle is clipped to $\pm 0.5$ and its rate of change to the slew limit of 100 per second;
+  \item when the sign of the duty cycle reverses, it passes through zero (driver standby) for one firmware period;
+  \item the duty cycle is quantized to the 10-bit resolution of the PWM;
+  \item the motor is switched off permanently if the measured arm angle exceeds $120^\circ$ or if the filtered current stays above 1.5\,A for 10\,ms.
+\end{enumerate}
+
+\subsubsection{Plant}
+The plant of equation~\ref{eq:nl_num}, described in section~\ref{sec:harness_plant}, with an optional disturbance torque on each joint, which is used for the push test.
+
+\subsubsection{Sensors}
+The block \texttt{FurutaSensors} produces what the ESP32 measures: the arm angle quantized to the 1496 counts per revolution of the encoder, the pendulum angle quantized to the 12 bits of the AS5600, read every 2\,ms and delayed by the 7\,ms lag of section~\ref{sec:processing}, and the current with an added noise of 0.05\,A (standard deviation) passed through the 40\,Hz second-order Butterworth filter of the firmware (see Table~\ref{tab:setup}).
+
+Each of these effects can be switched off for an ideal run (\texttt{'Mode', 'ideal'}), which was used only to separate the effect of the rig from that of a design.
+
+\subsection{The Plant as a Simscape Multibody Model}
+\label{sec:harness_plant}
+The plant inside the Rig consists of an electrical and a mechanical part. The motor and driver are built from Simulink blocks that evaluate the current of equation~\ref{eq:nl_current}, including the open circuit at zero duty cycle, and the friction torques of equation~\ref{eq:nl_friction} and of the pendulum joint (the breakaway friction of equation~\ref{eq:stick} is not in the Simscape plant yet, so the harness runs the model without it). The resulting joint torques drive a Simscape Multibody model of the arm and the pendulum (see Figure~\ref{fig:harness_plant}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_harness_plant.pdf}
+\caption{Mechanical part of the plant subsystem: the arm and the pendulum as a Simscape Multibody model, driven by the joint torques $\tau_0$ and $\tau_1$. The CAD bodies are visual only; the inertial bodies (arm inertia $I_a$ and pendulum $m$, $L_p$, $J_1$) carry the identified parameters.}
+\label{fig:harness_plant}
+\end{figure}
+
+Since the identified parameters are divided by the unknown torque constant (see section~\ref{sec:estimation}), the multibody model is built with $K_\tau = 1\,\mathrm{N\,m/A}$, so that the scaled parameters become SI values and the current in amperes is the joint torque. An arm with an inertia $I_a$ about the motor axis, carrying at the distance $L_{arm}$ a slender pendulum of mass $m$, center of mass at $L_p$ and inertia $J_1$ about its center of mass, has exactly the equations of motion of equation~\ref{eq:nl_mass} if
+\begin{equation}
+  \tilde G = m\, g\, L_p, \qquad \tilde J_p = J_1 + m L_p^2, \qquad \tilde h = m\, L_{arm} L_p, \qquad \tilde J_a = I_a + m L_{arm}^2 .
+  \label{eq:harness_bodies}
+\end{equation}
+Solving equation~\ref{eq:harness_bodies} for the arm length yields
+\begin{equation}
+  \therefore\; L_{arm} = \frac{g\, \tilde h}{\tilde G} = 6.81\,\mathrm{cm},
+\end{equation}
+which is the identified arm length of Table~\ref{tab:params}. Since only the products $m L_p$ and $m L_p^2 + J_1$ appear in equation~\ref{eq:harness_bodies}, the split between $m$ and $L_p$ cannot be identified and does not change the dynamics. Thus, $L_p$ was taken from the CAD model (51.2\,mm), and $m$, $J_1$ and $I_a$ follow from equation~\ref{eq:harness_bodies}. In other words, the Simscape plant is the identified model of this work drawn as bodies, and not a second model with its own parameters.
+
+To make sure that this holds in the implementation, the test file \nolinkurl{matlab/harness/tests/test_harness.m} checks four properties after every change of the plant or the rig:
+\begin{enumerate}
+  \item the body parameters reproduce the four lumped parameters of equation~\ref{eq:harness_bodies} to a relative error of $10^{-12}$;
+  \item driven by a 25\,\% square wave at 1.4\,Hz with disturbance pulses on both joints, the Simscape plant and equation~\ref{eq:nl_num}, integrated with the same step and the same applied duty cycle, agree to better than $10^{-5}$ degrees and $10^{-5}$\,rad/s over 4\,s, which is round-off;
+  \item the linearization of the plant equations at the upright position gives back the matrices of equation~\ref{eq:ss_up_num} and the poles 0, $+12.26$, $-12.63$ and $-29.23\,\mathrm{rad/s}$;
+  \item driving the plant with the duty cycle that the firmware applied in the first validation run, starting from the measured state, reproduces the fits of Table~\ref{tab:validation}: 89\,\% for the arm angle, 90\,\% for the pendulum angle, 92\,\% for the arm speed and 88\,\% for the current, with RMS errors of $1.5^\circ$, $1.4^\circ$ and 0.043\,A.
+\end{enumerate}
+The last check closes the loop to the recorded hardware runs, so the harness reproduces the rig as closely as the identified model does.
+
+\subsection{Hybrid Controller Template}
+\label{sec:harness_ctrl}
+The controller of both design sections is the hybrid template \texttt{ctrl\_hybrid.slx} (see Figure~\ref{fig:harness_ctrl}), which is organized in three groups:
+\begin{enumerate}
+  \item a shared state estimator, which wraps $\theta_1$ to $[-\pi, \pi)$ with zero upright and computes both velocities as finite differences over one period, low-pass filtered at 40\,Hz;
+  \item the control laws, each in its own file referenced by a Subsystem Reference block (\texttt{stab\_pid}, \texttt{stab\_pole\_placement}, \texttt{stab\_lqr} and \texttt{swingup\_energy}), so that every law is edited by one team member only, followed by the selection of the stabilizer and the friction compensation of section~\ref{sec:lqr_fric};
+  \item the Stateflow supervisor, which decides which law drives the motor.
+\end{enumerate}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_harness_controller.pdf}
+\caption{Hybrid controller template: state estimator (left), the control laws as referenced subsystem files with the selection of the stabilizer and the friction compensation (middle), and the Stateflow supervisor (right).}
+\label{fig:harness_ctrl}
+\end{figure}
+
+The supervisor (see Figure~\ref{fig:harness_chart}) has three states. It starts in Stabilize if the pendulum is already inside the catch region and in SwingUp otherwise. It switches from SwingUp to Stabilize when $|\theta_1| < 20^\circ$ and $|\dot\theta_1| < 8\,\mathrm{rad/s}$, and back when $|\theta_1| > 35^\circ$. From either state, it enters SafeStop with the highest priority if $|\theta_0| > 100^\circ$, which sets the duty cycle to zero before the firmware's travel trip at $120^\circ$. Leaving SafeStop is disabled by default, so the stop behaves like an emergency stop. Since the exit angle is larger than the catch angle, small oscillations around $20^\circ$ do not make the supervisor chatter between the two laws.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/fig_harness_supervisor.pdf}
+\caption{Stateflow supervisor of the hybrid controller with its three states and guards. The numbers at the transitions give their priority.}
+\label{fig:harness_chart}
+\end{figure}
+
+Every knob of the controller, including the guards of the supervisor, is set in the design file \texttt{ctrl\_hybrid\_design.m}, which also derives the gains (for example $K$ by \texttt{dlqr} on the discretized model of equation~\ref{eq:lqr_disc}) and passes the plant constants needed by the swing-up. No value is stored inside a block, so a design can be changed for a single run without editing any file, which made the sweeps of sections~\ref{sec:lqr_space} and~\ref{sec:su_space} possible.
+
+\subsection{Tests and Metrics}
+\label{sec:harness_tests}
+Four standard tests are defined in \texttt{furuta\_scenario.m} (see Table~\ref{tab:harness_tests}). Each fails on any firmware trip, in addition to its own criterion.
+
+\begin{table}[h]
+\centering
+\caption{Standard tests of the harness and their pass criteria.}
+\label{tab:harness_tests}
+\small
+\begin{tabular}{@{}lllll@{}}
+\toprule
+Test & Start & Event & Length & Pass criterion \\
+\midrule
+Balance & $\theta_1 = 5^\circ$ & none & 5\,s & $|\theta_1| < 3^\circ$ after 2\,s \\
+Push & $\theta_1 = 2^\circ$ & $+1.5\,\mathrm{rad/s}$ at 2\,s & 6\,s & $|\theta_1| < 3^\circ$ after 4\,s \\
+Arm step & upright & $r = 45^\circ$, 1 to 4\,s & 7\,s & $|\theta_1| < 20^\circ$, $|\theta_0 - r| < 5^\circ$ at 3.9, 6.9\,s \\
+Swing-up & hanging & none & 15\,s & $|\theta_1| < 10^\circ$ in the last 3\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+For every run, the harness computes the performance metrics of the pendulum after the event (maximum deviation, peak and recovery time, IAE, ISE and ITAE of equation~\ref{eq:itae}), the step metrics of the arm (rise time, overshoot, settling time), the steady-state errors, the control effort (peak and RMS duty cycle and the share of periods at the duty limit) and, for the swing-up, the time to catch, which is the first entry into the Stabilize state.
+
+To test a design against the uncertainty of the model, a run can use a modified plant or configuration:
+\begin{enumerate}
+  \item parameters drawn independently from the standard errors of Table~\ref{tab:params}, scaled by a factor;
+  \item a given set of plant parameters, which is used for the physically consistent corner plants of section~\ref{sec:lqr_corners};
+  \item any change of the rig configuration, such as an additional command delay or a longer sensor lag.
+\end{enumerate}
+
+\subsection{Design Tools}
+\label{sec:harness_tools}
+On top of the harness, the design of each controller was carried out with a small set of MATLAB scripts in \nolinkurl{matlab/harness/controllers/hybrid}, which follow the same pattern for both controllers (see Table~\ref{tab:harness_tools}): starting values from physics, one design tested in a single call, a sweep over the design space, and the worst cases.
+
+\begin{table}[h]
+\centering
+\caption{Design tools used in sections~\ref{sec:lqr} and~\ref{sec:swingup}.}
+\label{tab:harness_tools}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+Step & LQR & Swing-up \\
+\midrule
+Starting values & \texttt{lqr\_gains} & \texttt{swingup\_knobs} \\
+Target region & -- & \texttt{swingup\_catch\_region} \\
+One design, numbers and plots & \texttt{lqr\_workbench} & \texttt{swingup\_workbench} \\
+Design space & grid of push tests & \texttt{swingup\_sweep} \\
+Worst cases & \texttt{lqr\_corner\_test} & \texttt{swingup\_corner\_test} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Since one run takes about 3 to 8\,s, the sweeps were split over several MATLAB processes, and each result was saved after every run so that an interrupted sweep could be resumed. The logged runs can also be replayed in the Unreal Engine digital twin of the rig (\nolinkurl{twin/}), which only renders the angles it receives and was used to visualize the final swing-up. The lab application contains a second view of the same twin, which is posed from the serial stream of the rig (section~\ref{sec:harness_modes}).
+
+\subsection{Limitations}
+Limitations of the harness are:
+\begin{enumerate}
+  \item The delay of the USB link and the controller period that the hardware-in-the-loop link achieves have not been measured. The nominal configuration assumes no extra delay and a period of 4\,ms.
+  \item The current noise of 0.05\,A before the firmware filter is an assumed value.
+  \item The harness uses the maximum slew limit of the firmware (100 per second), while the firmware's default profile uses 0.5 per second, which is too slow for feedback and has to be raised on the rig before any closed-loop test.
+  \item The pendulum sensor lag is modeled as a pure delay in steps of 1\,ms, since its physical cause is not known (see section~\ref{sec:processing}).
+  \item The gearbox play, the motor inductance and the flattening of the arm friction at higher speeds are not modeled, as in the identified model itself.
+  \item Only one of the two ways of running the controller has been used on the rig:
+  \begin{enumerate}
+    \item for the hardware-in-the-loop mode, the Hardware variant of the Rig and a compact duty message in the firmware are not implemented yet;
+    \item the onboard mode has been used on the rig (section~\ref{sec:lqr_hw}), but its equivalence with the harness was shown by replaying recorded inputs with both breakaway terms switched off, since the Simulink blocks do not contain them yet.
+  \end{enumerate}
+\end{enumerate}
+
+%======================================================================
+\section{LQR Controller Design}
+\label{sec:lqr}
+%======================================================================
+Since the upright equilibrium is unstable (see section~\ref{sec:stability}) and our system is controllable from the duty cycle, the pendulum can be held upright by feeding back all four states. The objective of this section is to find a state-feedback gain that catches the pendulum quickly after a disturbance, while staying inside the limits of the real rig: the 50\,\% duty limit, the 1.5\,A current trip of the firmware and the timing of the sensors. The gain is found with the linear quadratic regulator (LQR), and the choice of its weights is then checked in simulation against the uncertainty of the identified model and of the loop delay.
+
+\subsection{Discrete Model}
+\label{sec:lqr_disc}
+The controller period follows from the hardware-in-the-loop arrangement. Since the controller and its Stateflow supervisor run in Simulink on the computer, they can only act when a new measurement arrives over USB. The firmware runs its own loop at 1\,kHz, stores a record every 2\,ms and streams every second record, so the angles reach the computer at 250\,Hz (see Table~\ref{tab:setup}). Thus, the controller runs every $T_s = 4\,\mathrm{ms}$, the shortest period at which a fresh measurement is available, assuming that the USB link delivers every record without further delay (this assumption is tested in section~\ref{sec:lqr_corners}), and holds the duty cycle constant in between, while the firmware keeps applying its limits every millisecond. This period is about twenty times shorter than the 82\,ms time constant of the falling pendulum (see Table~\ref{tab:poles_up}), so the pendulum moves only slightly between two corrections.
+
+Since $T_s$ is not negligible compared with the closed-loop dynamics, the gain is designed directly for the sampled system, so that the zero-order hold is part of the model instead of an approximation. Discretizing the upright model with the duty-cycle input, $\dot{\mathbf{x}} = A_4\mathbf{x} + B_d\, d$ (see equation~\ref{eq:ss_up_num}), with a zero-order hold gives
+\begin{equation}
+  \mathbf{x}[k+1] = \Phi\,\mathbf{x}[k] + \Gamma\, d[k], \qquad
+  \Phi = e^{A_4 T_s}, \qquad \Gamma = \int_0^{T_s} e^{A_4 \tau}\, d\tau\; B_d ,
+  \label{eq:lqr_disc}
+\end{equation}
+where $\mathbf{x}[k]$ is the state at the $k$-th controller period. Evaluating equation~\ref{eq:lqr_disc} (using MATLAB's \texttt{c2d}) yields
+\begin{equation}
+  \Phi = \begin{bmatrix}
+  1 & -4.47\times10^{-5} & 3.777\times10^{-3} & 1.26\times10^{-7}\\
+  0 & 1.0013 & 2.42\times10^{-4} & 3.996\times10^{-3}\\
+  0 & -0.02193 & 0.8907 & 4.67\times10^{-5}\\
+  0 & 0.6489 & 0.1185 & 0.9986
+  \end{bmatrix}, \qquad
+  \Gamma = \begin{bmatrix} 4.981\times10^{-3} \\ -5.405\times10^{-3} \\ 2.443 \\ -2.651 \end{bmatrix}.
+  \label{eq:lqr_disc_num}
+\end{equation}
+The element $\Phi_{42} = 0.6489$ is the effect of gravity over one period, and the opposite signs of the last two elements of $\Gamma$ show that a positive duty cycle accelerates the arm forward while kicking the pendulum backward, which is the mechanism the controller uses to correct a lean.
+
+\subsection{Control Law and Cost Function}
+The duty cycle is computed as a linear function of the error between the state and its reference:
+\begin{equation}
+  d[k] = -K\left(\mathbf{x}[k] - \mathbf{x}_r\right), \qquad \mathbf{x}_r = \begin{bmatrix} r & 0 & 0 & 0 \end{bmatrix}^T ,
+  \label{eq:lqr_law}
+\end{equation}
+where $K$ is a $1\times4$ gain and $r$ is the desired arm angle (zero in this work). The LQR chooses the gain that minimizes the quadratic cost
+\begin{equation}
+  J = \sum_{k=0}^{\infty} \left( \mathbf{x}[k]^T Q\, \mathbf{x}[k] + R\, d[k]^2 \right),
+  \label{eq:lqr_cost}
+\end{equation}
+where $Q$ is a $4\times4$ positive semi-definite matrix weighting the state errors and $R > 0$ weights the duty cycle. The first term penalizes being away from upright, while the second penalizes using the motor. Thus, a large $Q$ relative to $R$ gives a stiff controller that reacts strongly, and a large $R$ relative to $Q$ gives a soft controller that uses little duty cycle. Since multiplying $Q$ and $R$ by the same factor does not change the minimizer of equation~\ref{eq:lqr_cost}, only their ratio matters.
+
+\subsection{Solving for the Gain}
+The minimum of equation~\ref{eq:lqr_cost} is $\mathbf{x}[0]^T P\, \mathbf{x}[0]$, where the symmetric matrix $P$ (the cost-to-go of a state) satisfies the discrete algebraic Riccati equation
+\begin{equation}
+  P = Q + \Phi^T P\, \Phi - \Phi^T P\, \Gamma \left(R + \Gamma^T P\, \Gamma\right)^{-1} \Gamma^T P\, \Phi .
+  \label{eq:dare}
+\end{equation}
+Once $P$ is known, the optimal gain follows in one step:
+\begin{equation}
+  \therefore\; K = \left(R + \Gamma^T P\, \Gamma\right)^{-1} \Gamma^T P\, \Phi .
+  \label{eq:lqr_K}
+\end{equation}
+Equation~\ref{eq:dare} can be solved by starting from $P = Q$ and repeating the right-hand side until $P$ stops changing, which is the same as optimizing one more period of the future at every repetition. For the weights of section~\ref{sec:lqr_bryson} with $\theta_{1,\max} = 5^\circ$ and $d_{\max} = 0.15$, this iteration converged (relative change below $10^{-12}$) after 794 repetitions to $K = \begin{bmatrix} -0.2644 & -2.9969 & -0.1536 & -0.1964 \end{bmatrix}$, identical to the result of MATLAB's \texttt{dlqr}, which solves equation~\ref{eq:dare} directly. All later gains were computed with \texttt{dlqr}.
+
+The closed loop $\mathbf{x}[k+1] = (\Phi - \Gamma K)\,\mathbf{x}[k]$ is stable if every eigenvalue $z_i$ of $\Phi - \Gamma K$ lies inside the unit circle. For comparison with the open-loop poles of Table~\ref{tab:poles_up}, each discrete pole is converted to an equivalent continuous pole by
+\begin{equation}
+  s_i = \frac{\ln z_i}{T_s} .
+  \label{eq:lqr_s}
+\end{equation}
+
+\subsection{Choice of the Weights}
+\label{sec:lqr_bryson}
+Since the four states have different units (radians and radians per second), weights chosen by hand would mix incomparable numbers. Bryson's rule removes this problem by dividing every quantity by the largest value that is still acceptable for it:
+\begin{equation}
+  Q = \operatorname{diag}\!\left( \frac{1}{\theta_{0,\max}^2},\ \frac{1}{\theta_{1,\max}^2},\ \frac{1}{\dot\theta_{0,\max}^2},\ \frac{1}{\dot\theta_{1,\max}^2} \right), \qquad R = \frac{1}{d_{\max}^2} ,
+  \label{eq:bryson}
+\end{equation}
+where the angles are in radians. With this choice, every state at its acceptable maximum and the duty cycle at $d_{\max}$ each contribute exactly 1 to the cost, so the design is expressed in physical tolerances instead of abstract weights. Since only the ratio of $Q$ and $R$ matters, the five tolerances form four independent design variables.
+
+The arm tolerance was kept at $\theta_{0,\max} = 30^\circ$, well inside the $\pm 100^\circ$ safety stop of the supervisor. The design of this section is implemented in the MATLAB script \nolinkurl{matlab/harness/controllers/hybrid/lqr_gains.m}, which evaluates equations~\ref{eq:lqr_disc}, \ref{eq:bryson} and~\ref{eq:lqr_K} for a given set of tolerances.
+
+\subsection{Simulation Environment and Constraints of the Rig}
+\label{sec:lqr_sim}
+Every candidate gain was tested in the Simulink controller harness, in which the plant is the Simscape model of equation~\ref{eq:nl_num} with the parameters of Table~\ref{tab:params}. The harness also reproduces what the controller sees and what the firmware does:
+\begin{enumerate}
+  \item the arm encoder quantization of 1496 counts/rev and the 12-bit AS5600, read at 500\,Hz with the 7\,ms lag of section~\ref{sec:processing};
+  \item the velocities computed by the controller as finite differences low-pass filtered at 40\,Hz;
+  \item the firmware loop at 1\,kHz, with the duty limit of 0.5, the duty slew limit, and the overcurrent trip, which stops the motor once the filtered current stays above 1.5\,A for 10\,ms.
+\end{enumerate}
+Two standard tests were used. In the balance test, the pendulum starts $5^\circ$ from upright and must stay within $3^\circ$ after 2\,s. In the push test, the pendulum starts $2^\circ$ from upright, receives an impulse of $+1.5\,\mathrm{rad/s}$ at $t = 2\,\mathrm{s}$, and must stay within $3^\circ$ after 4\,s. The recovery from the push is measured by
+\begin{equation}
+  \mathrm{ITAE} = \int_{t_e}^{t_f} (t - t_e)\, \left|\theta_1(t)\right| dt ,
+  \label{eq:itae}
+\end{equation}
+where $t_e = 2\,\mathrm{s}$ is the time of the push, $t_f = 6\,\mathrm{s}$ is the end of the test and $\theta_1$ is in radians, so that the ITAE has the unit rad\,s$^2$. Weighting the error by time penalizes a slow recovery more than a large but short deviation.
+
+The first gains tried were stiff. For example, $\theta_{1,\max} = 4^\circ$, $\dot\theta_{0,\max} = 15\,\mathrm{rad/s}$, $\dot\theta_{1,\max} = 25\,\mathrm{rad/s}$ and $d_{\max} = 0.4$ gave fast closed-loop poles at $-49.4 \pm 40.7j\,\mathrm{rad/s}$, but the firmware tripped 56\,ms after the start of the push test, before the push was applied. The commanded duty cycle swung from $+0.5$ to its negative limit within a few periods, while the arm was still moving forward at about $2\,\mathrm{rad/s}$. According to equation~\ref{eq:nl_current}, the back-EMF then adds to the reversed voltage:
+\begin{equation}
+  \because\; i = \frac{12\,(-0.5) - 0.4814\,(2)}{3.425} = -2.03\,\mathrm{A} ,
+\end{equation}
+which is well beyond the trip level; the simulated current reached 1.80\,A before the trip. Thus, the binding limit of our system is the armature current and not the duty cycle, and any useful gain has to avoid hard reversals of the duty cycle while the arm moves.
+
+\subsection{Design Space}
+\label{sec:lqr_space}
+To find which tolerances matter, each was varied alone around the starting point $\theta_{1,\max} = 5^\circ$, $\dot\theta_{0,\max} = 20\,\mathrm{rad/s}$, $\dot\theta_{1,\max} = 30\,\mathrm{rad/s}$, $d_{\max} = 0.15$. Changing $\dot\theta_{0,\max}$ between 12 and 32\,rad/s or $\dot\theta_{1,\max}$ between 18 and 48\,rad/s changed the ITAE only between 0.147 and 0.169\,rad\,s$^2$, with peak currents between 1.28 and 1.41\,A and no trip. On the other hand, $\theta_{1,\max} = 3^\circ$ and every $d_{\max} \ge 0.1875$ tripped the firmware. Therefore, the two speed tolerances were fixed at 20 and 30\,rad/s, which reduces the design to the two variables $\theta_{1,\max}$ and $d_{\max}$, both of which set how aggressively the pendulum lean is corrected.
+
+This two-dimensional space was then sampled on a grid of 10 values of $\theta_{1,\max}$ (3.5 to $8^\circ$) and 11 values of $d_{\max}$ (0.09 to 0.19), with one push test per point (see Figure~\ref{fig:lqr_map}). Of the 110 designs, 99 passed. The ITAE decreases toward small $\theta_{1,\max}$ and large $d_{\max}$, as expected for a stiffer controller, but the peak current rises in the same direction and crosses 1.5\,A along the edge of the tripped region. The fastest passing design ($3.5^\circ$, 0.15) reached an ITAE of 0.096\,rad\,s$^2$ but a peak current of 1.53\,A, so it survived only because the trip requires 10\,ms above the limit.
+
+Since one simulation per point is affected by the sensor noise, a margin of 0.15\,A below the trip level was required, and the best design with a peak current of at most 1.35\,A was $\theta_{1,\max} = 4.5^\circ$, $d_{\max} = 0.16$, with an ITAE of $0.139\,\mathrm{rad\,s^2}$ at 1.34\,A. This is the fastest design within the current margin, and it is referred to as the stiff design below.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_lqr_map.pdf}
+\caption{ITAE after the push (left) and peak armature current (right) over the two remaining design variables, nominal model and timing. Gray crosses mark designs that failed the push test, and the dashed line is the 1.5\,A trip level. The square is the starting point and the circle the fastest design with a peak current below 1.35\,A.}
+\label{fig:lqr_map}
+\end{figure}
+
+Figure~\ref{fig:lqr_surface} shows the same data as a surface, where the height is the ITAE and the color is the peak current, which makes the trade-off of the design visible at once. The surface falls toward the stiff corner (small $\theta_{1,\max}$ and large $d_{\max}$), and the lowest points lie right next to the tripped designs on the floor, while their color darkens toward the trip level. Thus, the faster a design recovers from the push, the closer it operates to the current trip, and the stiff design of this section lies at the bottom of the valley just inside the 1.35\,A line.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/fig_lqr_surface.pdf}
+\caption{The design space of Figure~\ref{fig:lqr_map} as a surface, with the ITAE after the push as the height and the peak armature current as the color. On the floor, crosses mark the designs that failed, the dashed line is the 1.5\,A trip level and the solid line the 1.35\,A margin.}
+\label{fig:lqr_surface}
+\end{figure}
+
+\subsection{Physically Consistent Worst Cases}
+\label{sec:lqr_corners}
+Since the identified parameters are uncertain (see Table~\ref{tab:params}), the gain must also work for a plant that differs from the model. A first check drew every parameter independently from its standard error, scaled by two. However, the estimation did not measure $\tilde J_p$, $\tilde h$ and $\tilde G$ separately. The free swing measures the ratio $\tilde J_p/\tilde G$ to 0.2\,\% and the pendulum equation measures $\tilde h/\tilde G$ to 0.5\,\%, while the overall scale $\tilde G$ is known only to 9.3\,\%. Thus, the 9\,\% uncertainties of $\tilde J_p$ and $\tilde h$ in Table~\ref{tab:params} come from the same unknown, and an independent draw typically creates plants whose natural frequency differs from the measured one by more than 10\,\%, which the free-swing recordings rule out.
+
+A physically consistent wrong plant therefore scales $\tilde G$, $\tilde J_p$, $\tilde h$, $\tilde b_1$ and $\tilde\tau_p$ by the same factor. The other parameter with a large uncertainty is the arm viscous friction $\tilde B_{eq}$ (6.6\,\%), while $R_m$, $K_b$, $\tilde J_a$ and the Coulomb friction are known to about 1\,\%. Taking two standard errors in each direction gives four corner plants: the pendulum strength scaled by $1 \pm 0.186$ and $\tilde B_{eq}$ by $1 \pm 0.132$.
+
+The loop delay is a second uncertainty that is not covered by the parameters, since the 7\,ms lag of the pendulum sensor was chosen from a fit that changes by less than 0.3\,\% between 6 and 9\,ms (see Figure~\ref{fig:delay}) and the delay of the USB link to the Simulink controller has not been part of the identification. Thus, each corner plant was tested with three timings: the nominal timing, one additional controller period (4\,ms) of delay on the duty cycle, and a pendulum sensor lag of 10\,ms instead of 7\,ms. This gives 12 cases, each run with the balance and the push test (see Figure~\ref{fig:lqr_corners} and Table~\ref{tab:lqr_corners}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_lqr_corners.pdf}
+\caption{Peak armature current of the stiff and the soft design in the 12 worst cases, where $\tilde G$ denotes the scaling of the pendulum parameters and $\tilde B_{eq}$ that of the arm viscous friction. Circles passed both the balance and the push test, and crosses failed at least one of them.}
+\label{fig:lqr_corners}
+\end{figure}
+
+\begin{table}[h]
+\centering
+\caption{Results of the 12 physically consistent worst cases, counted over the four corner plants and the two tests (8 tests per timing). The peak current is the worst over all tests, and the ITAE is the range of the push test at nominal timing.}
+\label{tab:lqr_corners}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Design & Nominal timing & $+4$\,ms delay & Lag 10\,ms & Peak current & ITAE [rad\,s$^2$] \\
+\midrule
+Stiff ($4.5^\circ$, 0.16) & 8/8 & 1/8 & 0/8 & 1.96\,A & 0.127--0.148 \\
+Soft ($8^\circ$, 0.10) & 8/8 & 7/8 & 7/8 & 1.45\,A & 0.210--0.247 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The stiff design passed every corner plant with the nominal timing, but every failed push test with a changed timing ended in an overcurrent trip. On the other hand, the soft design $\theta_{1,\max} = 8^\circ$, $d_{\max} = 0.10$ did not trip in any of the 24 tests, and its two failures stayed upright but had not yet returned within $3^\circ$ at the time of the check. Thus, the parameter uncertainty is not what limits our design, the timing is.
+
+\subsection{Tolerance to Delay}
+\label{sec:lqr_delay}
+To see how the tolerance to delay depends on the stiffness, the delay margin of the loop broken at the duty cycle was computed for the whole design space. With the phase margin $\phi_m$ and the gain crossover frequency $\omega_c$ of $K(zI - \Phi)^{-1}\Gamma$, the largest additional delay that keeps the loop stable is
+\begin{equation}
+  \tau_{\max} = \frac{\phi_m}{\omega_c} ,
+  \label{eq:delaymargin}
+\end{equation}
+with $\phi_m$ in radians. Figure~\ref{fig:lqr_delay} (left) shows that $\tau_{\max}$ falls from 37.0\,ms for the soft design to 25.7\,ms for the stiff design, since a stiffer gain raises the crossover frequency (from 28.5 to 43.8\,rad/s) at almost the same phase margin.
+
+Equation~\ref{eq:delaymargin} assumes that the full state is measured without lag and that any current is available. To check it, the pendulum sensor lag was varied from 7 to 13\,ms in the harness for six designs blended linearly between the soft and the stiff tolerances (see Figure~\ref{fig:lqr_delay}, right). The stiff design tripped from a lag of 8\,ms, while the soft design ran without a trip up to 10\,ms, and every design tripped from 11\,ms. This is far below the margins of equation~\ref{eq:delaymargin}, for two reasons:
+\begin{enumerate}
+  \item the velocities are estimated from the angles by a difference over one period and a 40\,Hz low-pass filter, which adds roughly $T_s/2 + 1/(2\pi\cdot 40\,\mathrm{Hz}) \approx 6\,\mathrm{ms}$ of lag to the velocity feedback on top of the sensor lag;
+  \item as the delay grows, the response becomes oscillatory and the current peaks reach the 1.5\,A trip long before the loop itself becomes unstable.
+\end{enumerate}
+Thus, for our rig the usable delay margin is set by the current limit, and a softer gain buys a margin of about 2\,ms of sensor lag over the stiff gain.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_lqr_delay.pdf}
+\caption{Left: delay margin of equation~\ref{eq:delaymargin} over the design space, for an ideally measured state. Right: peak armature current in the harness for designs blended from the soft to the stiff tolerances against the pendulum sensor lag; dots ran without a trip and crosses tripped the firmware.}
+\label{fig:lqr_delay}
+\end{figure}
+
+\subsection{Friction Compensation}
+\label{sec:lqr_fric}
+The soft design passes the tests, but its response does not settle. After the push, the arm keeps swinging by about $\pm 22^\circ$ with a period of about 2\,s, and the pendulum follows by about $\pm 3^\circ$ (see Figure~\ref{fig:lqr_fric}). Since a lean of $1^\circ$ produces only $2.155 \times 0.0175 = 0.038$, or 3.8\,\% duty cycle, through the soft gain, which is about half of the 7.4\,\% needed to overcome the Coulomb friction of the arm (see section~\ref{sec:full}), the arm sticks until the error has grown, then breaks free and overshoots, which is a friction limit cycle.
+
+To compensate for it, a fraction $k_f$ of the identified Coulomb friction is added to the output of the LQR:
+\begin{equation}
+  d = d_{\mathrm{LQR}} + k_f \left( d_{c+} \max(\sigma, 0) + d_{c-} \min(\sigma, 0) \right), \qquad \sigma = \tanh\!\left(\frac{d_{\mathrm{LQR}}}{0.02}\right) ,
+  \label{eq:fric_comp}
+\end{equation}
+where $d_{c\pm} = R_m \tilde\tau_{c\pm}/V_s = 0.0737$ and $0.0733$ are the friction duty cycles of Table~\ref{tab:params}, and the hyperbolic tangent smooths the sign of the LQR output over a band of 2\,\% duty cycle.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_lqr_fric.pdf}
+\caption{Arm and pendulum angles of the soft design in the push test without ($k_f = 0$) and with full ($k_f = 1$) friction compensation, nominal model and timing. The push is applied at 2\,s.}
+\label{fig:lqr_fric}
+\end{figure}
+
+With full compensation ($k_f = 1$), the arm stays within $\pm 3.8^\circ$ and the pendulum within $\pm 1.1^\circ$ after 4\,s, and the ITAE drops from 0.222 to \textbf{\boldmath $0.041\,\mathrm{rad\,s^2}$}, which is more than three times faster than the stiff design, for a peak current of 1.27\,A. Since the compensation does not change $K$, it improves the response without making the controller stiffer.
+
+However, the compensation adds energy to the loop, which reduces its tolerance to delay. Repeating the worst cases for several values of $k_f$ gave the results of Table~\ref{tab:lqr_fric}. With full compensation, all eight tests with nominal timing and all eight with one additional period of delay passed, but every value $k_f \ge 0.5$ tripped the firmware with a pendulum sensor lag of 10\,ms, which the uncompensated design survived.
+
+\begin{table}[h]
+\centering
+\caption{Soft design with friction compensation in the four corner plants (a plant counts as passed if both the balance and the push test passed).}
+\label{tab:lqr_fric}
+\small
+\begin{tabular}{@{}cccc@{}}
+\toprule
+$k_f$ & Nominal timing & Lag 10\,ms & ITAE, nominal timing [rad\,s$^2$] \\
+\midrule
+0 & 4/4 & 3/4, no trip & 0.210--0.247 \\
+0.5 & 4/4 & 0/4, tripped & 0.138--0.168 \\
+0.7 & 4/4 & 0/4, tripped & 0.101--0.113 \\
+0.85 & 4/4 & 0/4, tripped & 0.058--0.088 \\
+1 & 4/4 & 0/4, tripped & 0.039--0.049 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The first runs on the hardware showed that the arm does not start at 7.4\,\% but only at the breakaway of 13\,\% and 14\,\% (see equation~\ref{eq:breakaway}). With $k_f = 0$, the pendulum was caught and balanced, then the arm stuck at $19^\circ$ for 0.4\,s while the LQR asked for 1 to 9\,\% duty cycle, the pendulum leaned to $-3.5^\circ$ until the request reached $-19\,\%$, and the arm broke free with a lurch that saturated the LQR. Since the compensation of equation~\ref{eq:fric_comp} adds only the sliding friction, it cannot move an arm at rest either. Therefore, the compensation was extended with the breakaway, which applies while the arm is at rest and fades as it moves:
+\begin{equation}
+  d = d_{\mathrm{LQR}} + k_f \left( d_c(\sigma) + k_s\, e^{-(\dot\theta_0/\omega_s)^2} \left( d_s(\sigma) - d_c(\sigma) \right) \right),
+  \label{eq:fric_comp_stick}
+\end{equation}
+where $d_c(\sigma)$ is the bracket of equation~\ref{eq:fric_comp}, $d_s(\sigma) = d_{s+}\max(\sigma, 0) + d_{s-}\min(\sigma, 0)$ with $d_{s\pm} = R_m \tilde\tau_{s\pm}/V_s = 0.130$ and $0.140$, $\omega_s = 0.2\,\mathrm{rad/s}$, and $k_s = 1$ switches the breakaway part on. In a simulation of the model with the breakaway friction, the 7\,ms pendulum lag and sensor noise, the arm was stuck during 41 to 49\,\% of the balance time without compensation, 74 to 80\,\% with the sliding friction alone ($k_s = 0$), and 4\,\% with equation~\ref{eq:fric_comp_stick}, while the pendulum stayed within about $1^\circ$ rms instead of $2^\circ$. However, as Table~\ref{tab:lqr_fric} shows, the full compensation does not tolerate a pendulum sensor lag of 10\,ms, which the uncompensated design survived. The lag identified in section~\ref{sec:estimation} is 7\,ms, and the firmware now reads the AS5600 so that its reading is about 0.5\,ms younger at the controller, but the margin is small, so this remains the main risk of the compensation on the hardware, and $k_f$ can be lowered from the lab application without a new firmware.
+
+\subsection{Final Design}
+\label{sec:lqr_final}
+Since the loop delay of the hardware-in-the-loop setup has not yet been measured, and the timing turned out to be the uncertainty that our design is most sensitive to, the soft weighting was selected:
+\begin{equation}
+  \theta_{0,\max} = 30^\circ,\quad \theta_{1,\max} = 8^\circ,\quad \dot\theta_{0,\max} = 20\,\mathrm{rad/s},\quad \dot\theta_{1,\max} = 30\,\mathrm{rad/s},\quad d_{\max} = 0.10 ,
+\end{equation}
+which by equation~\ref{eq:bryson} gives $Q = \operatorname{diag}(3.648,\ 51.29,\ 0.0025,\ 0.00111)$ and $R = 100$, and by equation~\ref{eq:lqr_K}
+\begin{equation}
+  \therefore\;\boxed{K = \begin{bmatrix} -0.1795 & -2.155 & -0.1256 & -0.1586 \end{bmatrix}}
+  \label{eq:K_final}
+\end{equation}
+with the duty cycle as output and the angles in radians. The closed-loop poles are $-5.08 \pm 1.17j$ and $-25.3 \pm 8.50j\,\mathrm{rad/s}$ ($|z| = 0.980$ and $0.904$), so the fast pair reacts about twice as fast as the open-loop pendulum falls ($+12.26\,\mathrm{rad/s}$), and the slow pair returns the arm to the center. The loop has a phase margin of $60.6^\circ$, and the gain can drop by a factor of 2.36 before the pendulum is lost. The fast pair also stays more than thirty times below the neglected electrical pole of about $-1000\,\mathrm{rad/s}$, so the reduced model of section~\ref{sec:ssmodels} remains valid for this design.
+
+The friction compensation is introduced in two stages. The first hardware tests use $k_f = 0$, which passed 22 of the 24 worst-case tests without a single trip. Once the measured loop delay is known to stay within one additional controller period of the nominal timing, $k_f$ is raised to 1, which passed all 16 tests at nominal timing and one additional period and recovers from the push more than five times faster. After the first hardware runs (section~\ref{sec:lqr_fric}), $k_f = 1$ with the breakaway part $k_s = 1$ of equation~\ref{eq:fric_comp_stick} is used from firmware 1.9 on; the worst-case tests above have not yet been repeated with it, since the Simulink compensation block implements only equation~\ref{eq:fric_comp}. These values are set in \nolinkurl{matlab/harness/controllers/hybrid/ctrl_hybrid_design.m}, and the worst-case test is implemented in \texttt{lqr\_corner\_test.m} in the same folder, so any later change of the weights can be checked in the same way. The results of this design on the hardware follow in section~\ref{sec:lqr_hw}.
+
+\subsection{Results on the Hardware}
+\label{sec:lqr_hw}
+To find out how closely the hardware follows these simulations, the complete hybrid controller was run in the onboard mode (section~\ref{sec:harness_modes}) with the gain of equation~\ref{eq:K_final}, the swing-up of section~\ref{sec:swingup} and both breakaway terms switched on ($k_f = k_s = 1$ in equation~\ref{eq:fric_comp_stick} and $k_{st} = 1$ in equation~\ref{eq:su_stick}). Ten such runs, recorded on 19 and 20 November 2026 with firmware 1.9 to 1.11 and the duty limit of 50\,\%, lasted longer than 1\,s. Nine of them caught the pendulum, eight of these within 0.81 to 1.18\,s of the start, which is close to the 1.44\,s simulated with the breakaway friction (section~\ref{sec:su_stick}). The pendulum was then held upright for up to 69\,s.
+
+The balance phases of the runs with the 4\,ms controller period are summarized in Table~\ref{tab:lqr_hw}. The angles were taken from the 250\,Hz telemetry of each run, and the first second after the catch was left out, so that only the steady balance is counted.
+
+\begin{table}[h]
+\centering
+\caption{Balance on the hardware with the gain of equation~\ref{eq:K_final} and full friction compensation (onboard mode, 4\,ms period). The pendulum spread is the standard deviation of $\theta_1$ about its mean, and the frequency is the largest peak of its spectrum.}
+\label{tab:lqr_hw}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Run & Catch [s] & Balance [s] & Duty at limit & RMS duty & $\theta_1$ spread & Freq. [Hz] \\
+\midrule
+19 Nov, 21:23 & 1.18 & 35.1 & 35\,\% & 37\,\% & $3.8^\circ$ & 10.6 \\
+19 Nov, 21:29 & 0.87 & 69.4 & 42\,\% & 39\,\% & $4.3^\circ$ & 10.5 \\
+19 Nov, 21:48 & 10.04 & 3.0 & 51\,\% & 41\,\% & $4.4^\circ$ & 9.7 \\
+19 Nov, 21:49 & 0.84 & 51.4 & 53\,\% & 41\,\% & $4.9^\circ$ & 9.7 \\
+19 Nov, 22:04 & 0.81 & 8.1 & 59\,\% & 43\,\% & $5.5^\circ$ & 9.4 \\
+19 Nov, 22:06 & 0.84 & 4.9 & 55\,\% & 42\,\% & $5.5^\circ$ & 9.1 \\
+19 Nov, 22:32 & 0.84 & 7.9 & 55\,\% & 42\,\% & $6.7^\circ$ & 9.6 \\
+20 Nov, 15:56 & 0.84 & 13.3 & 52\,\% & 41\,\% & $5.9^\circ$ & 9.2 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:lqr_hw} shows that the balance on the hardware is considerably rougher than in simulation. Instead of staying within about $1^\circ$ rms (section~\ref{sec:lqr_fric}), the pendulum oscillates at 9 to 11\,Hz with a spread of 3.8 to $6.7^\circ$, and the duty cycle sits at its limit of $\pm 50\,\%$ during 35 to 59\,\% of the time. Furthermore, the arm settled 13 to $48^\circ$ away from the center in every run of the table, always on the negative side. This offset is consistent with the soft arm gain: at $-45^\circ$, the arm term of equation~\ref{eq:K_final} asks for only $0.1795 \times 0.785 = 0.14$, or 14\,\% duty cycle, which is about the breakaway friction of the arm, while the pendulum loop already keeps the duty cycle at its limit.
+
+The cause of the oscillation has not been identified yet. Since the simulated loop does not show it, the candidates are effects that the model leaves out or underestimates:
+\begin{enumerate}
+  \item a pendulum sensor lag longer than the 7\,ms of section~\ref{sec:processing}, since the full compensation already fails at 10\,ms (see Table~\ref{tab:lqr_fric});
+  \item the breakaway part of equation~\ref{eq:fric_comp_stick}, which adds 13 to 14\,\% duty cycle whenever the arm speed passes through zero, which happens twice in every period of the oscillation;
+  \item the gearbox play, which is not modeled (see section~\ref{sec:estimation}).
+\end{enumerate}
+Repeating the balance with $k_s = 0$ and with $k_f = 0$ would separate the second cause from the other two.
+
+Since the duty cycle is at its limit for so long, the current is much higher than in simulation. Without the breakaway terms, two runs with the 1.5\,A trip of the design and one with a 3\,A trip ended in an overcurrent trip at the moment of the catch, which agrees with the high hand-over currents of Figure~\ref{fig:su_catch}. For the runs of Table~\ref{tab:lqr_hw}, the trip was therefore raised to 4\,A, and three of them ended because the current sensor left the range of the ADC (the ACS712 output exceeds the input range of the ESP32 ADC above about $+3.2\,\mathrm{A}$). Since firmware 1.10, the current checks can be switched off for a run, which was done for the last two runs of the table. Of the remaining runs, one ended when the pendulum sensor reported an invalid reading, and in the last one the pendulum was disturbed by hand: it recovered from two disturbances of $16^\circ$ and $21^\circ$, but the third came while the arm was already at $-85^\circ$, and the arm passed the $100^\circ$ stop of the supervisor with the duty cycle at its limit.
+
+\subsection{Limitations}
+Limitations of the presented design are:
+\begin{enumerate}
+  \item The design and its worst cases are simulations of the identified model without the breakaway friction. On the hardware, the controller with the compensation of equation~\ref{eq:fric_comp_stick} holds the pendulum upright, but with a 9 to 11\,Hz oscillation at the duty limit and an arm offset of up to $48^\circ$ (section~\ref{sec:lqr_hw}), whose cause has not been identified.
+  \item The timing uncertainty is represented by two discrete cases:
+  \begin{enumerate}
+    \item the USB delay of the hardware-in-the-loop link is not measured, so the case of one additional controller period is an assumption about its size;
+    \item intermediate lags and a combination of the two delays were not tested in the worst-case set.
+  \end{enumerate}
+  \item The design space was sampled with one simulation per point, so the boundaries of Figure~\ref{fig:lqr_map} are affected by sensor noise, which is why a current margin of 0.15\,A was kept.
+  \item The gearbox play and the flattening of the arm friction at higher speeds (see section~\ref{sec:estimation}) are not modeled, and the breakaway friction is in the model (equation~\ref{eq:stick}) but not yet in the Simscape plant used for the worst cases. All three affect the friction limit cycle and the friction compensation more than the linear part of the design.
+  \item The velocities are estimated by filtered differences. A model-based observer that removes part of the sensor lag would allow a stiffer gain, which is not covered by this design.
+\end{enumerate}
+
+%======================================================================
+\section{Swing-Up Controller Design}
+\label{sec:swingup}
+%======================================================================
+The LQR of section~\ref{sec:lqr} can only hold the pendulum once it is close to upright. Since the pendulum starts hanging at $\theta_1 = \pi$, a second controller is needed that brings it from rest to the neighborhood of the upright position, where the Stateflow supervisor hands it over to the LQR. The objective of this section is to design this swing-up controller so that it delivers the pendulum into the region that the LQR can actually hold, while staying inside the same limits of the rig as before: the 1.5\,A current trip, the 50\,\% duty limit, and the $\pm 100^\circ$ arm angle at which the supervisor stops the motor. Following the method of section~\ref{sec:lqr}, the knobs of the law are first computed from physics, then the target region and the design space are mapped in the controller harness, and the final choice is made on the physically consistent worst cases.
+
+\subsection{Pendulum Energy}
+\label{sec:su_energy}
+Since the swing-up has to change the pendulum from a hanging to an upright state, its energy is the natural quantity to control. With the scaled parameters of Table~\ref{tab:params}, the energy of the pendulum, measured from the upright rest state, is
+\begin{equation}
+  E = \frac{1}{2}\tilde J_p\, \dot\theta_1^2 + \tilde G \left(\cos\theta_1 - 1\right),
+  \label{eq:su_E}
+\end{equation}
+where the first term is the kinetic energy of the swing and the second is the potential energy. At rest upright $E = 0$, and at rest hanging $E = -2\tilde G$. Thus, any motion with $E = 0$ just reaches the upright position, which is why $E = 0$ is the target of an energy-based swing-up. In the rest of this section, the energy is expressed in units of $2\tilde G$:
+\begin{equation}
+  e = \frac{E}{2\tilde G},
+  \label{eq:su_e}
+\end{equation}
+so that $e = -1$ means hanging still and $e = 0$ means just reaching the top.
+
+Differentiating equation~\ref{eq:su_E} with respect to time yields
+\begin{equation}
+  \dot E = \dot\theta_1 \left( \tilde J_p\, \ddot\theta_1 - \tilde G \sin\theta_1 \right).
+\end{equation}
+The pendulum row of equation~\ref{eq:nl_mass} gives $\tilde J_p\, \ddot\theta_1 = \tilde G \sin\theta_1 - \tilde h \cos\theta_1\, \ddot\theta_0 + \tilde J_p \sin\theta_1 \cos\theta_1\, \dot\theta_0^2 - \tilde b_1 \dot\theta_1 - \tilde\tau_p(\dot\theta_1)$. Substituting it back and neglecting the centrifugal and friction terms, which are small compared with the coupling term during a swing, yields
+\begin{equation}
+  \therefore\; \dot E \approx -\tilde h \cos\theta_1\, \dot\theta_1\, \ddot\theta_0 .
+  \label{eq:su_Edot}
+\end{equation}
+Equation~\ref{eq:su_Edot} shows that the only way the motor can change the pendulum energy is through the acceleration of the arm $\ddot\theta_0$, and that the energy rises when the pivot is accelerated against the direction in which the bob moves, which can be intuitively understood as pumping a playground swing. Since $\tilde h/\tilde J_p = 1.086$, an acceleration of the arm transfers almost one to one into an angular acceleration of the pendulum, so moderate arm accelerations are sufficient.
+
+\subsection{Why a Proportional Energy Law Stalls}
+The classic energy law sets the arm acceleration proportional to the energy error, for example $\ddot\theta_{0} = -k\, (E_0 - E)\sin\theta_1$ in the early harness sketch. Since both the energy error and the factor $\sin\theta_1$ go to zero as the pendulum approaches the top, the push fades exactly where the friction of equation~\ref{eq:nl_f} still removes energy. In the harness, this sketch stalled about $38^\circ$ short of upright for every gain that was tried. Therefore, the law of this work keeps the push at full size until the energy is close to its target, and aims slightly above $e = 0$ so that the losses of the last part of the swing are covered.
+
+\subsection{Control Law}
+\label{sec:su_law}
+The swing-up law consists of four parts, each of which has one physical purpose, and a breakaway feedforward that was added after the first hardware runs.
+
+\subsubsection{Energy Pump}
+Following equation~\ref{eq:su_Edot}, the arm is accelerated against $\cos\theta_1\,\dot\theta_1$ with a constant size $a_p$, scaled down only near the energy target $E_0$:
+\begin{equation}
+  a_{\mathrm{pump}} = -a_p\, \operatorname{sat}\!\left(k_E\, (E_0 - e)\right) \tanh\!\left( \frac{\dot\theta_1 \cos\theta_1}{\omega_s} \right),
+  \label{eq:su_pump}
+\end{equation}
+where $\operatorname{sat}$ limits its argument to $\pm 1$, $k_E$ sets the energy band below $E_0$ in which the push fades, and the hyperbolic tangent is a sign function smoothed over a band $\omega_s$ to avoid chattering at the turning points. If the energy overshoots ($e > E_0$), the same expression changes sign and brakes the pendulum.
+
+\subsubsection{Kick from Rest}
+A pendulum hanging perfectly still has $\dot\theta_1 = 0$, so equation~\ref{eq:su_pump} gives no direction to push in. Thus, while $e < -1 + e_k$, the arm is accelerated with a constant $a_k$ instead, which starts the swing.
+
+\subsubsection{Arm Centering}
+Since the pump moves the arm back and forth with every swing, a weak spring and damper keep it near its reference $r$:
+\begin{equation}
+  \ddot\theta_{0,\mathrm{cmd}} = a_{\mathrm{pump}} - \omega_c^2\, (\theta_0 - r) - 2\zeta_c\, \omega_c\, \dot\theta_0 ,
+  \label{eq:su_center}
+\end{equation}
+where $\omega_c$ and $\zeta_c$ are the natural frequency and damping of the centering.
+
+\subsubsection{Current Command}
+The acceleration is converted into the current that the arm row of equation~\ref{eq:nl_mass} needs, neglecting the reaction of the pendulum, and then into a duty cycle through equation~\ref{eq:nl_current} solved for $d$:
+\begin{equation}
+  i_{\mathrm{cmd}} = \operatorname{sat}_{i_{\max}}\!\left( \tilde J_a\, \ddot\theta_{0,\mathrm{cmd}} + \tilde B_{eq}\, \dot\theta_0 + \tilde\tau_c(\dot\theta_0) \right), \qquad
+  d = \operatorname{sat}_{d_{\max}}\!\left( \frac{R_m\, i_{\mathrm{cmd}} + K_b\, \dot\theta_0}{V_s} \right),
+  \label{eq:su_current}
+\end{equation}
+where the friction torque uses the smooth sign of $\dot\theta_0$ over a band $\omega_f$. Since the back-EMF term $K_b\,\dot\theta_0$ is added to the duty cycle, reversing the commanded acceleration while the arm moves reverses the current only up to $i_{\max}$, instead of producing the current spike of section~\ref{sec:lqr_sim}. Thus, this form addresses the binding limit of our rig directly, and if the duty limit $d_{\max}$ is reached, the clipping lowers the current further instead of raising it.
+
+\subsubsection{Breakaway Feedforward}
+\label{sec:su_stick}
+On the hardware, the kick from the hanging rest commanded $\tilde J_a a_k = 0.39\,\mathrm{A}$, or 11.1\,\% duty cycle, since the friction term of equation~\ref{eq:su_current} is zero at rest, and the arm stayed still for 9 to 27\,s, because it needs 13\,\% to break free (equation~\ref{eq:breakaway}). Therefore, the friction term was extended in the same way as the compensation of the LQR: with the arm at rest it is the breakaway in the direction of the commanded acceleration, fading to the sliding friction as the arm moves,
+\begin{equation}
+  \tilde\tau_f = \tilde\tau_c(\dot\theta_0) + k_{st}\, e^{-(\dot\theta_0/\omega_{st})^2} \left( \tilde\tau_s(\sigma_a) - \tilde\tau_c(\dot\theta_0) \right), \qquad \sigma_a = \tanh\!\left(\frac{\ddot\theta_{0,\mathrm{cmd}}}{a_{st}}\right),
+  \label{eq:su_stick}
+\end{equation}
+which replaces $\tilde\tau_c(\dot\theta_0)$ in equation~\ref{eq:su_current}, where $\tilde\tau_s(\sigma_a) = \tilde\tau_{s+}\max(\sigma_a, 0) + \tilde\tau_{s-}\min(\sigma_a, 0)$, $k_{st} = 1$, $\omega_{st} = 0.2\,\mathrm{rad/s}$ and $a_{st} = 5\,\mathrm{rad/s^2}$. The kick from rest then commands 24.1\,\% duty cycle. In a simulation of the model with the breakaway friction, the law without it never moves the arm, as on the hardware, while with it the pendulum is caught after 1.44\,s with the arm within $47^\circ$, as in the nominal design below.
+
+\subsection{Starting Values from Physics}
+\label{sec:su_physics}
+\subsubsection{Energy Target}
+Near the top, $\cos\theta_1$ approaches zero beyond the horizontal, so the pump of equation~\ref{eq:su_pump} has little effect over the last quarter of the swing, while the friction of the pendulum joint keeps removing energy. Thus, $E_0$ is set to the energy lost from the horizontal to the top. For a swing with $e = 0$, the angular velocity is $\dot\theta_1 = 2\omega_n \cos(\phi/2)$, with $\phi$ the angle from hanging and $\omega_n = \sqrt{\tilde G/\tilde J_p} = 12.51\,\mathrm{rad/s}$. Integrating the dry and viscous friction torques over $\phi$ from $\pi/2$ to $\pi$:
+\begin{equation}
+  \therefore\; E_0 = \frac{\tilde\tau_p\, \frac{\pi}{2} + \tilde b_1\, 4\omega_n \left(1 - \sin\frac{\pi}{4}\right)}{2\tilde G} = \frac{1.002\times10^{-3} + 1.771\times10^{-3}}{0.05797} = 0.048 .
+  \label{eq:su_E0}
+\end{equation}
+The push fades over a band of one $E_0$ below the target, so $k_E = 1/E_0 = 21$.
+
+\subsubsection{Push Size}
+One push lasts about a quarter of the swing period, $T_q = \pi/(2\omega_n) = 0.126\,\mathrm{s}$, during which the arm speeds up to about $a_p T_q$. Limiting the current to $i_{\max} = 1.0\,\mathrm{A}$, one third below the trip level, gives $\tilde J_a a_p + \tilde\tau_{c+} \le i_{\max}$, or $a_p \le 132\,\mathrm{rad/s^2}$. Limiting the duty cycle to $d_{\max} = 0.45$, below the firmware's 0.5, gives with equation~\ref{eq:su_current}
+\begin{equation}
+  a_p \le \frac{d_{\max} V_s - R_m \tilde\tau_{c+}}{R_m \tilde J_a + \left(R_m \tilde B_{eq} + K_b\right) T_q} = 52.1\,\mathrm{rad/s^2},
+\end{equation}
+so the duty cycle is the tighter limit, and $a_p = 52\,\mathrm{rad/s^2}$ is the starting value.
+
+\subsubsection{Centering and Kick}
+The centering is set about three times slower than the pendulum, $\omega_c = \omega_n/3 = 4.2\,\mathrm{rad/s}$ with $\zeta_c = 0.7$, so that the two motions do not fight each other. The kick has to overcome the static friction of the arm with a 50\,\% margin, $a_k = 1.5\,\tilde\tau_{c+}/\tilde J_a = 69\,\mathrm{rad/s^2}$, and it ends once the pendulum swings by about $5^\circ$, $e_k = (1 - \cos 5^\circ)/2 = 0.0019$. The smoothing bands are $\omega_s = \omega_f = 1\,\mathrm{rad/s}$, a few counts of the velocity noise of the two sensors at 4\,ms. These values are computed by the script \nolinkurl{matlab/harness/controllers/hybrid/swingup_knobs.m}.
+
+\subsection{The Target: Catch Region of the LQR}
+\label{sec:su_catch}
+Before tuning the swing-up, the states that the LQR can actually take over have to be known. Thus, the closed loop with the final LQR of equation~\ref{eq:K_final} was started in the harness from a grid of pendulum angles $\theta_1$ from $-35$ to $35^\circ$ and pendulum speeds $\dot\theta_1$ from $-14$ to $14\,\mathrm{rad/s}$, with the arm centered and at rest, the supervisor guards opened wide, and realistic sensors and firmware. A state counts as held if the firmware did not trip and $|\theta_1| < 10^\circ$ during the last second of a 3\,s run. Since the plant is symmetric, only $\theta_1 \ge 0$ was simulated and the result was mirrored.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_swingup_catch.pdf}
+\caption{Catch region of the LQR: states at the hand-over that the LQR holds (colored by their peak armature current), states that fall (light gray) and states that trip the firmware (crosses). The lines are the energy curves $e = 0$ and $e = E_0$ for a pendulum rising toward the top, the dashed box is the catch guard of the supervisor and the circles are the hand-over states of the final swing-up design in the 12 worst cases of section~\ref{sec:su_corners}.}
+\label{fig:su_catch}
+\end{figure}
+
+Figure~\ref{fig:su_catch} shows that only 215 of the 841 states are held, and that they form a narrow diagonal band of states in which the pendulum is still rising toward the top ($\theta_1$ and $\dot\theta_1$ of opposite signs). States that move away from upright fall or trip the firmware, which happened in 350 of the 841 states. Furthermore, the peak current grows quickly with the hand-over angle: every held state at $10^\circ$ reached at least 1.26\,A, and every held state at $20^\circ$ at least 1.69\,A, which the trip tolerates only because it requires 10\,ms above 1.5\,A. Thus, the swing-up should deliver a rising pendulum, and the hand-over itself, not the swing-up, is where the current budget is spent. The energy curves of equation~\ref{eq:su_E} run along this band, which shows that an energy target slightly above zero naturally delivers the pendulum into it.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.9\textwidth]{figures/fig_swingup_catch3d.pdf}
+\caption{The catch region of Figure~\ref{fig:su_catch} in three dimensions, with the peak armature current of each held state as the height of the surface and the peak arm angle $|\theta_0|_{\max}$ during the catch as its color. The dashed line on the surface is the 1.5\,A trip level. On the floor, light gray marks the states that fall and darker gray the states that trip the firmware, the dotted and solid lines are the energy curves $e = 0$ and $e = E_0$, the dashed box is the catch guard and the circles are the hand-over states of the 12 worst cases.}
+\label{fig:su_catch3d}
+\end{figure}
+
+Since a hand-over costs both current and arm travel, and the arm has to stay away from its $100^\circ$ stop, Figure~\ref{fig:su_catch3d} shows the same results with the peak current as a height and the peak arm angle as a color, so that both costs can be read from one figure. The held states form a valley along the diagonal band, whose bottom is the upright state at rest ($\theta_1 = 0$, $\dot\theta_1 = 0$, where no current is needed), and whose sides rise steeply with the distance from it. Furthermore, 172 of the 215 held states lie above the 1.5\,A trip level, and so do 90 of the 133 held states inside the catch guard. Thus, the catch guard by itself does not keep the current below the trip level, and it is the swing-up that has to deliver the pendulum into the low part of the valley.
+
+The color shows that the arm travel is a separate cost, which is only loosely related to the current (a correlation coefficient of 0.32 over the held states). The 43 held states below the trip level moved the arm by $23.9^\circ$ at the median and by up to $70.3^\circ$, while the 172 states above it moved it by $35.1^\circ$ at the median. Furthermore, 54 held states moved the arm by more than $50^\circ$, and the largest arm angle of a held state, $99.4^\circ$, occurred at $\theta_1 = -2.5^\circ$, $\dot\theta_1 = -5\,\mathrm{rad/s}$, a state close to upright but moving away from it, which the LQR could only recover with a large arm motion. Thus, a hand-over state that is cheap in current is not necessarily cheap in arm travel, which agrees with the failures of the worst cases in section~\ref{sec:su_corners}, where the arm, not the current, was the limit. The hand-over states of the 12 worst cases lie close together at the edge of the band ($\theta_1$ between $-17.6$ and $-16.1^\circ$, $\dot\theta_1$ between 4.6 and 5.5\,rad/s), and their runs reached peak currents between 0.78 and 1.57\,A.
+
+\subsection{Simulation Environment}
+The swing-up was tested in the same harness and with the same realistic sensors and firmware as the LQR (see section~\ref{sec:lqr_sim}). In the swing-up test, the pendulum starts hanging at rest with the arm centered, the supervisor hands it over to the LQR when $|\theta_1| < 20^\circ$ and $|\dot\theta_1| < 8\,\mathrm{rad/s}$, and the test passes if the firmware did not trip and $|\theta_1| < 10^\circ$ during the last 3\,s of a 15\,s run. The time to catch is the first entry into the Stabilize state, and the supervisor stops the motor if $|\theta_0| > 100^\circ$, after which the arm coasts and the firmware trips at $120^\circ$.
+
+With the starting values of section~\ref{sec:su_physics}, the swing-up passed and the pendulum was caught after 3.51\,s, with the arm reaching $61^\circ$. The energy rose in steps of about 0.1 per half swing, as expected from equation~\ref{eq:su_Edot}, and the estimated energy followed the true one closely. The peak current of 1.25\,A occurred at the hand-over, where the LQR received the pendulum at $\theta_1 = -18.9^\circ$, while the current during the swing-up itself stayed below 0.7\,A.
+
+\subsection{Design Space}
+\label{sec:su_space}
+To find which knobs matter, each was varied alone around the starting point (see Table~\ref{tab:su_oat}).
+
+\begin{table}[h]
+\centering
+\caption{One knob at a time around the starting values of section~\ref{sec:su_physics} (one swing-up test per value).}
+\label{tab:su_oat}
+\footnotesize
+\begin{tabular}{@{}lll@{}}
+\toprule
+Knob & Values & Effect \\
+\midrule
+$a_p$ [rad/s$^2$] & 30 to 100 & fails below 52; catch from 3.51 to 0.88\,s, arm from $61^\circ$ to $91^\circ$ \\
+$\omega_c$ [rad/s] & 2 to 7 & arm $96^\circ$ at 2, $61^\circ$ to $66^\circ$ at 3 to 5.5, fails at 7 \\
+$E_0$ & 0.01 to 0.18 & fails at 0.025 and below; no change above 0.048 \\
+$k_E$ & 5 to 80 & fails at 10 and below; no change above 21 \\
+$\zeta_c$ & 0.4 to 1.4 & catch from 2.9 to 7.5\,s, fails at 1.4 \\
+$a_k$ [rad/s$^2$], $i_{\max}$ [A] & 40 to 150, 0.6 to 1.2 & no effect on passing or catch time \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The energy target $E_0$ and the fade gain $k_E$ act only as thresholds: below the friction loss of equation~\ref{eq:su_E0}, the pendulum stalls short of the top, as predicted in section~\ref{sec:su_physics}, and above it, nothing changes, which agrees with the estimate of equation~\ref{eq:su_E0}. The current limit $i_{\max}$ did not act at all, since the results were identical for every value from 0.6 to 1.2\,A, so it remains a pure safety bound. On the other hand, the push size $a_p$ sets the speed of the swing-up and the centering $\omega_c$ sets how far the arm travels. Therefore, the design was reduced to the two variables $a_p$ and $\omega_c$, which were sampled on a grid of 8 values of $a_p$ (40 to $110\,\mathrm{rad/s^2}$) and 7 values of $\omega_c$ (2 to $6.5\,\mathrm{rad/s}$), with one swing-up test per point (see Figures~\ref{fig:su_map} and~\ref{fig:su_surface}).
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_swingup_map.pdf}
+\caption{Time to catch (left) and largest arm angle (right) over the two remaining design variables, nominal model and timing. Gray crosses mark designs that failed the swing-up test, and the circle marks the final design.}
+\label{fig:su_map}
+\end{figure}
+
+Of the 56 designs, 37 passed. The time to catch falls from about 4.5\,s to 0.8\,s as the push grows, but the arm travel grows in the same direction, and many passing designs swung the arm to $90$ to $98^\circ$, just below the $100^\circ$ stop. Weak pushes ($a_p \le 50\,\mathrm{rad/s^2}$) were unreliable, since the many swings they need let the arm drift, and $a_p = 110\,\mathrm{rad/s^2}$ raised the peak current up to 1.58\,A. A stiffer centering reduced the arm travel at almost no cost in time, so the useful region lies at $\omega_c$ of 5.75 to $6.5\,\mathrm{rad/s}$ and $a_p$ of 70 to $90\,\mathrm{rad/s^2}$, with a catch after 1.1 to 1.8\,s and the arm within $39$ to $65^\circ$. Thus, unlike the LQR, the binding limit of the swing-up is the arm travel and not the current.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.85\textwidth]{figures/fig_swingup_surface.pdf}
+\caption{The design space of Figure~\ref{fig:su_map} in three dimensions, with the time to catch as the height of each bar and the peak armature current as its color. Crosses on the floor mark the designs that failed, and the outlined bar is the final design.}
+\label{fig:su_surface}
+\end{figure}
+
+\subsection{Physically Consistent Worst Cases}
+\label{sec:su_corners}
+Six designs from the useful region were run through the 12 worst cases of section~\ref{sec:lqr_corners}: the four corner plants (pendulum strength $\pm 18.6\,\%$, arm viscous friction $\pm 13.2\,\%$) with the nominal timing, one additional controller period of delay on the duty cycle, and a pendulum sensor lag of 10\,ms (see Table~\ref{tab:su_corners} and Figure~\ref{fig:su_corners}).
+
+\begin{table}[h]
+\centering
+\caption{Swing-up designs in the 12 physically consistent worst cases (one test per case). The catch time and the arm angle are taken over the passing tests, the peak current over all tests.}
+\label{tab:su_corners}
+\small
+\begin{tabular}{@{}ccccc@{}}
+\toprule
+$a_p$ [rad/s$^2$] / $\omega_c$ [rad/s] & Passed & Catch [s] & Largest $|\theta_0|$ & Peak current \\
+\midrule
+70 / 5.75 & 9/12 & 1.45--1.82 & $49^\circ$ & 1.15\,A \\
+80 / 5.75 & 9/12 & 1.46--1.56 & $75^\circ$ & 1.45\,A \\
+90 / 5.75 & 12/12 & 1.14--1.20 & $69^\circ$ & 1.49\,A \\
+70 / 6.5 & 9/12 & 1.73--2.16 & $58^\circ$ & 1.48\,A \\
+80 / 6.5 & 12/12 & 1.43--1.52 & $50^\circ$ & 1.57\,A \\
+90 / 6.5 & 11/12 & 1.12--1.18 & $73^\circ$ & 1.39\,A \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_swingup_corners.pdf}
+\caption{Largest arm angle (left) and time to catch (right) of the six designs in the 12 worst cases, where the marker shows the timing case. Open markers passed and filled markers failed; failed tests are drawn at the right edge.}
+\label{fig:su_corners}
+\end{figure}
+
+Every failure in Table~\ref{tab:su_corners} followed the same pattern: the pendulum was caught, but the arm was moving fast at the hand-over, and the LQR, whose arm feedback is soft, let it run past the $100^\circ$ stop. None of the failures was an overcurrent trip. Thus, the reliability of the swing-up is decided by the arm speed at the hand-over, which depends on the exact sequence of swings, and the boundary between passing and failing designs is not smooth.
+
+To separate this from the sensor noise of a single test, the two designs that passed all 12 cases and the design between them ($a_p = 85\,\mathrm{rad/s^2}$, $\omega_c = 6.0\,\mathrm{rad/s}$) were repeated with three further noise seeds, giving 36 tests each. The designs 80\,/\,6.5 and 90\,/\,5.75 passed all 36, while 85\,/\,6.0 failed 9 of them, all with one additional period of delay. Finally, the neighbors of 80\,/\,6.5 were run through the 12 cases: $\omega_c = 6.9$ passed 12 and $\omega_c = 6.1$ passed 11, but $a_p = 75$ and $85\,\mathrm{rad/s^2}$ passed only 10 each. Therefore, the design tolerates a change of the centering, while the push size has to stay within about $\pm 5\,\%$ of its value.
+
+\subsection{Final Design}
+\label{sec:su_final}
+Of the two designs that passed all 48 tests, $a_p = 80\,\mathrm{rad/s^2}$ with $\omega_c = 6.5\,\mathrm{rad/s}$ was selected, since it keeps the arm within $50^\circ$, a margin of $50^\circ$ to the $100^\circ$ stop against $31^\circ$ for the faster design, and since its catch time changed by less than 0.1\,s over all worst cases, which shows that it repeats the same sequence of swings regardless of the plant and the timing. Its peak current of 1.57\,A occurred once, at the hand-over with a sensor lag of 10\,ms, and did not trip the firmware, which acts on the filtered current only after 10\,ms above 1.5\,A. The final knobs are
+\begin{equation}
+  \boxed{E_0 = 0.048,\quad k_E = 21,\quad a_p = 80\,\mathrm{rad/s^2},\quad \omega_c = 6.5\,\mathrm{rad/s},\quad \zeta_c = 0.7,\quad a_k = 69\,\mathrm{rad/s^2}}
+  \label{eq:su_final}
+\end{equation}
+with $e_k = 0.0019$, $\omega_s = \omega_f = 1\,\mathrm{rad/s}$, $i_{\max} = 1.0\,\mathrm{A}$ and $d_{\max} = 0.45$, and, since the first hardware runs, the breakaway feedforward of equation~\ref{eq:su_stick}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_swingup_run.pdf}
+\caption{Swing-up of the final design, nominal model and timing: pendulum energy in units of $2\tilde G$ (true and estimated from the measured angles), pendulum and arm angles, and armature current with the 1.5\,A trip level. The vertical line marks the hand-over to the LQR.}
+\label{fig:su_run}
+\end{figure}
+
+Figure~\ref{fig:su_run} shows the final design with the nominal model. The energy rises from $-1$ to the target in less than 1.5\,s, the pendulum is caught after \textbf{1.47\,s} with a peak current of 0.82\,A over the whole run, and the arm stays within $47^\circ$. After the catch, the pendulum stays within $3^\circ$, while the arm swings by about $\pm 21^\circ$, which is the friction limit cycle of the soft LQR without compensation (see section~\ref{sec:lqr_fric}). In the worst cases, the hand-over states lie between $\theta_1 = -17.6$ and $-16.1^\circ$ with $\dot\theta_1$ between 4.6 and 5.5\,rad/s, inside the held band of Figure~\ref{fig:su_catch}. The law is implemented in the block \texttt{energy law} of \nolinkurl{matlab/harness/controllers/hybrid/swingup_energy.slx}, its knobs are set in \texttt{ctrl\_hybrid\_design.m}, and the tools of this section (\texttt{swingup\_knobs}, \texttt{swingup\_catch\_region}, \texttt{swingup\_workbench}, \texttt{swingup\_sweep} and \texttt{swingup\_corner\_test}) are in the same folder. The complete hybrid controller, swing-up followed by the catch with the LQR of section~\ref{sec:lqr_final}, also runs on the ESP32 in the onboard mode of section~\ref{sec:harness_modes}, where it reproduces the duty cycle of this swing-up run to $7\times10^{-15}$ (with the breakaway terms switched off, since the Simulink blocks do not have them yet).
+
+\subsection{Limitations}
+Limitations of the presented design are:
+\begin{enumerate}
+  \item The results are simulations of the identified model. On the hardware, the law of equation~\ref{eq:su_current} could not start from rest (below the breakaway), while with the feedforward of equation~\ref{eq:su_stick} the pendulum was caught after 0.81 to 1.18\,s in eight of ten runs (section~\ref{sec:lqr_hw}). The worst-case tests of this section have not yet been repeated with the feedforward.
+  \item The push size has a narrow tolerance of about $\pm 5\,\%$. Since the current command of equation~\ref{eq:su_current} relies on the identified $\tilde J_a$ and Coulomb friction, an error in these values changes the effective push:
+  \begin{enumerate}
+    \item the corner plants vary only the arm viscous friction, not $\tilde J_a$ or the Coulomb friction, which are known to about 1\,\%;
+    \item the gearbox play and the flattening of the arm friction at higher speeds are not modeled, and both act during the large arm motions of the swing-up.
+  \end{enumerate}
+  \item The hand-over at $|\theta_1| \approx 17^\circ$ costs up to 1.57\,A in the worst cases (see Figure~\ref{fig:su_catch}). This current is set by the catch guard of the supervisor and by the LQR, not by the swing-up law.
+  \item The design space and the worst cases were sampled with one or a few simulations per point, so the boundaries of Figure~\ref{fig:su_map} are affected by sensor noise and by the discrete number of swings.
+  \item The kick always starts in the same direction, so all tests approach the top from the same side; the mirrored approach follows from the symmetry of the plant but was not run separately.
+\end{enumerate}
+
+%======================================================================
+\section{Controller Update for the Re-identified Rig (2026-11-20)}
+\label{sec:cu}
+%======================================================================
+Section~\ref{sec:reid_lqr} showed that the LQR of section~\ref{sec:lqr_final} tolerates only about 6\,ms of pendulum lag on the rig as it is now, while the shaft coupling adds 9--15\,ms. The objective of this section is to describe the updated controller: a model-based observer that compensates the lag, the LQR redesigned on the model of section~\ref{sec:reid}, the firmware that runs both, and the first hardware results.
+
+\subsection{Why the Gains Alone Cannot Fix It}
+\label{sec:cu_gains}
+A sweep of the Bryson limits of equation~\ref{eq:bryson} on the new model, with controller periods of 1, 2 and 4\,ms and velocity filters of 20, 40 and 80\,Hz, found no four-gain LQR with a lag margin above \textbf{11--12\,ms}, and the designs that came close limited the duty cycle to 2--4\,\%, below the breakaway of the arm. A constant gain on a reading that is 10--15\,ms old always pushes towards where the pendulum was; with the unstable mode at $+12.1\,\mathrm{rad/s}$, a push that late cannot be fast enough, whatever the gains. The lag has to be compensated in the state estimate instead.
+
+\subsection{Model-Based Observer}
+\label{sec:cu_observer}
+The observer keeps an estimate $\hat{\mathbf{x}}_d$ of the state at the moment when the pendulum reading was taken, $n_d$ controller periods ago, and the last $n_d+1$ duty cycles it has sent. At every period it
+\begin{enumerate}
+  \item steps $\hat{\mathbf{x}}_d$ one period forward with the nonlinear model (equation~\ref{eq:nl_num}, one fourth-order Runge--Kutta step) and the duty cycle that acted at that time;
+  \item corrects the prediction with the arm reading from $n_d$ periods ago and the (late) pendulum reading, $\hat{\mathbf{x}}_d \leftarrow \hat{\mathbf{x}}_d + L\,\mathbf{r}$, where $\mathbf{r}$ is the difference between the readings and the predicted angles (the pendulum part wrapped to $\pm\pi$) and $L$ holds critically damped alpha--beta gains, $\alpha = 1 - \lambda^2$ on the angles and $\beta/T_s = (1 - \lambda)^2/T_s$ on the velocities, with $\lambda = e^{-2\pi f_{ab} T_s}$;
+  \item steps a copy of $\hat{\mathbf{x}}_d$ through the $n_d$ newer duty cycles to the present, which is the state given to the LQR and the swing-up.
+\end{enumerate}
+With $n_d = 3$ (12\,ms at $T_s = 4$\,ms) and $f_{ab} = 10$\,Hz, $\alpha = 0.395$ and $\beta/T_s = 12.3\,\mathrm{s^{-1}}$. At start-up the estimate begins at the first reading with zero velocities, and the arm part of the correction is ignored until the arm reading of $n_d$ periods ago exists. The observer is \nolinkurl{matlab/harness/controllers/hybrid/est_observer.slx}; a plain MATLAB copy (\texttt{est\_observer\_ref.m}) gives the same estimate to the last bit over 1000 periods, and \texttt{ctrlP.est.kind} selects it (1), its model-free fallback (2) or the filtered differences of section~\ref{sec:lqr} (0).
+
+\subsection{Redesigned LQR}
+\label{sec:cu_lqr}
+The Bryson limits of section~\ref{sec:lqr_final} were kept and only the design model changed to the one of section~\ref{sec:reid}, which gives
+\begin{equation}
+  \boxed{K = \begin{bmatrix} -0.1789 & -1.891 & -0.1132 & -0.1347 \end{bmatrix}}
+  \label{eq:K_20261120}
+\end{equation}
+with closed-loop poles $-28.40 \pm 9.91j$ and $-4.99 \pm 1.94j\,\mathrm{rad/s}$. The friction duty cycles of equation~\ref{eq:fric_comp_stick} follow the new model (6.3\,\% sliding, 6.0\,\% breakaway), and so does the motor inverse of the swing-up. In a simulation of the new model with quantized sensors, the firmware's slew and clip, a 12\,ms pendulum lag and $3^\circ$ of play between the encoder and the arm, this design held the pendulum within $1.0$--$1.6^\circ$ rms with the observer over five perturbed plants, without saturating the duty cycle, while the filtered differences saturated it 48--66\,\% of the time.
+
+Table~\ref{tab:cu_harness} compares the controllers in the harness on the new model, for three values of the pendulum lag.
+
+\begin{table}[h]
+\centering
+\caption{Harness on the model of 2026-11-20: previous controller (equation~\ref{eq:K_final}, filtered differences, compensation $k_f = 1$) against the updated one (equation~\ref{eq:K_20261120}, observer). Balance scenario after the catch; swing-up from rest.}
+\label{tab:cu_harness}
+\small
+\begin{tabular}{@{}llcccc@{}}
+\toprule
+Lag & Controller & Pendulum rms & Duty at limit & Current rms & Swing-up: catch, arm max \\
+\midrule
+9\,ms & previous & $3.7^\circ$ & 50\,\% & 1.65\,A & 0.84\,s, $85^\circ$ \\
+ & updated, $k_f = 1$ & $0.34^\circ$ & 0\,\% & 0.21\,A & 1.76\,s, $43^\circ$ \\
+ & updated, $k_f = 0$ & $1.33^\circ$ & 0\,\% & 0.24\,A & 1.76\,s, $43^\circ$ \\
+12\,ms & previous & $5.2^\circ$ & 59\,\% & 1.65\,A & 0.86\,s, $87^\circ$ \\
+ & updated, $k_f = 1$ & $0.32^\circ$ & 0\,\% & 0.19\,A & 1.40\,s, $44^\circ$ \\
+ & updated, $k_f = 0$ & $1.19^\circ$ & 0\,\% & 0.24\,A & 1.40\,s, $44^\circ$ \\
+15\,ms & previous & $6.8^\circ$ & 65\,\% & 1.63\,A & failed \\
+ & updated, $k_f = 1$ & $0.24^\circ$ & 0\,\% & 0.20\,A & 1.40\,s, $45^\circ$ \\
+ & updated, $k_f = 0$ & $1.24^\circ$ & 0\,\% & 0.25\,A & 1.40\,s, $45^\circ$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The harness reproduces the hardware behaviour of the previous controller (oscillation with the duty cycle saturated about half of the time, swing-up arm at $83$--$90^\circ$ on the rig), and the updated controller removes the oscillation at every lag. The smaller swing-up overshoot follows from the new friction values: with a breakaway of 6\,\% instead of 13--14\,\%, the kick from rest is no longer oversized.
+
+\subsection{Firmware 1.12}
+\label{sec:cu_firmware}
+The observer was ported to the onboard controller (\nolinkurl{firmware/include/onboard.h}); its numbers are generated by \texttt{export\_onboard.m} as before. The ESP32-S3 has a single-precision floating-point unit only, and with the model in double precision one controller step took 2.65\,ms (3.32\,ms worst) of the 4\,ms period, inside the 1\,ms firmware loop. Computing the observer's model in single precision, with one Runge--Kutta substep per period, and evaluating only the control law that the supervisor selects reduced this to \textbf{0.55\,ms} mean (0.73--0.80\,ms worst). The observer is refused at controller periods of 1 and 2\,ms. An armed 10\,s run with the motor unpowered produced no control overrun. With the model in double precision, the C++ copy commands the same duty cycle as Simulink to $1.2\times10^{-14}$ over 5252 periods; in single precision the largest difference is $3\times10^{-6}$, about 300 times smaller than one step of the PWM.
+
+\subsection{Hardware Results}
+\label{sec:cu_rig}
+Table~\ref{tab:cu_rig} compares the previous and the updated controller on the rig, swing-up and balance from rest, 15\,s each.
+
+\begin{table}[h]
+\centering
+\caption{Hardware runs of 2026-11-20 (onboard mode, 4\,ms). Balance values from 1\,s after the catch.}
+\label{tab:cu_rig}
+\footnotesize
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Controller & Catch & Swing-up arm & Pendulum rms & Arm, balancing & Saturation, current \\
+\midrule
+previous (firmware 1.11) & 0.83\,s & $-37$ to $+83^\circ$ & $4.94^\circ$ & $-65$ to $+29^\circ$ & 49\,\%, 1.62\,A \\
+updated, $k_f = 1$, run 1 & 2.16\,s & $-33$ to $+43^\circ$ & $2.10^\circ$ & $-22$ to $-9^\circ$ & 0\,\%, 0.31\,A \\
+updated, $k_f = 1$, run 2 & 1.84\,s & $-32$ to $+43^\circ$ & $1.73^\circ$ & $-18$ to $-8^\circ$ & 0\,\%, 0.30\,A \\
+updated, $k_f = 0$, run 1 & 1.43\,s & $-28$ to $+44^\circ$ & $1.33^\circ$ & $-36$ to $+15^\circ$ & 0\,\%, 0.31\,A \\
+updated, $k_f = 0$, run 2 & 1.42\,s & $-32$ to $+43^\circ$ & $1.22^\circ$ & $-36$ to $+15^\circ$ & 0\,\%, 0.27\,A \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The 9--11\,Hz oscillation is gone: the pendulum motion between 5 and 15\,Hz dropped from $4.47^\circ$ to $0.57^\circ$ rms ($k_f = 1$) and $0.25^\circ$ ($k_f = 0$), the duty cycle never reached its limit, and the current fell to a fifth, inside the 1.2\,A continuous rating of the driver. In a separate run the pendulum was pushed by hand to $13.5^\circ$; it was back within $3^\circ$ after 0.70\,s without leaving the balance mode.
+
+\paragraph{Friction compensation.} Unlike in the harness, the compensation made the pendulum worse on the rig: with $k_f = 1$ a wobble at 2.9\,Hz remained ($2.0^\circ$ rms between 1 and 5\,Hz, against $1.0^\circ$ with $k_f = 0$), while it held the arm within about $10^\circ$ instead of about $50^\circ$. The compensation switches $\pm 6\,\%$ of duty with the sign of the request, and such a switching term together with the play and the lag of the coupling forms a limit cycle; the harness has no play, which is why it predicted the opposite. The friction values it relies on also changed by more than 50\,\% between 2026-11-07 and 2026-11-20. Therefore $k_f = 0$ was selected: the pendulum, which is the controlled quantity, is about 35\,\% calmer and caught faster, at the same current, and the arm stays within about $\pm 25^\circ$ of its mean, inside the $30^\circ$ arm limit of the Bryson weighting and far from the $100^\circ$ stop. If the arm has to hold a position precisely, integral action on the arm angle is the cleaner remedy.
+
+\subsection{Limitations}
+Limitations of the presented update are:
+\begin{enumerate}
+  \item The hardware comparison rests on two runs of about 13\,s per setting on one day; the differences were consistent but longer runs would strengthen them.
+  \item The shaft coupling is represented only by a lag in the design; the harness plant has no play, so it overrates the friction compensation.
+  \item The pendulum reads about $+0.7$ to $+1^\circ$ when balanced, which shifts the arm by $-10$ to $-15^\circ$; the upright reference has not yet been corrected.
+  \item The worst-case tests of sections~\ref{sec:lqr_corners} and~\ref{sec:su_corners} have not yet been repeated with the observer and the new model.
+\end{enumerate}
+
+%======================================================================
+\section{Digital Twin}
+\label{sec:twin}
+%======================================================================
+The plots of sections~\ref{sec:harness} to~\ref{sec:swingup} show every angle of a run, but they do not show what the rig looks like while it moves, which makes it hard to judge, for example, how close the arm comes to its stop or whether a swing-up looks the way the plots suggest. Furthermore, once the controllers run on the hardware, it is desired to compare the real rig with the identified model while both are moving, so that a model error is visible directly and not only in a fit percentage. To achieve this, a digital twin of the rig was built in Unreal Engine 5.3. The objective of this section is to describe how the twin is built, how it poses the rig from the two joint angles, and how it is used. All files are in \nolinkurl{twin/}.
+
+\subsection{Purpose and Structure}
+\label{sec:twin_structure}
+The twin was designed to only render: it contains no model and no physics, and it draws the rig in whatever pose it receives. Since the motion always comes from outside, the same window can show a simulation of the identified model, a logged harness run, or the real rig, and the model of this work exists only once, in \nolinkurl{matlab/model} (see equation~\ref{eq:nl_num}). The structure of the twin is shown in Figure~\ref{fig:twin_structure}.
+
+\begin{figure}[h]
+\centering
+\begin{tikzpicture}[
+  box/.style={draw, thick, rounded corners=2pt, fill=gray!10, align=center, font=\small, minimum height=1.25cm, text width=3.6cm},
+  app/.style={box, fill=gray!30},
+  arr/.style={-{Stealth}, thick},
+  lbl/.style={font=\scriptsize, align=center}]
+  \node[box] (cad) at (0, 2.4) {CAD bodies\\(STL meshes and\\joint frames)};
+  \node[box, text width=4.1cm] (exp) at (8.4, 2.4) {\texttt{export\_twin\_meshes.m}\\meshes and joint\\geometry files};
+  \node[box] (model) at (0, 0) {MATLAB: \texttt{twin\_play},\\\texttt{twin\_send}\\source 1, model};
+  \node[box, dashed] (rig) at (0, -2.4) {ESP32 or HIL bridge\\(not implemented)\\source 0, real rig};
+  \node[app, text width=4.1cm] (twin) at (8.4, -1.2) {Unreal application\\receive, select pose,\\solid rig, ghost, HUD};
+  \draw[arr] (cad) -- node[lbl, above] {once, after a CAD change} (exp);
+  \draw[arr] (exp) -- node[lbl, right] {loaded at start} (twin);
+  \draw[arr] (model.east) -- node[lbl, above, sloped] {UDP, port 7400} (twin.west);
+  \draw[arr, dashed] (rig.east) -- node[lbl, below, sloped] {same packet} (twin.west);
+\end{tikzpicture}
+\caption{Structure of the digital twin. The geometry is exported once from the CAD model; at run time, the poses arrive as UDP packets from the model (MATLAB) or, through the dashed path that has not been implemented yet, from the real rig. The darker block is the Unreal application.}
+\label{fig:twin_structure}
+\end{figure}
+
+Every pose is sent as one UDP packet of 16 bytes to port 7400, which holds a 4-byte identifier, a source byte (0 for the real rig and 1 for the model) and the two joint angles as 32-bit floating-point numbers. Since this packet is small and needs no library on the sending side, the ESP32 or the hardware-in-the-loop bridge of section~\ref{sec:harness_modes} can send it directly to the computer's IP address. On every frame, the application reads all packets that arrived since the previous frame and keeps the latest pose of each source. A source is considered live if its last packet is less than 1\,s old, and the two sources are drawn as follows:
+\begin{enumerate}
+  \item if the real rig is live, the solid rig shows its pose;
+  \item if the model is live as well, the model is drawn on top of it as a translucent cyan copy of the arm and the pendulum (the ghost), so the difference between the two is seen as a separation of the two bodies;
+  \item if only the model is live, the solid rig shows the model, and the overlay in the bottom-left corner (the HUD) says so.
+\end{enumerate}
+The HUD also shows the latest angles and the packet rate of each source, measured over one-second windows, so that a source that stops or slows down is noticed immediately.
+
+\subsection{Geometry of the Rig}
+\label{sec:twin_geometry}
+Since the twin should look like the real rig, its bodies are the CAD bodies already used as the visual part of the Simscape plant (see Figure~\ref{fig:harness_plant}): the housing (24\,484 triangles), the arm (12\,068 triangles) and the pendulum (14\,244 triangles). The script \nolinkurl{twin/matlab/export_twin_meshes.m} places each body in the zero pose of the rig, $\theta_0 = 0$ with the pendulum hanging, using the joint frames of the CAD assembly, and writes it as a list of triangles in a small binary file. It also writes the position of the pendulum joint and the direction of its axis to \texttt{twin\_geometry.json}. Since only these two quantities define the kinematics of the twin, a change of the CAD model needs nothing more than running the script again.
+
+The meshes are stored in millimeters, with 1\,mm equal to one Unreal unit. Since Unreal does not draw anything closer than 10 units to the camera, this makes the twin a ten times scaled model, so the camera can be moved close to the pendulum without cutting through it. Furthermore, the triangles do not share vertices, so that every face receives its own normal and is shaded flat, like the faces of the CAD model.
+
+\subsection{Kinematics of the Twin}
+\label{sec:twin_kinematics}
+The joint angles of the packet follow the convention of the Simscape plant, which differs from the nonlinear model of section~\ref{sec:nlmodel} only in the zero of the pendulum. Since the pendulum angle of the twin is zero when hanging, while $\theta_1$ is zero upright (see Figure~\ref{fig:furuta}), the angles of the packet are
+\begin{equation}
+  q_{arm} = \theta_0, \qquad q_{pend} = \theta_1 - \pi \pmod{2\pi},
+  \label{eq:twin_angles}
+\end{equation}
+where $q_{arm}$ is the arm angle, right-handed about the vertical $+z$ axis, and $q_{pend}$ is the pendulum angle, both in radians.
+
+The CAD model and Simscape use a right-handed frame, while Unreal uses a left-handed one, in which the $y$ axis points the other way. Therefore, every point $\mathbf{p}_W$ of the CAD world frame is mirrored into Unreal as
+\begin{equation}
+  \mathbf{p}_U = M\, \mathbf{p}_W, \qquad M = \operatorname{diag}(1, -1, 1),
+  \label{eq:twin_mirror}
+\end{equation}
+where $\mathbf{p}_U$ is the same point in the Unreal frame. Since a mirror also changes the sense of a rotation, the rotation of a joint has to be converted too. A rotation $R(\mathbf{n}, q)$ by the angle $q$ about the unit axis $\mathbf{n}$ in the CAD frame becomes, in the Unreal frame,
+\begin{equation}
+  \because\; M^{-1} = M,\ \det M = -1: \qquad \therefore\; M\, R(\mathbf{n}, q)\, M = R(M\mathbf{n},\, -q),
+  \label{eq:twin_rot}
+\end{equation}
+which means that each joint turns about the mirrored axis by the negative of its angle. This is also why the triangles are written in the opposite order by the export script, since a mirror turns the front face of every triangle into its back face.
+
+The two joints are arranged as a chain, in which the pendulum joint is carried by the arm. Thus, a point $\mathbf{p}$ of the arm and a point $\mathbf{p}'$ of the pendulum, both given in the zero pose in the Unreal frame, are drawn at
+\begin{align}
+  \mathbf{r}_{arm} &= R(\mathbf{e}_z, -q_{arm})\, \mathbf{p}, \label{eq:twin_pose_arm}\\
+  \mathbf{r}_{pend} &= R(\mathbf{e}_z, -q_{arm}) \left[\mathbf{c} + R(\mathbf{n}_U, -q_{pend}) \left(\mathbf{p}' - \mathbf{c}\right)\right], \label{eq:twin_pose_pend}
+\end{align}
+where $\mathbf{e}_z$ is the vertical axis, $\mathbf{c}$ is the position of the pendulum joint and $\mathbf{n}_U$ is the direction of its axis in the Unreal frame. The export script gives
+\begin{equation}
+  \mathbf{c} = \begin{bmatrix} -1.78 & 64.98 & 119.00 \end{bmatrix}^T \mathrm{mm}, \qquad
+  \mathbf{n}_U = \begin{bmatrix} 0.0273 & -0.9996 & 0 \end{bmatrix}^T .
+  \label{eq:twin_joint}
+\end{equation}
+Equation~\ref{eq:twin_joint} shows that the axis of the pendulum is horizontal and lies within $1.57^\circ$ of the direction of the arm in the zero pose, which is expected of a Furuta pendulum, whose pendulum swings in the plane perpendicular to the arm. In the application, equation~\ref{eq:twin_pose_pend} is not evaluated point by point: each joint is a scene component placed at the joint, and the mesh of its body is attached to it with the opposite offset, so that rotating the component turns the whole body about the joint.
+
+\subsection{Rendering of the Swing-Up}
+\label{sec:twin_results}
+To check the conventions of equations~\ref{eq:twin_angles} to~\ref{eq:twin_pose_pend} on known states, three states of the simulated swing-up of the final design (see Figure~\ref{fig:su_run}) were sent to the twin as the model source. Each pose was streamed at 60 packets per second, and the application, started with its scripted screenshot option, saved the window at $1600 \times 900$ pixels 3\,s after the first packet arrived. The first state is shown in full in Figure~\ref{fig:twin_full}, and all three are shown in Figure~\ref{fig:twin_poses}.
+
+\begin{figure}[!ht]
+\centering
+\includegraphics[width=0.8\textwidth]{figures/fig_twin_hanging.png}
+\caption{A screenshot of the digital twin at the start of the simulated swing-up, with the pendulum hanging and the arm centered. The HUD (bottom left) shows that only the model source is live, at 60 packets per second, so the solid rig shows the model.}
+\label{fig:twin_full}
+\end{figure}
+
+\begin{figure}[!ht]
+\centering
+\begin{minipage}{0.32\textwidth}\centering
+  \includegraphics[width=\linewidth]{figures/fig_twin_hanging_crop.png}\\[2pt]
+  \small (a) $t = 0$
+\end{minipage}\hfill
+\begin{minipage}{0.32\textwidth}\centering
+  \includegraphics[width=\linewidth]{figures/fig_twin_swing_crop.png}\\[2pt]
+  \small (b) $t = 0.70\,\mathrm{s}$
+\end{minipage}\hfill
+\begin{minipage}{0.32\textwidth}\centering
+  \includegraphics[width=\linewidth]{figures/fig_twin_upright_crop.png}\\[2pt]
+  \small (c) $t = 1.90\,\mathrm{s}$
+\end{minipage}
+\caption{The digital twin posed with three states of the simulated swing-up of Figure~\ref{fig:su_run}: (a) hanging, $\theta_0 = 0^\circ$, $\theta_1 = -180^\circ$; (b) during the swing-up, $\theta_0 = 17.7^\circ$, $\theta_1 = -78.6^\circ$; (c) balanced by the LQR after the catch, $\theta_0 = -25.5^\circ$, $\theta_1 = 1.6^\circ$.}
+\label{fig:twin_poses}
+\end{figure}
+
+In all three states, the rendered pendulum matches its angle: hanging in (a), close to horizontal in (b), where it is $11.4^\circ$ above the horizontal, and upright in (c). Furthermore, the HUD of the third state showed $q_{pend} = -178.4^\circ$, which is $\theta_1 - 180^\circ$ for $\theta_1 = 1.6^\circ$, as given by equation~\ref{eq:twin_angles}. The arm of state (c) is turned by $-25.5^\circ$, which is the friction limit cycle of the arm after the catch previously described in section~\ref{sec:su_final}. Thus, the twin reproduces the poses of the simulation with the conventions of the harness, and it can be used to watch the logged runs of sections~\ref{sec:lqr} and~\ref{sec:swingup}.
+
+\subsection{Running the Twin}
+\label{sec:twin_usage}
+The twin is started and driven as follows:
+\begin{enumerate}
+  \item Start the application with \texttt{powershell -File twin\textbackslash run\_twin.ps1}. The script compiles the C++ module of the project if needed and opens the twin in a window. Opening \nolinkurl{twin/RIPTwin/RIPTwin.uproject} in the Unreal editor and pressing Play gives the same result. \textbf{Expected:} the rig is drawn in the zero pose and the HUD shows ``no data'' for both sources.
+  \item In MATLAB, run \nolinkurl{twin/matlab/twin_demo.m}, which simulates the identified model of equation~\ref{eq:nl_num} for 8\,s with a bang-bang duty cycle of $\pm 0.5$ at the hanging natural frequency of 12.5\,rad/s for the first 2.5\,s (open loop, no controller), and streams the result. \textbf{Expected:} the HUD shows the model source at about 60\,Hz, and the pendulum swings up and over.
+  \item To show any other run, call \texttt{twin\_play(t, q\_arm, q\_pend)} with the time vector and the angles of equation~\ref{eq:twin_angles}, for example from a logged harness run. The function interpolates the run linearly to 60 packets per second and paces them against the clock of the computer; an optional fourth argument \texttt{'real'} sends them as the real rig, and a fifth slows the playback down. Single poses are sent with \texttt{twin\_send}.
+  \item After a change of the CAD model, run \nolinkurl{twin/matlab/export_twin_meshes.m} and restart the application.
+\end{enumerate}
+The camera is moved with the W, A, S and D keys and the mouse. The C++ module is compiled with the MSVC 14.40 toolset of Visual Studio 2022, since Unreal Engine 5.3 cannot use the newer Visual Studio 18, and each compile job needs about 3\,GB of free memory.
+
+\subsection{Limitations}
+Limitations of the digital twin are:
+\begin{enumerate}
+  \item The twin only renders. It does not run the model, so the comparison of the real rig with the model requires a second program that simulates the model with the duty cycle applied on the rig and streams it at the same time.
+  \item No program sends the pose of the real rig yet. The packet is defined so that the ESP32 or the hardware-in-the-loop bridge can send it, but the overlay of the model on the real rig has only been used with simulated data.
+  \item The packet carries no time stamp or sequence number:
+  \begin{enumerate}
+    \item the twin draws the latest pose of each source at its own frame rate, so a delay of the network appears as a lag of the drawn rig and cannot be told apart from a lag of the rig itself;
+    \item a lost packet is not detected, and only the packet rate on the HUD and the 1\,s timeout show that a source has slowed down or stopped.
+  \end{enumerate}
+  \item The drawn geometry is the CAD model, while the dynamics come from the identified lumped parameters. Since the split between the mass and the length of the pendulum cannot be identified (see section~\ref{sec:harness_plant}), the drawn bodies show where the arm and the pendulum are, not their identified inertia.
+\end{enumerate}
 
 \end{document}

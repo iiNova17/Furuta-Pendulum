@@ -21,6 +21,13 @@ p.tp = 0.0006378819055; % A, pendulum joint dry friction
 p.Vs = 12;              % V, supply voltage
 p.eps = 0.1;   % rad/s, arm friction smoothing tanh(w/eps)
 p.eps1 = 0.05; % rad/s, pendulum friction smoothing
+% Arm breakaway (static) friction = the breakaway dead zone measured with the arm at rest (Furuta Lab Motor
+% tests, 2026-11-07: +13 % / -14 % duty), i = d*Vs/Rm. Added 2026-11-19: without it the model arm creeps at
+% 11 % duty, while the rig stays stuck (onboard swing-up runs data/runs/20261119_*). See furuta_rhs.m.
+p.tsp = 0.13*p.Vs/p.Rm;  % A (= 0.4554), positive direction
+p.tsn = 0.14*p.Vs/p.Rm;  % A (= 0.4905), negative direction
+p.stick_band = 0.05;     % rad/s, the arm can stick inside |dtheta0| < stick_band
+p.stick_T = 0.002;       % s, time constant that brings a stuck arm to rest
 p.Larm = 0.06807680699;  % m, arm length from h/G
 x0_hanging = [0; pi; 0; 0];
 x0_upright = [0; 0; 0; 0];

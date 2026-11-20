@@ -41,7 +41,22 @@ INFO = {
     'tcp': ('τc+/Kτ', 'A', 'N·m', 'arm Coulomb friction, positive direction'),
     'tcn': ('τc−/Kτ', 'A', 'N·m', 'arm Coulomb friction, negative direction'),
     'tp': ('τp/Kτ', 'A', 'N·m', 'pendulum joint dry friction'),
+    'tsp': ('τs+/Kτ', 'A', 'N·m', 'arm breakaway (static) friction, positive direction'),
+    'tsn': ('τs−/Kτ', 'A', 'N·m', 'arm breakaway (static) friction, negative direction'),
 }
+# Arm breakaway (stick-slip) friction. Not fitted: taken from the measured breakaway dead zone (Motor tests,
+# 2026-11-07: 13 % / 14 % duty with the arm at rest, so i = d Vs / Rm with no back-EMF). Optional: a parameter
+# set without tsp/tsn (or with tsp <= 0) simulates exactly as before (smoothed Coulomb only). With them the arm
+# sticks (Karnopp): inside |w0| < STICK_BAND the friction holds the arm, up to tsp / tsn, and bleeds its speed to
+# zero with time constant STICK_T; above the breakaway it slips with the identified Coulomb + viscous friction.
+STICK = ['tsp', 'tsn']
+STICK_BAND = .05      # rad/s
+STICK_T = .002        # s
+
+
+def breakaway_from_deadzone(deadzone_pos, deadzone_neg, Rm, Vs=12.):
+    """Breakaway friction in model units (A) from the breakaway duty measured with the arm at rest."""
+    return {'tsp': deadzone_pos * Vs / Rm, 'tsn': deadzone_neg * Vs / Rm}
 SIM_EPS = .1          # rad/s, arm friction smoothing tanh(w/eps) in the simulator
 SIM_EPS1 = .05        # rad/s, pendulum friction smoothing
 DRY_DEADBAND = .05    # rad/s, sgn(w1) is 0 below this in the regressions
@@ -420,27 +435,34 @@ def assemble(elec, pend, arm):
 
 # ------------------------------------------------------------------ simulation
 def full(params):
-    """Parameter dict with every key of PARAMS (older sessions have no pendulum dry friction: 0)."""
-    return {k: float(params.get(k, 0.)) for k in PARAMS}
+    """Parameter dict with every key of PARAMS and STICK (missing: 0; tsp = 0 means no stick-slip)."""
+    return {k: float(params.get(k, 0.)) for k in PARAMS + STICK}
 
 
 def _vec(params):
-    return np.array([full(params)[k] for k in PARAMS])
+    """PARAMS then STICK, the column order of sim_batch's parameter sets."""
+    f = full(params)
+    return np.array([f[k] for k in PARAMS + STICK])
 
 
 def _rhs_batch(x, d, th, Vs):
     Rm, Kb, Ja, Jp, h, Gk, Beq, b1, tcp, tcn, tp = [th[..., k] for k in range(11)]
+    zero = np.zeros_like(Rm)
+    tsp, tsn = (th[..., 11], th[..., 12]) if th.shape[-1] >= 13 else (zero, zero)
     t1, w0, w1 = x[..., 1], x[..., 2], x[..., 3]; s = np.sin(t1); c = np.cos(t1)
     cur = np.where(d != 0, (d * Vs - Kb * w0) / Rm, 0.)
     fr = np.where(w0 > 0, tcp, tcn) * np.tanh(w0 / SIM_EPS)
-    f0 = cur - Beq * w0 - fr - 2 * Jp * s * c * w0 * w1 + h * s * w1 ** 2
+    f0 = cur - Beq * w0 - 2 * Jp * s * c * w0 * w1 + h * s * w1 ** 2      # without the arm dry friction
     f1 = Jp * s * c * w0 ** 2 - b1 * w1 - tp * np.tanh(w1 / SIM_EPS1) + Gk * s
     m00 = Ja + Jp * s * s; det = m00 * Jp - (h * c) ** 2
+    need = f0 - h * c * f1 / Jp + det * w0 / (Jp * STICK_T)                 # friction that holds the arm
+    stuck = (tsp > 0) & (np.abs(w0) < STICK_BAND) & (need <= tsp) & (need >= -tsn)
+    f0 = f0 - np.where(stuck, need, fr)
     return np.stack([w0, w1, (Jp * f0 - h * c * f1) / det, (-h * c * f0 + m00 * f1) / det], -1), cur
 
 
 def sim_batch(th, U, X0, dt, Vs):
-    """th (P,11) parameter sets; U (W,n) duty at step dt; X0 (W,4). All P x W cases at once (RK4).
+    """th (P,11) or (P,13) parameter sets (_vec order); U (W,n) duty at step dt; X0 (W,4). All P x W cases at once (RK4).
     Returns states (P,W,n,4) and current (P,W,n)."""
     P_ = th.shape[0]; W, n = U.shape; x = np.broadcast_to(X0, (P_, W, 4)).copy()
     X = np.empty((P_, W, n, 4)); I = np.empty((P_, W, n)); th = th[:, None, :]
@@ -454,13 +476,19 @@ def sim_batch(th, U, X0, dt, Vs):
 
 def rhs(x, d, params, Vs):
     """Nonlinear model x' = f(x, duty) for one state; returns (x', current). Same physics as sim_batch."""
-    Rm, Kb, Ja, Jp, h, Gk, Beq, b1, tcp, tcn, tp = [full(params)[k] for k in PARAMS]
+    f = full(params)
+    Rm, Kb, Ja, Jp, h, Gk, Beq, b1, tcp, tcn, tp, tsp, tsn = [f[k] for k in PARAMS + STICK]
     t1, w0, w1 = x[1], x[2], x[3]; s = math.sin(t1); c = math.cos(t1)
     cur = (d * Vs - Kb * w0) / Rm if d != 0 else 0.
     fr = (tcp if w0 > 0 else tcn) * math.tanh(w0 / SIM_EPS)
-    f0 = cur - Beq * w0 - fr - 2 * Jp * s * c * w0 * w1 + h * s * w1 * w1
+    f0 = cur - Beq * w0 - 2 * Jp * s * c * w0 * w1 + h * s * w1 * w1        # without the arm dry friction
     f1 = Jp * s * c * w0 * w0 - b1 * w1 - tp * math.tanh(w1 / SIM_EPS1) + Gk * s
     m00 = Ja + Jp * s * s; m01 = h * c; det = m00 * Jp - m01 * m01
+    if tsp > 0 and abs(w0) < STICK_BAND:                                     # stick-slip (see STICK)
+        need = f0 - m01 * f1 / Jp + det * w0 / (Jp * STICK_T)
+        if -tsn <= need <= tsp:
+            fr = need
+    f0 -= fr
     return (w0, w1, (Jp * f0 - m01 * f1) / det, (-m01 * f0 + m00 * f1) / det), cur
 
 
@@ -577,6 +605,7 @@ def refine(params, preps, window_s=4., free=REFINE_FREE, progress=None, cancel=N
     sol = optimize.least_squares(fun, np.zeros(len(groups)), jac=jac, bounds=(-2, 2), max_nfev=max_nfev)
     th1 = expand(sol.x[None])[0]
     new = dict(zip(PARAMS, map(float, th1))); params = full(params)
+    new.update({k: params[k] for k in STICK if params[k] > 0})           # breakaway is measured, not refined
     change = {nm: 100 * (new[nm] / float(params[nm]) - 1) if float(params[nm]) else float('nan') for nm in free}
     return {'params': new, 'cost_before': cost0, 'cost_after': float(sol.cost), 'change_pct': change, 'nfev': int(sol.nfev),
             'windows': int(len(U)), 'window_s': window_s, 'free': list(free), 'at_bound': bool(np.any(np.abs(sol.x) > 1.99))}
@@ -994,6 +1023,11 @@ def export(folder, params, se, lin, scl=None, larm=None, info=None):
              'p = struct();'] + [f'p.{k} = {params[k]:.10g};' for k in PARAMS] + \
             [f'p.Vs = {Vs:.10g};', f'p.eps = {SIM_EPS:g};  % arm friction smoothing (rad/s) used by furuta_rhs',
              f'p.eps1 = {SIM_EPS1:g};  % pendulum friction smoothing (rad/s)']
+    if params.get('tsp', 0) > 0:
+        lines += [f'p.tsp = {params["tsp"]:.10g};  % arm breakaway friction, positive (A): measured dead zone',
+                  f'p.tsn = {params["tsn"]:.10g};  % arm breakaway friction, negative (A)',
+                  f'p.stick_band = {STICK_BAND:g};  % rad/s, the arm can stick inside |dtheta0| < stick_band',
+                  f'p.stick_T = {STICK_T:g};  % s, time constant that brings a stuck arm to rest']
     if larm is not None:
         lines.append(f'p.Larm = {larm:.10g};  % m, from the data')
     if scl:
@@ -1015,6 +1049,9 @@ def export(folder, params, se, lin, scl=None, larm=None, info=None):
 %   x = [theta0; theta1; dtheta0; dtheta1] (theta1 = 0 upright), d = duty in [-1, 1].
 %   Torque-like parameters are divided by K_tau (torque in amperes of motor current).
 %   At zero duty the driver is in standby: the motor is open-circuit and i = 0.
+%   Arm friction: Coulomb (smoothed, tanh) + viscous while slipping. With p.tsp > 0 the arm also sticks
+%   (Karnopp): inside |dtheta0| < p.stick_band the friction holds it, up to the breakaway p.tsp / p.tsn,
+%   and brings its speed to zero with time constant p.stick_T.
 s = sin(x(2)); c = cos(x(2)); w0 = x(3); w1 = x(4);
 if d ~= 0
     i = (d*p.Vs - p.Kb*w0)/p.Rm;
@@ -1022,9 +1059,16 @@ else
     i = 0;
 end
 if w0 > 0, tc = p.tcp; else, tc = p.tcn; end
-f0 = i - p.Beq*w0 - tc*tanh(w0/p.eps) - 2*p.Jp*s*c*w0*w1 + p.h*s*w1^2;
+fr = tc*tanh(w0/p.eps);
+f0 = i - p.Beq*w0 - 2*p.Jp*s*c*w0*w1 + p.h*s*w1^2;          % without the arm dry friction
 f1 = p.Jp*s*c*w0^2 - p.b1*w1 - p.tp*tanh(w1/p.eps1) + p.G*s;
 M = [p.Ja + p.Jp*s^2, p.h*c; p.h*c, p.Jp];
+if isfield(p, 'tsp') && p.tsp > 0 && abs(w0) < p.stick_band
+    dt_ = M(1,1)*p.Jp - M(1,2)^2;
+    need = f0 - M(1,2)*f1/p.Jp + dt_*w0/(p.Jp*p.stick_T);   % friction that holds the arm
+    if need <= p.tsp && need >= -p.tsn, fr = need; end
+end
+f0 = f0 - fr;
 a = M \\ [f0; f1];
 dx = [w0; w1; a(1); a(2)];
 end

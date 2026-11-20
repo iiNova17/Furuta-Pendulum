@@ -243,7 +243,7 @@ tag = @(kind, name, tg, y, x) B(['simulink/Signal Routing/' kind], name, [x y - 
 
 area(S, 'Motor + driver (report eq. 71, 88):  i = (d Vs - Kb w0) / Rm,  i = 0 when d = 0', ...
     [10 5 600 212], [1.0 0.95 0.85]);
-area(S, 'Friction (eq. 78; Coulomb smoothed as in 3.2) and joint torques', ...
+area(S, 'Friction (eq. 78 + breakaway stick-slip, lib/arm_friction.m) and joint torques', ...
     [10 220 600 620], [1.0 0.9 0.9]);
 area(S, 'Arm + pendulum: report eq. 89 as Simscape Multibody (parameters from plant_bodies; meshes visual only)', ...
     [630 10 1560 620], [0.88 0.92 1.0]);
@@ -274,22 +274,18 @@ W('driver on?', 1, 'i', 1);
 W('driver on?', 1, 'i goto', 1);
 
 % --- friction and torques -----------------------------------------------------------------------
-tag('From', 'w0 to friction', 'w0', 270, 40);
-B('simulink/Math Operations/Gain', 'divide by eps', [110 255 185 285], 'Gain', '1/hp.eps');
-B('simulink/Math Operations/Trigonometric Function', 'tanh', [225 255 265 285], 'Operator', 'tanh');
-B('simulink/Sources/Constant', 'tau_c+', [120 330 170 346], 'Value', 'hp.tcp');
-tag('From', 'w0 to sign', 'w0', 373, 120);
-B('simulink/Sources/Constant', 'tau_c-', [120 400 170 416], 'Value', 'hp.tcn');
-B('simulink/Signal Routing/Switch', 'w0 > 0 ?', [225 303 255 443], 'Criteria', 'u2 > Threshold', ...
-    'Threshold', '0');
-B('simulink/Math Operations/Product', 'arm Coulomb', [300 250 330 410]);
-W('w0 to friction', 1, 'divide by eps', 1);
-W('divide by eps', 1, 'tanh', 1);
-W('tanh', 1, 'arm Coulomb', 1);
-W('tau_c+', 1, 'w0 > 0 ?', 1);
-W('w0 to sign', 1, 'w0 > 0 ?', 2);
-W('tau_c-', 1, 'w0 > 0 ?', 3);
-W('w0 > 0 ?', 1, 'arm Coulomb', 2);
+% Arm dry friction: Coulomb while sliding plus the breakaway (stick-slip, report eq. stick), computed by
+% lib/arm_friction.m, the same function harness_plant_rhs uses (so the plant equals furuta_rhs).
+B('simulink/User-Defined Functions/MATLAB Function', 'arm friction', [180 245 330 425]);
+set_fn_script([S '/arm friction'], sprintf([ ...
+    'function fr = arm_dry_friction(w0, th1, w1, i, dist0, dist1, hp)\n' ...
+    '%% Arm dry friction [A]: sliding Coulomb + breakaway stick-slip (lib/arm_friction.m, = furuta_rhs).\n' ...
+    'fr = arm_friction(w0, th1, w1, i, [dist0; dist1], hp);\n']), {'hp'});
+fin = {'w0', 'th1', 'w1', 'i', 'dist0', 'dist1'};
+for k = 1:numel(fin)
+    tag('From', [fin{k} ' to arm friction'], fin{k}, 245 + 180*(2*k - 1)/12, 110);   % port heights
+    W([fin{k} ' to arm friction'], 1, 'arm friction', k);
+end
 
 tag('From', 'w1 to friction', 'w1', 490, 40);
 B('simulink/Math Operations/Gain', 'divide by eps1', [110 475 185 505], 'Gain', '1/hp.eps1');
@@ -315,7 +311,7 @@ B('simulink/Math Operations/Sum', 'pendulum torque', [460 475 490 535], 'Inputs'
 tag('Goto', 'tau0 goto', 'tau0', 300, 520);
 tag('Goto', 'tau1 goto', 'tau1', 505, 520);
 W('i to torque', 1, 'arm torque', 1);
-W('arm Coulomb', 1, 'arm torque', 2);
+W('arm friction', 1, 'arm torque', 2);
 W('dist0 to torque', 1, 'arm torque', 3);
 W('pendulum dry', 1, 'pendulum torque', 1);
 W('dist1 to torque', 1, 'pendulum torque', 2);
@@ -419,4 +415,14 @@ a = Simulink.Annotation([sys '/' strtok(txt, ':')]);
 a.Text = txt;
 a.Position = [xy xy + [700 50]];
 a.HorizontalAlignment = 'left';
+end
+
+function set_fn_script(blk, code, params)
+% Code of a MATLAB Function block; the listed arguments become parameters (workspace variables).
+ch = sfroot().find('-isa', 'Stateflow.EMChart', 'Path', blk);
+ch.Script = code;
+for k = 1:numel(params)
+    d = ch.find('-isa', 'Stateflow.Data', 'Name', params{k});
+    d.Scope = 'Parameter';
+end
 end
