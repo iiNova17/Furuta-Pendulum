@@ -19,6 +19,7 @@ from .viewer import SignalView
 from .fitview import FitView
 from .estimate_page import EstimatePage
 from .onboard_page import OnboardPage
+from .twin_page import TwinPage
 from .backend import ROOT,MatlabBackend,jsonable,save_capture,load_capture,load_run
 
 pg.setConfigOptions(useOpenGL=False,antialias=False,background='w',foreground='#263649')
@@ -101,10 +102,10 @@ class LabApp(W.QMainWindow):
         pr.addWidget(self.progress_label,1);pr.addWidget(self.progress_bar);pr.addWidget(self.cancel_button)
         self.progress_row.setStyleSheet('background:#eaf2ff;border-radius:5px;');self.progress_row.hide();v.addWidget(self.progress_row)
         self.nav=W.QTabBar();self.nav.setExpanding(False)
-        for title in ['Live && recordings','Still noise && filters','Motor tests','Parameter estimation','Onboard control','Setup && guide']:self.nav.addTab(title)
+        for title in ['Live && recordings','Still noise && filters','Motor tests','Parameter estimation','Onboard control','Digital twin','Setup && guide']:self.nav.addTab(title)
         self.nav.currentChanged.connect(self.page_changed);v.addWidget(self.nav)
         split=W.QSplitter();v.addWidget(split,1);self.pages=W.QStackedWidget();self.pages.setMinimumWidth(450);split.addWidget(self.pages)
-        for build in [self.live_page,self.noise_page,self.motor_page,self.model_page,self.onboard_page,self.setup_page]:
+        for build in [self.live_page,self.noise_page,self.motor_page,self.model_page,self.onboard_page,self.twin_page,self.setup_page]:
             area=W.QScrollArea();area.setWidgetResizable(True);area.setHorizontalScrollBarPolicy(QtCore.Qt.ScrollBarAlwaysOff);page=W.QWidget();layout=W.QVBoxLayout(page);layout.setSpacing(9)
             build(layout);layout.addStretch();area.setWidget(page);self.pages.addWidget(area)
         right=W.QSplitter(QtCore.Qt.Vertical)
@@ -114,6 +115,9 @@ class LabApp(W.QMainWindow):
         self.line=self.plot.plot(pen=pg.mkPen('#126cb1',width=1));self.second=self.plot.plot(pen=pg.mkPen('#d16d21',width=1))
         self.right_stack.addWidget(self.plot)
         self.fitview=FitView();self.right_stack.addWidget(self.fitview)
+        if self.twin.view is None:
+            slot=W.QLabel('3D view not available:\n'+self.twin.error);slot.setAlignment(QtCore.Qt.AlignCenter);slot.setWordWrap(True)
+        self.right_stack.addWidget(self.twin.view or slot)   # index 3: digital twin
         right.addWidget(self.right_stack)
         self.bottom=W.QTabWidget();self.output=W.QTextBrowser();self.output.setOpenExternalLinks(False);self.bottom.addTab(self.output,'Messages')
         raw=W.QWidget();rl=W.QVBoxLayout(raw);rl.setContentsMargins(4,4,4,4);row=W.QHBoxLayout();rl.addLayout(row)
@@ -256,6 +260,8 @@ class LabApp(W.QMainWindow):
         self.text(g,'MATLAB starts in a separate process on demand and uses the output-shaft arm speed; live sensors and STOP stay independent.',small=True)
     def onboard_page(self,v):
         self.onboard=OnboardPage(self);self.onboard.build(v)
+    def twin_page(self,v):
+        self.twin=TwinPage(self);self.twin.build(v)
     def setup_page(self,v):
         g=self.group(v,'Encoder scale')
         self.gear=self.number(g,'Reduction (provisional)',34,.1,10000,4)
@@ -353,9 +359,10 @@ class LabApp(W.QMainWindow):
     def page_changed(self,index):
         self.pages.setCurrentIndex(index)
         if index==3:self.right_stack.setCurrentIndex(2 if self.fit_drawn else 0)
-        elif index==4:self.right_stack.setCurrentIndex(0)      # onboard control: live signals
+        elif index==4:self.right_stack.setCurrentIndex(3 if self.twin.on_onboard.isChecked() else 0)   # onboard control: live signals or the twin
+        elif index==5:self.right_stack.setCurrentIndex(3)      # digital twin
         else:self.right_stack.setCurrentIndex(1 if index and self.analysis_drawn else 0)
-        self.live=self.right_stack.currentIndex()==0
+        self.live=self.right_stack.currentIndex()==0;self.twin.set_active(self.right_stack.currentIndex()==3)
     def show_fit_view(self):
         self.fit_drawn=True;self.live=False;self.right_stack.setCurrentIndex(2)
     def show_analysis(self):
@@ -691,7 +698,7 @@ class LabApp(W.QMainWindow):
     def set_run(self,path,rows,manifest):
         self.run_data,self.run_manifest,self.run_path=rows,manifest,Path(path)
         meta=manifest.get('metadata',{});self.dead_windows=meta.get('dead_windows');self.run_start=None
-        self.set_model_source(Path(path).name)
+        self.set_model_source(Path(path).name);self.twin.run_changed()
     def set_model_source(self,name):
         meta=self.run_manifest.get('metadata',{})
         self.model_source.setText(f'Open recording: {name} · {len(self.run_data)} samples · {meta.get("purpose","recording")}')
@@ -811,7 +818,7 @@ class LabApp(W.QMainWindow):
         self.estimate.update_status();self.onboard.update_status()
         self.max_refresh=max(self.max_refresh,time.perf_counter()-begin)
     def closeEvent(self,event):
-        self.closing=True;self.timer.stop();self.cancel.set();self.device.close();self.backend.cancel();self.executor.shutdown(wait=False,cancel_futures=True);event.accept()
+        self.closing=True;self.timer.stop();self.twin.close();self.cancel.set();self.device.close();self.backend.cancel();self.executor.shutdown(wait=False,cancel_futures=True);event.accept()
 
 def main():
     app=W.QApplication(sys.argv);app.setFont(QtGui.QFont('Segoe UI',10))

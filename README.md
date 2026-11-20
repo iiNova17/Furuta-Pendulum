@@ -13,7 +13,7 @@ Rotary inverted pendulum: hardware, firmware, lab software, identified model and
 | `data/runs/` | Raw hardware recordings (one folder per run) |
 | `data/estimation/` | Furuta Lab estimation sessions; `claude_loop` is the final model, `claude_loop/export` its MATLAB/LaTeX export |
 | `data/captures`, `data/logs`, `data/matlab-jobs` | Passive captures, app logs and MATLAB backend jobs |
-| `desktop/` | Furuta Lab (Python/Qt) app: live view, experiments, parameter estimation (`furuta_lab/estimation.py`), simulation bench, tests |
+| `desktop/` | Furuta Lab (Python/Qt) app: live view, experiments, parameter estimation (`furuta_lab/estimation.py`), simulation bench, Onboard control tab, Digital twin tab (`docs/TWIN.md`), tests |
 | `firmware/` | ESP32-S3 firmware (PlatformIO) |
 | `protocol/` | Serial protocol spec and golden vectors |
 | `config/` | Device profile and schema |
@@ -33,7 +33,8 @@ Rotary inverted pendulum: hardware, firmware, lab software, identified model and
 3. Model in MATLAB/Simulink: `cd matlab/model`, `run furuta_params.m`, then follow `matlab/model/README.md`.
 4. Controllers / simulation: `cd matlab/harness`, `harness_setup`, then `run_sim('ctrl_hybrid.slx', 'swingup', 'Plot', true)`;
    fill in your section of `controllers/hybrid/ctrl_hybrid_design.m` (see `matlab/harness/README.md`).
-5. Digital twin: `powershell -File twinun_twin.ps1` (Unreal Engine 5.3), then `twin/matlab/twin_demo.m`.
+5. Digital twin: tab **Digital twin** in Furuta Lab (`docs/TWIN.md`), or the Unreal one: `powershell -File twin
+un_twin.ps1` (Unreal Engine 5.3), then `twin/matlab/twin_demo.m`.
 6. Report: build `report/furuta_model.tex` with `latexmk -pdf` (MiKTeX or TeX Live).
 7. Firmware: open `firmware/` in VS Code with PlatformIO.
 

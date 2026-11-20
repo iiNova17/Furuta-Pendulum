@@ -366,7 +366,7 @@ void dispatch(const Packet&p) {
   else if(op=="HELLO"){
     if(id!=lastHelloId||p.session!=lastHelloSession){challenge=((uint64_t)esp_random()<<32)|esp_random();lastHelloId=id;lastHelloSession=p.session;}
     response["challenge"]=std::to_string(challenge);
-    response["firmware"]="FurutaWorkbench/1.10";response["currentChecksOption"]=true;response["burstCancel"]=true;response["runLengthUnlimited"]=true;response["onboardControl"]=true;response["protocol"]=1;response["coreRecordBytes"]=88;
+    response["firmware"]="FurutaWorkbench/1.11";response["streamBatching"]="immediate";response["currentChecksOption"]=true;response["burstCancel"]=true;response["runLengthUnlimited"]=true;response["onboardControl"]=true;response["protocol"]=1;response["coreRecordBytes"]=88;
     {JsonArray a=response.createNestedArray("onboardPeriods");for(int i=0;i<rates::count;i++)a.add(rates::Ts[i]);}
     response["pendHz"]=1000/kPendPeriodMs;response["as5600Conf"]=as5600Conf;response["as5600SlowFilter"]=kAs5600SlowFilter;
     response["adcChunkMax"]=64;response["coreChunkMax"]=16;
@@ -573,7 +573,9 @@ void loop() {
   }
   static uint64_t lastTransmission=0;
   const uint64_t now=esp_timer_get_time();
-  if(uxQueueMessagesWaiting(streamQueue)<4&&now-lastTransmission<20000){delay(1);return;}
+  // 1.11: send as soon as a record is queued (was: wait for 4 records or 20 ms), so the newest sample reaches the
+  // PC one record period after it was taken (live plots, digital twin). 250 records/s still fit 460800 baud.
+  if(uxQueueMessagesWaiting(streamQueue)==0){delay(1);return;}
   lastTransmission=now;
   std::vector<uint8_t> data;
   std::vector<hw::Snapshot> batch;hw::Snapshot s;

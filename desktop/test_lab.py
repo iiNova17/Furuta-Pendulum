@@ -294,6 +294,57 @@ class LabTests(unittest.TestCase):
         with self.assertRaises(RuntimeError):p.apply_limits()        # older firmware refuses 0
         d.ready=d.connected=False;w.close()
 
+class TwinTests(unittest.TestCase):
+    def test_meshes_and_kinematics(self):
+        from furuta_lab import twin_core as T
+        for b in T.BODIES:
+            pos,nrm=T.load_ripmesh(T.ASSETS/f'{b}.ripmesh');v=pos.reshape(-1,3,3).astype(float)
+            self.assertEqual(pos.shape,nrm.shape);self.assertGreater(len(pos),300)
+            self.assertGreater(np.einsum('ij,ij',v[:,0],np.cross(v[:,1],v[:,2]))/6,0)   # positive enclosed volume: outward winding/normals
+        pivot,axis=T.load_geometry();pend,_=T.load_ripmesh(T.ASSETS/'pendulum.ripmesh')
+        tip=pend[np.argmin(pend[:,2])]                                      # lowest point when hanging
+        self.assertLess(tip[2],pivot[2])
+        up=T.pose_pendulum([tip],0.,np.pi,pivot,axis)[0];self.assertGreater(up[2],pivot[2])   # q_pend = pi: upright
+        self.assertAlmostEqual(np.linalg.norm(up-pivot),np.linalg.norm(tip-pivot),6)
+        r=T.pose_pendulum([tip],np.pi/2,0.,pivot,axis)[0]                   # arm +90 deg about +Z
+        self.assertAlmostEqual(r[0],-tip[1],6);self.assertAlmostEqual(r[1],tip[0],6)
+    def test_model_ghost_and_udp(self):
+        from furuta_lab import twin_core as T
+        g=T.ModelGhost(resync_s=0)
+        for k in range(300):x=g.feed(k*.004,0.,0.,0.)                       # hanging, no drive: stays at rest
+        self.assertLess(max(abs(v) for v in x),1e-6)
+        g=T.ModelGhost(resync_s=.5)
+        for k in range(50):x=g.feed(k*.004,0.,0.,np.pi-.05)                 # held near upright: the model falls
+        self.assertGreater(abs(x[1]-(np.pi-.05)),1e-3)
+        x=g.feed(.6,0.,0.,np.pi-.05);self.assertAlmostEqual(x[1],np.pi-.05,6)   # re-sync puts it back
+        self.assertEqual(T.unpack(T.pack(1,.5,-2.)),(1,.5,-2.));self.assertIsNone(T.unpack(b'XXXX'+bytes(12)))
+        rx,tx=T.UdpLink(),T.UdpLink();rx.listen(0);port=rx.rx.getsockname()[1];tx.forward('127.0.0.1',port)
+        tx.send(0,.25,3.)
+        import time;end=time.monotonic()+1
+        while 0 not in rx.poll() and time.monotonic()<end:time.sleep(.01)
+        self.assertEqual(rx.poll()[0],(.25,3.));rx.close();tx.close()
+    def test_twin_page_live_and_playback(self):
+        from PySide6.QtWidgets import QApplication
+        from furuta_lab.app import LabApp
+        from furuta_lab import wire
+        app=QApplication.instance() or QApplication([]);w=LabApp();w.show();p=w.twin
+        w.nav.setCurrentIndex(5);self.assertEqual(w.right_stack.currentIndex(),3)
+        if p.view is None:w.close();self.skipTest(f'3D view unavailable: {p.error}')
+        self.assertTrue(p.timer.isActive())
+        w.nav.setCurrentIndex(0);self.assertFalse(p.timer.isActive())           # no frames while hidden
+        p.on_onboard.setChecked(True);w.nav.setCurrentIndex(4);self.assertEqual(w.right_stack.currentIndex(),3)
+        rows=np.zeros(200,dtype=wire.CORE);rows['device_us']=np.arange(200)*4000
+        rows['count']=1000+np.arange(200);rows['pend_raw']=2048+1024;rows['validity']=3     # pendulum at +90 deg from down
+        cfg={'countsPerRev':1496,'pendDownRaw':2048,'armSign':1,'pendSign':1};st={'centered':True,'centerCount':1000}
+        rig,ghost,_=p._feed(rows,range(0,50),cfg,st)
+        self.assertAlmostEqual(rig[0],np.radians(49*360/1496),6);self.assertAlmostEqual(rig[1],np.pi/2,3)        # 90 deg from hanging
+        self.assertIsNotNone(ghost)
+        w.run_data,w.run_manifest,w.run_path=rows,{'config':cfg,'status':st},Path('fake_run')
+        p.src_rec.setChecked(True);self.assertEqual(len(p.frames[0]),200)
+        p.play['t']=.5;p.play['wall']=__import__('time').perf_counter();p.tick()
+        self.assertAlmostEqual(p.view.pose['rig'][0],np.radians(125*360/1496),2)  # record at 0.5 s
+        p.on_onboard.setChecked(False);w.close()
+
 from test_estimation import *  # noqa: E402,F401,F403
 
 if __name__=='__main__':unittest.main(verbosity=2)

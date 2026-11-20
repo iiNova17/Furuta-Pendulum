@@ -62,6 +62,14 @@ reading), which is why the read rate went up with the controller rate. The cost 
 high-frequency duty switching (5.1 vs 2.2 %/ms rms), well inside the slew limit. The 4 ms setting is still the one
 validated in Simulink and replayed by `native_onboard.cpp`.
 
+## Firmware 1.11: stream records sent immediately
+
+The stream task used to wait until 4 records were queued or 20 ms had passed before sending, so a record could
+reach the laptop up to 16–20 ms late. Every record now leaves in its own packet as soon as it is taken (HELLO
+reports `streamBatching: "immediate"`); at 250 Hz that is 250 packets/s, measured 1500 packets in 6 s. The
+app's Digital twin tab (`docs/TWIN.md`) shows the pose about 2 ms (median) after the fastest packet; the rest of
+the delay is the FTDI latency timer (set it to 1 ms, see `docs/TWIN.md`). Control is unaffected: it runs on the MCU.
+
 ## Firmware 1.10: current sensor option, capture fixes
 
 - **Ignore the current sensor during runs** (profile `currentChecks: false`; app: Onboard control → “Ignore the
@@ -177,10 +185,10 @@ shows every item below with ✓ / ✗ / ! (advisory), and the Start button stays
 is DISARMED, connected to firmware 1.6 or newer and the 12 V box is ticked. The firmware refuses `START_ONBOARD`
 on its own gates as well (see above).
 
-1. Flash firmware 1.10 (`cd firmware && pio run -t upload --upload-port COM11`). Flashing reboots the MCU:
+1. Flash firmware 1.11 (`cd firmware && pio run -t upload --upload-port COM11`). Flashing reboots the MCU:
    redo arm centre, pendulum-down reference and current zero on the Live tab (References), and check
    the encoder scale (Setup).
-   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.10)”.
+   **Expected:** the app connects; readiness shows “Firmware with onboard control (FurutaWorkbench/1.11)”.
 2. Onboard control → **Read from device** (knobs), then **Apply these onboard-run limits to RAM**:
    run length (`maxDuration`, e.g. 20 s), maximum duty 50 %, slew 10000 %/s (= 100 /s; the old default
    is far too slow for feedback) and current trip 4 A (the default; A. Note: the current sensor reaches the top of the ESP32 ADC at about +3.2 A, where ADC_INVALID_OR_CLIPPED stops the motor first; the TB6612 is rated 1.2 A continuous / 3.2 A peak.). Travel stays as commissioned on Motor tests
