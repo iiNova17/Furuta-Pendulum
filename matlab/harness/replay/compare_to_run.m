@@ -3,6 +3,7 @@ function C = compare_to_run(run, opts)
 %   C = compare_to_run('20261115_100519_238300')      a run exported by export_runs.py
 %   C = compare_to_run(run, 'Resync', 2)              restart from the measured state every 2 s
 %   C = compare_to_run(run, 'Plant', struct('h', ...)) try other plant parameters
+%   C = compare_to_run(run, 'Model', 'table6')         the report's Table 6 model instead of the 20 Nov one
 %
 %   The Simscape plant is driven by the duty the real firmware applied (recorded), starting from the
 %   measured state 0.5 s into the run, like the report's validation (estimation.simulate). The
@@ -17,6 +18,7 @@ arguments
     opts.Resync (1,1) double = 0
     opts.Plant struct = struct()
     opts.Plot (1,1) logical = true
+    opts.Model (1,:) char = '20261120'          % plant model (harness_config 'Model'); 'table6' = report Table 6
 end
 root = harness_setup();
 here = fullfile(root, 'replay');
@@ -27,7 +29,7 @@ end
 M = load(f);
 M.t = M.t(:); M.th0 = M.th0(:); M.th1 = M.th1(:); M.w0 = M.w0(:); M.w1 = M.w1(:); M.i = M.i(:); M.app = M.app(:);
 
-cfg = harness_config('ideal');
+cfg = harness_config('ideal', 'Model', opts.Model);
 cfg.Ts = cfg.fw.Ts*max(1, round(1/M.fs/cfg.fw.Ts));      % recording's rate, on the 1 ms firmware grid
 cfg.act.max_duty = 1; cfg.act.slew = Inf; cfg.act.standby = 0; cfg.act.duty_levels = Inf;
 cfg.act.reverse_through_zero = false;
