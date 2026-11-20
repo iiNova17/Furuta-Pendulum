@@ -239,6 +239,15 @@ Use the palette in matplotlib (custom style: serif font matching the document, l
 
 **Layout rules**
 - Figures placed near their first reference; no page with only a float unless it is a full-page figure.
+- Every figure, diagram and table stays inside the section (and subsection) where it is written: it may never appear after the next heading, or above its own heading. In LaTeX, enforce this in the preamble, not by hand-placing floats:
+  ```latex
+  \usepackage{flafter}               % a float never appears before the point where it is written
+  \usepackage[section]{placeins}     % \FloatBarrier at every \section
+  \usepackage{etoolbox}
+  \pretocmd{\subsection}{\FloatBarrier}{}{}
+  \pretocmd{\subsubsection}{\FloatBarrier}{}{}
+  ```
+  In Word, insert figures in line with text (not floating) inside their section, with the caption kept with the figure. Check this on every page in the render check (section 7, step 8).
 - No overfull boxes, widowed headings, or tables split badly across pages.
 - Equations centered and numbered on the right.
 - Write cross-references in words with `~\ref{}`: `equation~\ref{eq:thrust}`, `Figure~\ref{fig:fbd}`, `Table~\ref{tab:exp}`, `section~\ref{sec:model}`. Do not use `\eqref`-style "(18)" alone, "Eq."/"Fig." abbreviations, or cleveref defaults.
@@ -253,7 +262,7 @@ Use the palette in matplotlib (custom style: serif font matching the document, l
 5. **Pattern pass:** search for every section-4 pattern and rewrite offending sentences.
 6. **Critique loop:** privately critique anything still generic or artificial, fix it, then produce the final version.
 7. **Two-channel scan:** search for placeholders, gap notes, references to the user/conversation, drafting comments, provenance tags. Resolve every hit; anything unresolved becomes a question in chat.
-8. **Render check:** compile the document, rasterize the pages, and look at every page: figure legibility, palette consistency, float placement, overflow, title page, headers. Fix and recompile.
+8. **Render check:** compile the document, rasterize the pages, and look at every page: figure legibility, palette consistency, float placement (every figure and table inside its own section, see section 6), overflow, title page, headers. Fix and recompile.
 9. **Fresh-reader test** (procedures and anything others must follow): if subagents are available, give a fresh agent only the report and ask for steps it could not execute, terms or values it could not trace, and the main result in one sentence. Otherwise do this pass yourself as a newcomer. Fix what it finds.
 10. Deliver: the report files, then a short chat note with checklist status, figure sources to confirm, anything narrowed or omitted and why, and open questions.
 

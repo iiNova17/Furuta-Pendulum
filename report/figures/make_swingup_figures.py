@@ -2,7 +2,7 @@
 
 Reads swingup_data.mat, written by matlab/harness/controllers/hybrid/swingup_report_data.m from the
 harness results (swingup_catch_region, swingup_sweep, swingup_corner_test), and writes
-fig_swingup_catch.pdf, fig_swingup_run.pdf, fig_swingup_map.pdf, fig_swingup_surface.pdf and
+fig_swingup_catch.pdf, fig_swingup_catch3d.pdf, fig_swingup_run.pdf, fig_swingup_map.pdf, fig_swingup_surface.pdf and
 fig_swingup_corners.pdf here.  Run from the repository root:  python report/figures/make_swingup_figures.py
 """
 from pathlib import Path
@@ -12,6 +12,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from matplotlib.colors import LinearSegmentedColormap, Normalize, ListedColormap
 from matplotlib import cm as mcm
+from matplotlib import colors as mcolors
 from scipy.io import loadmat
 
 HERE = Path(__file__).resolve().parent
@@ -59,6 +60,35 @@ ax.set_xlabel(r'$\theta_1$ at hand-over [deg]'); ax.set_ylabel(r'$\dot\theta_1$ 
 cb = fig.colorbar(im, ax=ax, fraction=.04, pad=.02); cb.set_label('Peak current, held [A]', fontsize=7.5); cb.ax.tick_params(labelsize=7)
 ax.legend(loc='upper right', fontsize=6.8, framealpha=.95)
 fig.tight_layout(); fig.savefig(HERE / 'fig_swingup_catch.pdf'); plt.close(fig)
+
+# ---- 1b. the same catch region in 3D: height = peak current, colour = peak arm angle (held states) ----
+TH, W = np.meshgrid(th, w)
+ipk_c = np.asarray(C.ipk, float); th0_c = np.asarray(C.th0max, float)
+norm = Normalize(0, 100)
+fig = plt.figure(figsize=(TW, 4.6))
+ax = fig.add_axes([-.02, -.04, .86, 1.08], projection='3d', computed_zorder=False)
+floor = np.where(held, np.nan, 0.0)                                   # floor: light gray = falls, darker = trips
+ax.plot_surface(TH, W, floor, facecolors=np.where(trip[..., None], mcolors.to_rgba('#b5b5b5'), mcolors.to_rgba('#ececec')),
+                rstride=1, cstride=1, linewidth=0, shade=False, zorder=1)
+for e, ls in [(0.0, ':'), (E0, '-')]:                                 # energy curves, rising pendulum
+    wv = np.sqrt(np.maximum(4 * G / Jp * (e - (c - 1) / 2), 0))
+    for side in (tt < 0, tt > 0):
+        s_ = side & (wv <= w[-1])
+        ax.plot(tt[s_], -np.sign(tt[s_]) * wv[s_], np.zeros(s_.sum()), ls, color=NAVY, lw=1.3, zorder=4)
+ax.plot([-ct, ct, ct, -ct, -ct], [-cw, -cw, cw, cw, -cw], [0] * 5, '--', color=GREEN, lw=1.4, zorder=4)
+Zh = np.where(held, ipk_c, np.nan)
+ax.plot_surface(TH, W, Zh, facecolors=BLUES(norm(np.where(held, th0_c, 0))),
+                rstride=1, cstride=1, linewidth=.3, edgecolor='#555555', shade=False, alpha=.95, zorder=5)
+ax.contour(TH, W, np.ma.masked_invalid(Zh), levels=[1.5], colors=[TERRA], linewidths=1.6, linestyles='--', zorder=6)
+hx, hy = np.asarray(H.th1_catch)[ok], np.asarray(H.w1_catch)[ok]
+ax.scatter(hx, hy, np.zeros(len(hx)), marker='o', facecolor='w', edgecolor='k', s=18, linewidths=.9, depthshade=False, zorder=7)
+ax.set_xlabel(r'$\theta_1$ at hand-over [deg]', labelpad=2); ax.set_ylabel(r'$\dot\theta_1$ at hand-over [rad/s]', labelpad=4)
+ax.set_zlabel('Peak current, held [A]', labelpad=2)
+ax.set_xlim(th[0], th[-1]); ax.set_ylim(w[0], w[-1]); ax.set_zlim(0, 2.0)
+ax.view_init(elev=34, azim=-50); ax.set_box_aspect(None, zoom=.95); ax.tick_params(labelsize=7, pad=1)
+sm = mcm.ScalarMappable(norm=norm, cmap=BLUES)
+cb = fig.colorbar(sm, cax=fig.add_axes([.86, .2, .018, .6])); cb.set_label(r'Peak arm angle $|\theta_0|_{\max}$ [deg]', fontsize=7.5); cb.ax.tick_params(labelsize=7)
+fig.savefig(HERE / 'fig_swingup_catch3d.pdf', bbox_inches='tight', pad_inches=.05); plt.close(fig)
 
 # ---- 2. the final design, nominal run -------------------------------------------------------
 R = D['run']; t = R.t; tc = float(R.tcap)
