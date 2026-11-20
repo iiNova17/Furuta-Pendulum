@@ -9,7 +9,7 @@ the plots on the Onboard control tab (“Show the twin instead of the plots on t
 | `desktop/furuta_lab/twin_core.py` | meshes, kinematics, model ghost, RIP1 UDP packet (no Qt, unit-tested) |
 | `desktop/furuta_lab/twin_view.py` | Qt Quick 3D view (`TwinView`, a `QQuickWidget`) and the mesh geometry type |
 | `desktop/furuta_lab/twin_page.py` | the tab: source, model ghost, UDP, latency readout |
-| `desktop/furuta_lab/twin_assets/` | `housing/arm/pendulum.ripmesh` and `twin_geometry.json` (copied from `main:twin/RIPTwin/Content/RIP`, generated from the CAD by `twin/matlab/export_twin_meshes.m`), `model_params.json` (the identified model, `claude_loop` session), `twin.qml` (scene) |
+| `desktop/furuta_lab/twin_assets/` | `housing/arm/pendulum.ripmesh` and `twin_geometry.json` (copied from `main:twin/RIPTwin/Content/RIP`, generated from the CAD by `twin/matlab/export_twin_meshes.m`), `model_params.json` (the identified model: since 2026-11-20 the re-identified `suite_20261120` model, = `matlab/model/furuta_params_20261120.m`; before, `claude_loop`), `twin.qml` (scene) |
 
 ## Why Qt Quick 3D and not Unreal 4.27 or three.js
 
@@ -70,5 +70,9 @@ the default 16 ms; a re-measurement after the change is not done yet.
 
 `PySide6-Addons==6.12.0` (Qt Quick 3D), listed in `desktop/requirements.txt`; `Setup-Furuta-Lab.ps1` installs it.
 Without it the tab shows why the view is unavailable and the rest of the app works as before.
+Note: while the rig balances, the ghost (open loop, driven by the applied duty) falls off the unstable upright within
+the re-sync time; that is expected. Fixed 2026-11-20: the controller state (SWING-UP / STABILIZE) was never shown in the
+HUD (its assignment had ended up inside a comment).
+
 Tests: `desktop/test_lab.py` → `TwinTests` (mesh orientation, kinematics, model ghost at rest and re-sync,
 UDP round trip, tab switching and playback with the 3D view).

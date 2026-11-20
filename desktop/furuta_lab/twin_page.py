@@ -266,7 +266,8 @@ class TwinPage:
             th1 = math.radians(th1) if th1 is not None else None
             if th1 is None:
                 continue
-            rig = (th0, (th1 % (2 * math.pi)) - math.pi);           # q_pend in [-pi, pi), 0 hanging ctrl = int(r['ctrl']) if 'ctrl' in r.dtype.names else 0
+            rig = (th0, (th1 % (2 * math.pi)) - math.pi)            # q_pend in [-pi, pi), 0 hanging
+            ctrl = int(r['ctrl']) if 'ctrl' in r.dtype.names else 0
             if self.ghost is not None:
                 x = self.ghost.feed(int(r['device_us']) * 1e-6, float(r['applied']), th0, th1)
                 if x is not None:
