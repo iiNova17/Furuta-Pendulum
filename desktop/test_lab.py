@@ -336,7 +336,7 @@ class TwinTests(unittest.TestCase):
         rows=np.zeros(200,dtype=wire.CORE);rows['device_us']=np.arange(200)*4000
         rows['count']=1000+np.arange(200);rows['pend_raw']=2048+1024;rows['validity']=3     # pendulum at +90 deg from down
         cfg={'countsPerRev':1496,'pendDownRaw':2048,'armSign':1,'pendSign':1};st={'centered':True,'centerCount':1000}
-        rig,ghost,_=p._feed(rows,range(0,50),cfg,st)
+        rows['ctrl']=3;rig,ghost,ctrl=p._feed(rows,range(0,50),cfg,st);self.assertEqual(ctrl,3)   # controller state reaches the HUD
         self.assertAlmostEqual(rig[0],np.radians(49*360/1496),6);self.assertAlmostEqual(rig[1],np.pi/2,3)        # 90 deg from hanging
         self.assertIsNotNone(ghost)
         w.run_data,w.run_manifest,w.run_path=rows,{'config':cfg,'status':st},Path('fake_run')
