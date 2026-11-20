@@ -2,8 +2,8 @@
 
 The LQR is the design of matlab/harness/controllers/hybrid/ctrl_hybrid_design.m (sim-harness branch):
     sysd = c2d(ss(A_up, Bd_up, eye(4), 0), Ts);  K = dlqr(sysd.A, sysd.B, Q, R)
-with Q = diag(1./[30 deg, 8 deg, 20, 30].^2) and R = 1/0.10^2, and A_up / Bd_up of matlab/model/furuta_params.m
-(report eq. 104, duty input). Only the sample time Ts changes here; the weights are the design file's.
+with Q = diag(1./[30 deg, 8 deg, 20, 30].^2) and R = 1/0.10^2, and A_up / Bd_up of the design model
+(MODEL_FILE: matlab/model/furuta_params_20261120.m since 2026-11-20; furuta_params.m = report Table 6). Only the sample time Ts changes here; the weights are the design file's.
 Check: the 4 ms gain must equal design::K in onboard_design.h (export_onboard.m) to round-off; the script
 refuses to write otherwise. Re-run after a change of Q, R or the model:
 
@@ -20,9 +20,19 @@ HERE = Path(__file__).resolve().parent
 INCLUDE = HERE.parent / 'include'
 PERIODS = (0.001, 0.002, 0.004)          # supported controller periods [s]
 
-A_up = np.array([[0, 0, 1, 0], [0, 0, 0, 1], [0, -5.812080219, -28.92465458, 0.02422587031],
-                 [0, 162.7379816, 31.40924044, -0.6783232662]])
-Bd_up = np.array([[0], [0], [646.8495011], [-702.4129348]])
+# The model the design file designs with (ctrl_hybrid_design.m, D.design_model): its upright linear model, duty input.
+MODEL_FILE = HERE.parents[1] / 'matlab' / 'model' / 'furuta_params_20261120.m'   # Table 6: furuta_params.m
+
+
+def _matrix(text, name):
+    m = re.search(name + r'\s*=\s*\[([^\]]*)\]', text)
+    rows = [r.split() for r in m.group(1).split(';')]
+    return np.array([[float(v) for v in r] for r in rows])
+
+
+_model = MODEL_FILE.read_text(encoding='utf-8')
+A_up = _matrix(_model, 'A_up')
+Bd_up = _matrix(_model, 'Bd_up')
 Q = np.diag(1 / np.array([math.radians(30), math.radians(8), 20, 30]) ** 2)
 R = np.array([[1 / 0.10 ** 2]])
 
