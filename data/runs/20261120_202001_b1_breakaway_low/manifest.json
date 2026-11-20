@@ -1,0 +1,623 @@
+{
+  "schema": 2,
+  "source": "hardware",
+  "created": 1795198801.6980298,
+  "config": {
+    "schema": 1,
+    "maxDuty": 0.5,
+    "slewPerSecond": 100,
+    "maxDuration": 0,
+    "travelCounts": 510,
+    "velocityCountsPerSecond": 0,
+    "currentTripA": 4,
+    "currentTripMs": 10,
+    "currentZeroMv": 2509.684533,
+    "sensitivityMvA": 185,
+    "countsPerRev": 1496,
+    "armSign": 1,
+    "pendSign": -1,
+    "pendDownRaw": 681,
+    "deadzonePos": null,
+    "deadzoneNeg": null,
+    "assumedBusV": 12,
+    "heartbeatMs": 300,
+    "streamHz": 250,
+    "currentChecks": true,
+    "adcHz": 2000,
+    "pwmHz": 20000,
+    "filter": {
+      "type": "biquad",
+      "alpha": 0.1,
+      "window": 8,
+      "sos": [
+        0.003621682,
+        0.007243363,
+        0.003621682,
+        1,
+        -1.822694925,
+        0.837181651
+      ]
+    }
+  },
+  "status": {
+    "state": "DISARMED",
+    "fault": "",
+    "centered": true,
+    "configId": 5,
+    "runId": 15,
+    "bootId": "12581185112340637033",
+    "deviceUs": "4660523090",
+    "dropped": 0,
+    "adcOverruns": 54,
+    "controlOverruns": 0,
+    "encoderOk": true,
+    "pendStatus": 51,
+    "pendValid": true,
+    "pendReads": 4658096,
+    "pendFails": 0,
+    "pendReadMaxUs": 1951,
+    "currentMv": 2501.125,
+    "filteredMv": 2516.118164,
+    "centerCount": "0",
+    "burstActive": false,
+    "burstPending": true,
+    "burstAdcCount": 0,
+    "burstCoreCount": 0,
+    "burstOverflow": false,
+    "adcCalibrationSource": 3,
+    "adcOversample": 8,
+    "adcReadUs": 24.23828125,
+    "adcMaxBusyUs": 610,
+    "adcMaxGapUs": 2427,
+    "adcMaxLockWaitUs": 2119,
+    "adcMaxWakeUs": 451
+  },
+  "metadata": {
+    "purpose": "open_loop",
+    "suite": "suite_20261120",
+    "run": "b1_breakaway_low",
+    "note": "breakaway map, low range: alternating 0.25 s pulses 3..10 %, 0.5 s rest (on 2026-11-20 every pulse from 10 % moved the arm)",
+    "segments": [
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.03,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.03,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.035,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.035,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.04,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.04,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.045,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.045,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.05,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.05,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.055,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.055,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.06,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.06,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.065,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.065,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.07,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.07,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.075,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.075,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.08,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.08,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.085,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.085,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.09,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.09,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.095,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.095,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": 0.1,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.25,
+        "amplitude": -0.1,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      },
+      {
+        "kind": "hold",
+        "duration": 0.5,
+        "amplitude": 0.0,
+        "offset": 0.0,
+        "f0": 1.0,
+        "f1": 3.0
+      }
+    ],
+    "12v_declared": true,
+    "rig_confirmed": "centre rod out, 12 V on, area clear (person at the rig, batch 1)",
+    "gear": 34.0,
+    "motor_cpr": 44.0,
+    "model_prediction": {
+      "T": 23.0,
+      "arm": [
+        0.0,
+        24.907819769053276
+      ],
+      "pend": 26.554040588648157,
+      "ipk": 0.3503230861909569,
+      "irms": 0.13702475878749182,
+      "dmax": 0.1,
+      "iabs_driven": 0.27150039179799157
+    }
+  },
+  "complete": true,
+  "samples": 6663,
+  "final_status": {
+    "state": "DISARMED",
+    "fault": "",
+    "centered": true,
+    "configId": 5,
+    "runId": 16,
+    "bootId": "12581185112340637033",
+    "deviceUs": "4687108416",
+    "dropped": 0,
+    "adcOverruns": 60,
+    "controlOverruns": 0,
+    "encoderOk": true,
+    "pendStatus": 51,
+    "pendValid": true,
+    "pendReads": 4684670,
+    "pendFails": 0,
+    "pendReadMaxUs": 1951,
+    "currentMv": 2512,
+    "filteredMv": 2509.006104,
+    "centerCount": "0",
+    "burstActive": true,
+    "burstPending": false,
+    "burstAdcCount": 46000,
+    "burstCoreCount": 11501,
+    "burstOverflow": false,
+    "adcCalibrationSource": 3,
+    "adcOversample": 8,
+    "adcReadUs": 24.23828125,
+    "adcMaxBusyUs": 610,
+    "adcMaxGapUs": 2518,
+    "adcMaxLockWaitUs": 2157,
+    "adcMaxWakeUs": 451
+  },
+  "link_errors": 0
+}

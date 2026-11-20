@@ -1,0 +1,3 @@
+INVALID: the 12 V supply was off (forgotten by the person at the rig). The first pulse ran on the driver capacitor
+(current 0.29 A decaying to 0.13 A, arm moved 11 counts); every later pulse drew no current and the arm did not move.
+The firmware cannot sense the bus voltage, so the run completed without a fault. Kept only as a record.
