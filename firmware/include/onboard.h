@@ -45,7 +45,7 @@ struct OnboardParams {
   // 2 (pole placement) is not in the firmware yet. LQR by default, so a host that does not send stab gets the 1.12 controller.
   double stab=3;
   // stab_pid.slx: PD on theta1 + PID on theta0 on the estimated state (u = Kp1 th1 + Kd1 w1 + Kp0 (th0 - r)
-  // + Ki0 sum(th0 - r) Ts + Kd0 w0; the arm integral is forward Euler from the start of the run, no reset, no limit).
+  // + Ki0 sum(th0 - r) Ts + Kd0 w0; the arm integral is forward Euler, reset one period after each catch, no limit).
   double Kp1=design::pid_Kp1, Kd1=design::pid_Kd1, Kp0=design::pid_Kp0, Ki0=design::pid_Ki0, Kd0=design::pid_Kd0;
   // Supported controller periods and their LQR gains (same Q, R as the design; onboard_rates.h).
   static int periodIndex(double ts){for(int i=0;i<rates::count;i++)if(std::abs(ts-rates::Ts[i])<1e-9)return i;return -1;}
@@ -96,7 +96,8 @@ struct OnboardController {
   bool trkStarted=false;double trkTh[2]{0,0},trkW[2]{0,0};
   // reset() before every run, after setting p (the filter pole and the observer gains are computed once here)
   double pidSum=0;       // 1.13: PID arm integral, sum of (theta0 - r) Ts
-  void reset(){started=false;mode=SwingUp;pidSum=0;prev[0]=prev[1]=w[0]=w[1]=0;for(double&v:x)v=0;E=uStab=uSwing=duty=0;
+  bool wasStab=false,active=false;   // 1.13: mode was Stabilize one period ago (ctrl_hybrid.slx 'active'), and its last value
+  void reset(){started=false;mode=SwingUp;pidSum=0;wasStab=active=false;prev[0]=prev[1]=w[0]=w[1]=0;for(double&v:x)v=0;E=uStab=uSwing=duty=0;
     alpha=std::exp(-2*3.14159265358979323846*p.velFc*p.Ts);
     nd=std::max(1,std::min(OnboardParams::kMaxNd,p.nd()));for(double&v:uh)v=0;for(double&v:th0b)v=0;
     xd[0]=0;xd[1]=3.14159265358979323846;xd[2]=xd[3]=0;obsStarted=false;obsN=0;trkStarted=false;
@@ -232,12 +233,16 @@ struct OnboardController {
     // 1.12: the supervisor needs only the estimate, so decide the mode first and compute only the law it uses
     // (Simulink computes both; the duty is the same). Saves the unused law's emulated-double time each period.
     supervise(first);
+    // 1.13: ctrl_hybrid.slx gives the stabilizers active = (mode one period ago == Stabilize); stab_pid.slx resets the arm
+    // integral on its rising edge (PI block external reset 'rising'), i.e. one period after every catch
+    const bool act=wasStab;if(act&&!active)pidSum=0;active=act;
     if(mode==Stabilize){uStab=stabilizer();duty=uStab;}
     else if(mode==SwingUp){uSwing=energyLaw();duty=uSwing;}
     else duty=0.;
     // 1.13: the PID's arm integrator runs every period from the start, as in Simulink, where stab_pid.slx is computed
     // in every mode (forward Euler: the output uses the sum before this period's error is added)
     if(p.stab==1)pidSum+=p.Ts*(x[0]-p.r);
+    wasStab=mode==Stabilize;
     return duty;
   }
 };

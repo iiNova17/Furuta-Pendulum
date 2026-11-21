@@ -48,8 +48,12 @@ D.sup.rearm = 0;                     % 1: SafeStop -> SwingUp once the arm is ba
 %   u = Kp1 theta1 + Kd1 w1  +  Kp0 (theta0 - r) + Ki0 sum(theta0 - r) Ts + Kd0 w0
 %       PD on the pendulum      PID on the arm (discrete PI block, forward Euler, + Kd0 on the observer's w0)
 % Starting point = the LQR gain (K = [-0.1789 -1.891 -0.1132 -0.1347]: Kp1 = -K(2), Kd1 = -K(4), Kp0 = -K(1),
-% Kd0 = -K(3)), plus the arm integral Ki0. The arm integrator runs from the start of the run (no reset, no limit).
-D.pid = struct('Kp1', 1.891, 'Kd1', 0.1347, 'Kp0', 0.1789, 'Ki0', 0.1, 'Kd0', 0.1132);
+% Kd0 = -K(3)), plus the arm integral Ki0 = 0.1. The arm integral is reset on the rising edge of active (one period
+% after each catch). Tuned by pid_tune.m (local search, cost = push ITAE at 10 and 15 ms lag + 0.25 x arm error,
+% constraints: phase margin >= 45 deg, delay margin >= 20 ms, swing-up passes, no trip; 2026-11-21):
+% push ITAE 0.081 / 0.080 (LQR 0.163 / 0.137), phase margin 49 deg, delay margin 22 ms. Start: Kp1 1.891, Kd1 0.1347,
+% Kp0 0.1789, Ki0 0.1, Kd0 0.1132. Results in pid_tune_results.mat.
+D.pid = struct('Kp1', 2.600125, 'Kd1', 0.153068182, 'Kp0', 0.1789, 'Ki0', 0.048761905, 'Kd0', 0.1415);
 
 % ---- pole-placement owner (stab_pole_placement.slx) ---------------------------------------------
 % Continuous-time closed-loop poles [rad/s], mapped to z = exp(s Ts); K = place(Ad, Bd, z).

@@ -30,12 +30,13 @@ CONTROLLERS = [
             'Expected: it stays up and the arm drifts slowly by about ±20° (friction limit cycle with fricGain 0).'},
     {'key': 'swingup_pid', 'label': 'Swing-up + PID balance', 'start': {'swingUp': True, 'stab': 1}, 'needs': 'pid',
      'how': 'Start with the pendulum <b>hanging at rest</b> and the arm centered. The same energy swing-up, then the PID '
-            '(PD on θ1 + PID on θ0, stab_pid.slx) catches and balances it. Simulation: caught after 1.8 s, as with the LQR. '
-            'Needs firmware 1.13.'},
+            '(PD on θ1 + PID on θ0, stab_pid.slx, tuned gains) catches and balances it. Simulation: caught after 1.8 s, as with '
+            'the LQR; after a push the pendulum settles about twice as fast as with the LQR (ITAE 0.08 vs 0.16), current about '
+            '1.4 A for a moment at the catch. Needs firmware 1.13.'},
     {'key': 'pid', 'label': 'PID balance only', 'start': {'swingUp': False, 'stab': 1}, 'needs': 'pid',
      'how': 'Hold the pendulum lightly <b>near upright</b> (catch-region light green), press Start, then let go. The PID '
-            'balances; if the pendulum leaves the catch region the run ends (ONBOARD_PENDULUM_LOST). The arm integral starts '
-            'at zero with the run. Needs firmware 1.13.'},
+            'balances; if the pendulum leaves the catch region the run ends (ONBOARD_PENDULUM_LOST). The arm integral is reset '
+            'one period after the catch, as in Simulink. Needs firmware 1.13.'},
 ]
 
 # knob -> (unit, meaning). Unknown knobs from a newer firmware are still listed and editable.
@@ -73,7 +74,7 @@ KNOBS = {
     'Kp1': ('duty/rad', 'PID: proportional gain on pendulum angle θ1'),
     'Kd1': ('duty·s/rad', 'PID: gain on pendulum speed θ̇1 (from the estimator)'),
     'Kp0': ('duty/rad', 'PID: proportional gain on arm error θ0 − r'),
-    'Ki0': ('duty/(rad·s)', 'PID: integral gain on arm error θ0 − r (integral starts at zero with the run)'),
+    'Ki0': ('duty/(rad·s)', 'PID: integral gain on arm error θ0 − r (integral reset one period after each catch)'),
     'Kd0': ('duty·s/rad', 'PID: gain on arm speed θ̇0 (from the estimator)'),
 }
 READ_ONLY = {'Ts', 'rearm', 'modelArmSign', 'modelPendSign'}

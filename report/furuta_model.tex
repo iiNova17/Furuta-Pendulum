@@ -13,6 +13,7 @@
 \usepackage{xcolor}
 \definecolor{navy}{HTML}{143C6E}
 \definecolor{steel}{HTML}{43638B}
+\definecolor{terra}{HTML}{CC7451}
 \usepackage[labelfont=bf]{caption}
 \usepackage{titlesec}
 \titleformat*{\section}{\Large\bfseries\color{navy}}
@@ -2414,6 +2415,235 @@ Limitations of the presented update are:
   \item The shaft coupling is represented only by a lag in the design; the harness plant has no play, so it overrates the friction compensation.
   \item The pendulum reads about $+0.7$ to $+1^\circ$ when balanced, which shifts the arm by $-10$ to $-15^\circ$; the upright reference has not yet been corrected.
   \item The worst-case tests of sections~\ref{sec:lqr_corners} and~\ref{sec:su_corners} have not yet been repeated with the observer and the new model.
+\end{enumerate}
+
+%======================================================================
+\section{PID Controller Design}
+\label{sec:pid}
+%======================================================================
+The project brief asks for the pendulum to be balanced by a PID controller and by pole placement as well as by the LQR, so that the three can be compared on the same rig. The objective of this section is to design the PID stabilizer of the hybrid controller (the slot \texttt{stab\_pid.slx} of section~\ref{sec:harness_ctrl}), starting from the LQR of section~\ref{sec:cu_lqr}, adding integral action on the arm, and tuning the gains in the harness against the same tests and limits as before. The swing-up, the observer and the supervisor are the ones of sections~\ref{sec:swingup} and~\ref{sec:cu}, and only the law that holds the pendulum in the Stabilize state changes.
+
+\subsection{Structure of the Controller}
+\label{sec:pid_structure}
+A single PID loop on the pendulum angle cannot hold our system. The transfer function from the voltage to the pendulum angle (equation~\ref{eq:tf_up}) has a zero at $s = 0$, since a constant voltage drives the arm at a constant speed and leaves the pendulum angle unchanged in steady state. Thus, the pendulum loop alone does not see the arm angle at all, and the arm would drift away while the pendulum is balanced. Therefore, the controller consists of two loops whose outputs are added: a PD loop on the pendulum angle, which keeps it upright, and a PID loop on the arm angle, which brings the arm back to its reference (see Figure~\ref{fig:pid_loop}):
+\begin{equation}
+  d[k] = \underbrace{K_{p1}\,\hat\theta_1[k] + K_{d1}\,\hat{\dot\theta}_1[k]}_{\text{pendulum}}
+       + \underbrace{K_{p0}\,e_0[k] + K_{i0}\,T_s \sum_{j=k_c}^{k-1} e_0[j] + K_{d0}\,\hat{\dot\theta}_0[k]}_{\text{arm}},
+  \qquad e_0 = \hat\theta_0 - r ,
+  \label{eq:pid_law}
+\end{equation}
+where $\hat\theta_0$, $\hat\theta_1$, $\hat{\dot\theta}_0$ and $\hat{\dot\theta}_1$ are the state estimated by the observer of section~\ref{sec:cu_observer}, $r$ is the arm reference, $T_s = 4\,\mathrm{ms}$ is the controller period and $k_c$ is the period at which the integral was last reset. The duty cycle then passes the friction compensation and the supervisor exactly as the output of the LQR does.
+
+Both derivative terms use the velocities of the observer instead of differentiating the angles inside the controller. Since the observer predicts the state forward over the 9--15\,ms lag of the pendulum reading (see section~\ref{sec:cu_observer}), its velocities are up to date, while a derivative filter inside the PID would add its own lag on top of the lag of the sensor. A derivative computed by the PID block of Simulink with the filter coefficient of 50\,rad/s of the template, for example, made the loop with the gains of section~\ref{sec:pid_start} unstable, with a closed-loop pole pair at $+17.9 \pm 60.6j\,\mathrm{rad/s}$. Taking the velocity of the arm from the observer also means that a step of the reference $r$ does not produce a spike in the derivative term, since only the proportional and integral terms act on the error $e_0$.
+
+\begin{figure}[htbp]
+\centering
+\begin{tikzpicture}[
+  blk/.style={draw, thick, rounded corners=2pt, fill=gray!8, align=center, font=\small, minimum height=0.62cm, minimum width=1.05cm},
+  sum/.style={draw, thick, circle, inner sep=0pt, minimum size=0.4cm, font=\scriptsize},
+  arr/.style={-{Stealth[length=2mm]}, thick},
+  lab/.style={font=\footnotesize}, x=1cm, y=1cm]
+  \node[blk, minimum height=4.6cm, minimum width=1.6cm, text width=1.4cm] (obs) at (0,-0.2) {Observer\\[3pt]\scriptsize section\\\ref{sec:cu_observer}};
+  % pendulum loop
+  \node[blk, draw=navy] (kp1) at (3.7,1.7) {$K_{p1}$};
+  \node[blk, draw=navy] (kd1) at (3.7,0.9) {$K_{d1}$};
+  \node[sum] (s1) at (5.1,1.3) {$+$};
+  \draw[arr] (0.8,1.7) -- node[lab, above, pos=.18] {$\hat\theta_1$} (kp1.west);
+  \draw[arr] (0.8,0.9) -- node[lab, above, pos=.18] {$\hat{\dot\theta}_1$} (kd1.west);
+  \draw[arr] (kp1.east) -| (s1.north);
+  \draw[arr] (kd1.east) -| (s1.south);
+  \node[lab, text=navy] at (3.7,2.25) {PD on the pendulum};
+  % arm loop
+  \node[sum] (e0) at (2.0,-0.5) {};
+  \node[blk, draw=steel] (kp0) at (3.7,-0.5) {$K_{p0}$};
+  \node[blk, draw=steel] (kd0) at (3.7,-1.3) {$K_{d0}$};
+  \node[blk, draw=steel, minimum width=1.5cm] (ki0) at (3.7,-2.15) {$K_{i0}\,\dfrac{T_s}{z-1}$};
+  \node[sum] (s0) at (5.1,-1.3) {$+$};
+  \draw[arr] (0.8,-0.5) -- node[lab, above, pos=.3] {$\hat\theta_0$} node[lab, above, pos=.93] {\scriptsize$+$} (e0.west);
+  \node[lab] (r) at (2.0,-1.45) {$r$};
+  \draw[arr] (r) -- node[lab, right, pos=.75] {\scriptsize$-$} (e0.south);
+  \draw[arr] (e0.east) -- node[lab, above, pos=.45] {$e_0$} (kp0.west);
+  \draw[arr] (2.6,-0.5) |- (ki0.west);
+  \draw[arr] (0.8,-1.3) -- node[lab, above, pos=.12] {$\hat{\dot\theta}_0$} (kd0.west);
+  \draw[arr] (kp0.east) -| (s0.north);
+  \draw[arr] (kd0.east) -- (s0.west);
+  \draw[arr] (ki0.east) -| (s0.south);
+  \node[lab, text=steel] at (3.7,0.05) {PID on the arm};
+  % total, supervisor, rig
+  \node[sum] (st) at (6.1,0) {$+$};
+  \draw[arr] (s1.east) -| node[lab, above, pos=.3] {$u_1$} (st.north);
+  \draw[arr] (s0.east) -| node[lab, below, pos=.3] {$u_0$} (st.south);
+  \node[blk, text width=2.05cm] (sup) at (8.1,0) {Supervisor\\[1pt]\scriptsize SwingUp,\\Stabilize, SafeStop};
+  \node[blk, text width=1.6cm, fill=gray!20] (rig) at (10.75,0) {Firmware,\\motor, arm,\\pendulum};
+  \draw[arr] (st.east) -- node[lab, above] {$d$} (sup.west);
+  \draw[arr] (sup.east) -- (rig.west);
+  % active -> reset of the arm integral
+  \draw[arr, terra, dashed] (sup.south) |- (4.3,-2.95) -- node[lab, text=terra, right, pos=.5] {\scriptsize reset} ($(ki0.south)+(0.6,0)$);
+  \node[lab, text=terra, anchor=north] at (6.3,-2.98) {\scriptsize active: Stabilize one period ago (rising edge)};
+  % feedback paths
+  \draw[arr] (rig.south) |- (0,-3.75) -- node[lab, right, pos=.4] {} (obs.south);
+  \node[lab, anchor=north] at (5.1,-3.78) {measured $\theta_0$, $\theta_1$ (pendulum reading 9--15\,ms late)};
+  \draw[arr] (9.55,0) |- (0,2.85) -- (obs.north);
+  \node[lab, anchor=south] at (4.6,2.87) {duty sent, used to predict the state forward};
+\end{tikzpicture}
+\caption{Block diagram of the PID stabilizer: a PD loop on the pendulum angle and a PID loop on the arm angle, both acting on the state estimated by the observer, added into one duty cycle. The integral of the arm loop is reset when the supervisor has just entered Stabilize.}
+\label{fig:pid_loop}
+\end{figure}
+
+The controller is implemented in \nolinkurl{matlab/simulink_r2026a/controllers/hybrid/stab_pid.slx} (see Figure~\ref{fig:pid_slx}). The pendulum loop is a discrete PID block used as a proportional gain plus a gain on $\hat{\dot\theta}_1$, and the arm loop is a discrete PI block on $e_0$ (forward Euler integration at $T_s$) plus a gain on $\hat{\dot\theta}_0$. All five gains are read from \texttt{ctrlP.pid} in \texttt{ctrl\_hybrid\_design.m}, and \texttt{ctrlP.stab = 1} selects this stabilizer.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.92\textwidth]{figures/fig_pid_slx.pdf}
+\caption{The PID stabilizer in Simulink (\texttt{stab\_pid.slx}): the observer state \texttt{xh} is split into the two angles and the two velocities, the pendulum loop is the upper path and the arm loop with its resettable PI block the lower path.}
+\label{fig:pid_slx}
+\end{figure}
+
+\subsection{Starting Point from the LQR}
+\label{sec:pid_start}
+Since equation~\ref{eq:pid_law} without the integral term is a linear function of the four estimated states, it is the same type of law as the LQR. Writing the law of equation~\ref{eq:lqr_law} term by term,
+\begin{equation}
+  d = -K_1\,(\hat\theta_0 - r) - K_2\,\hat\theta_1 - K_3\,\hat{\dot\theta}_0 - K_4\,\hat{\dot\theta}_1 ,
+\end{equation}
+and comparing it with equation~\ref{eq:pid_law} for $K_{i0} = 0$ yields the starting gains directly:
+\begin{equation}
+  \begin{aligned}
+  \therefore\; K_{p1} &= -K_2 = 1.891, & K_{d1} &= -K_4 = 0.1347,\\
+  K_{p0} &= -K_1 = 0.1789, & K_{d0} &= -K_3 = 0.1132 ,
+  \end{aligned}
+  \label{eq:pid_from_lqr}
+\end{equation}
+with $K$ of equation~\ref{eq:K_20261120}, the gains in duty per radian and in duty per radian per second. With these values the two loops are the LQR written in another form, so the closed loop has exactly the poles of section~\ref{sec:cu_lqr}, $-28.4 \pm 9.9j$ and $-5.0 \pm 1.9j\,\mathrm{rad/s}$. This gave a starting point that is known to balance the pendulum on the model, instead of a guess.
+
+All four gains are positive, including the one on the arm angle, which can seem wrong at first sight: an arm that is $10^\circ$ ahead of its reference produces a positive duty cycle, which pushes it further ahead. This is the non-minimum-phase zero of the arm, at $+12.0\,\mathrm{rad/s}$ on the model of section~\ref{sec:reid} (see section~\ref{sec:stability} for the same zero on the earlier model): the arm can only return after the pendulum has been tipped towards it, so the controller first moves the arm the wrong way. An arm loop tuned on its own with the usual sign would therefore throw the pendulum over.
+
+\subsection{Integral Action and Its Reset}
+\label{sec:pid_integral}
+The integral was placed on the arm and not on the pendulum. On the pendulum it would act through the same zero at $s = 0$ of equation~\ref{eq:tf_up}, which cancels the integrator: the closed loop then keeps an eigenvalue at exactly $z = 1$, whose eigenvector (with $K_{i} = 1$ on the pendulum) has $\theta_0 = -0.358$ times the state of the integrator. In other words, the arm could rest at any angle that the integrator happens to balance, and the reference would never be reached. On the arm, on the other hand, the integral acts against a constant offset of the arm, such as the one that an error in the pendulum-down reference would otherwise leave. With $K_{i0} = 0.1$ and the gains of equation~\ref{eq:pid_from_lqr}, the closed-loop poles are $-28.5 \pm 10.1j$, $-5.2$, $-3.8$ and $-0.8\,\mathrm{rad/s}$, so the fast pair of the pendulum is practically unchanged, and the integral adds a slow pole that pulls the arm back over about a second. The loop broken at the duty cycle has a phase margin of $62.1^\circ$ and a delay margin of 35.5\,ms (equation~\ref{eq:delaymargin}).
+
+Since the three stabilizers are computed in every period, also while the swing-up drives the motor, the integral of the arm error would accumulate during the swing-up, in which the arm swings by up to about $45^\circ$ (see Table~\ref{tab:cu_harness}), and enter the catch with a large value. Therefore, the integrator is reset by the signal \texttt{active} of the hybrid template, which is true when the supervisor was in Stabilize one period earlier: its rising edge, one period after each catch, sets the integral back to zero ($k_c$ in equation~\ref{eq:pid_law}).
+
+\subsection{Tuning by Local Search}
+\label{sec:pid_tuning}
+The gains of equation~\ref{eq:pid_from_lqr} with $K_{i0} = 0.1$ balance the pendulum, but in the push test (Table~\ref{tab:harness_tests}) the pendulum was still $3.2^\circ$ off upright after 4\,s, slightly more than the $3^\circ$ allowed, and the arm stayed about $16^\circ$ away from its reference in the arm step. To improve on them, the gains were tuned in the harness with the realistic sensors and firmware, the observer, and the model of section~\ref{sec:reid} with its breakaway friction.
+
+The quality of a set of gains was measured by the cost
+\begin{equation}
+  J = \frac{\mathrm{ITAE}_{10} + \mathrm{ITAE}_{15}}{2} + w_a\, A + n_f ,
+  \label{eq:pid_cost}
+\end{equation}
+where $\mathrm{ITAE}_{10}$ and $\mathrm{ITAE}_{15}$ are the ITAE of equation~\ref{eq:itae} in the push test with a pendulum sensor lag of 10\,ms (the nominal value of the harness) and 15\,ms (the largest lag measured on the rig), $A$ is the mean arm error $|\theta_0 - r|$ in radians in the arm step, taken from 1\,s after each of its two reference steps until the next one, $w_a = 0.25$ weights it so that an arm error of $20^\circ$ counts about as much as the ITAE of the push, and $n_f$ is the number of push tests (out of the two) that failed their criterion. A set of gains was only accepted if, in addition, it passed the swing-up test with both lags, kept the pendulum within $20^\circ$ in the arm step, never tripped the firmware, and kept the duty cycle at its limit for less than 5\,\% of the push tests. The criterion of the arm step itself, an arm within $5^\circ$ of its reference at 3.9 and 6.9\,s, was not required, since with the friction compensation switched off (section~\ref{sec:cu_rig}) the arm sticks and slips by several degrees, and even the LQR missed it by $9.1^\circ$.
+
+Since the starting point is already close to a good design, a local search was sufficient. Each gain in turn was multiplied by a factor $s$ and by $1/s$, the first change that lowered $J$ and met the constraints was kept, and the passes over the five gains were repeated until none of them improved. The factor was then reduced from 1.25 to 1.1 and 1.05. The search is implemented in \nolinkurl{matlab/simulink_r2026a/controllers/hybrid/pid_tune.m}.
+
+A first search with only the constraints above lowered the cost from 2.27 to 0.125 in 55 candidates, and the push tests passed with an ITAE of 0.068\,rad\,s$^2$ at both lags, less than half of that of the LQR. However, it got there by raising $K_{p1}$ to 2.60 (38\,\% above the start) while keeping $K_{d1}$, which left the pendulum mode lightly damped: the linear loop of these gains has its fast poles at $-8.0 \pm 42.4j\,\mathrm{rad/s}$ (a damping ratio of 0.18), a phase margin of only $17.5^\circ$ and a delay margin (equation~\ref{eq:delaymargin}) of 7.6\,ms, against $62^\circ$ and 35\,ms at the start. The harness did not reveal this, since its observer compensates the modeled sensor lag exactly. The rig, on the other hand, has play and flex in the shaft coupling that the model leaves out, and an LQR with a lag margin of about 6\,ms is exactly what oscillated on the hardware (section~\ref{sec:reid_lqr}). Therefore, the search was repeated with two more constraints on the linear loop, broken at the duty cycle with the state measured perfectly: a phase margin of at least $45^\circ$ and a delay margin of at least 20\,ms, which still allows the margin to fall by about a third from that of the LQR but keeps it well above the 6\,ms that failed on the rig.
+
+Figure~\ref{fig:pid_tuning} shows the progress of the second search. Out of 66 candidates, 11 were accepted, and the cost fell from 2.27 to 0.144.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_pid_tuning.pdf}
+\caption{Local search of the PID gains with the margin constraints: cost of equation~\ref{eq:pid_cost} of every candidate, with the best cost of the first search without the margin constraints for comparison (left), and the gains of the accepted steps relative to the starting gains of equation~\ref{eq:pid_from_lqr} (right).}
+\label{fig:pid_tuning}
+\end{figure}
+
+The search first raised the proportional and the derivative gain of the pendulum loop together, by 25\,\% each, which made the loop stiffer at about the same damping and brought the push tests within their criterion at both lags. This alone lowered the cost from 2.27 to 0.29. The remaining steps mostly concerned the arm loop: the integral gain was lowered in four steps to 49\,\% of its starting value, each step lowering both the ITAE and the arm term of the cost, and the derivative gain of the arm was raised by 25\,\%. The proportional gain of the arm ended where it started, and the two gains of the pendulum ended 38\,\% and 14\,\% above their starting values.
+
+The margin constraints decided where the search stopped. Seven candidates had a lower cost than the final design and were rejected, all of them because of the margins. For example, raising $K_{d0}$ by a further 5\,\% would have lowered the cost to 0.135 but reduced the phase margin to $42.6^\circ$, and raising it by 25\,\% lowers the ITAE of the push to 0.056\,rad\,s$^2$ with a phase margin of only $14.9^\circ$ and a delay margin of 6.4\,ms. Thus, the final design lies on the boundary of the margin constraints, and the remaining improvement in the push test would have been bought with tolerance to the dynamics that the model leaves out.
+
+\subsection{Final Design}
+\label{sec:pid_final}
+The tuned gains are listed in Table~\ref{tab:pid_gains}, and the resulting law is
+\begin{equation}
+  \boxed{K_{p1} = 2.60,\quad K_{d1} = 0.1531,\quad K_{p0} = 0.1789,\quad K_{i0} = 0.0488,\quad K_{d0} = 0.1415}
+  \label{eq:pid_final}
+\end{equation}
+in duty per radian, per radian per second and per radian second. The linear loop of these gains has its closed-loop poles at $-24.6 \pm 34.0j$, $-5.2$, $-2.3$ and $-0.33\,\mathrm{rad/s}$. Compared with the start ($-28.5 \pm 10.2j\,\mathrm{rad/s}$), the fast pair of the pendulum decays at about the same rate but oscillates faster, with a damping ratio of 0.59 instead of 0.94, so the pendulum is corrected sooner with a small overshoot, and the slowest pole moved from $-0.79$ to $-0.33\,\mathrm{rad/s}$ with the weaker integral. The loop broken at the duty cycle has a phase margin of $49.3^\circ$ and a delay margin of 21.6\,ms, and the gain can drop to 0.31 times or rise 20 times before the pendulum is lost.
+
+\begin{table}[htbp]
+\centering
+\caption{Gains of the PID stabilizer: the LQR-equivalent start with the added arm integral, and the result of the local search.}
+\label{tab:pid_gains}
+\small
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+ & $K_{p1}$ & $K_{d1}$ & $K_{p0}$ & $K_{i0}$ & $K_{d0}$ \\
+ & [duty/rad] & [duty$\,$s/rad] & [duty/rad] & [duty/(rad$\,$s)] & [duty$\,$s/rad] \\
+\midrule
+Start (equation~\ref{eq:pid_from_lqr}) & 1.891 & 0.1347 & 0.1789 & 0.100 & 0.1132 \\
+Tuned (equation~\ref{eq:pid_final}) & 2.60 & 0.1531 & 0.1789 & 0.0488 & 0.1415 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:pid_results} compares the tuned design with the starting gains and with the LQR over the standard tests, and Figure~\ref{fig:pid_push} shows the push test. With the tuned gains, the ITAE of the push fell from 0.202 to 0.081\,rad\,s$^2$ with the nominal lag and from 0.187 to 0.080 with 15\,ms, which is about half of the LQR (0.163 and 0.137). The pendulum leans at most $3.6^\circ$ after the tap instead of $6.0^\circ$ with the LQR, and it is within $2.19^\circ$ after 4\,s at both lags, so the push test now passes where the starting gains narrowly failed. The duty cycle never reached its limit in any of the push tests.
+
+\begin{table}[htbp]
+\centering
+\caption{Starting gains, tuned gains and the LQR of section~\ref{sec:cu_lqr} in the harness, with a pendulum sensor lag of 10\,ms and 15\,ms. The pendulum values of the push are taken after the tap at 2\,s, the arm error is the mean $|\theta_0 - r|$ of the arm step from 1\,s after each reference step.}
+\label{tab:pid_results}
+\small
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+ & \multicolumn{2}{c}{PID, starting gains} & \multicolumn{2}{c}{PID, tuned gains} & \multicolumn{2}{c}{LQR} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+Pendulum sensor lag & 10\,ms & 15\,ms & 10\,ms & 15\,ms & 10\,ms & 15\,ms \\
+\midrule
+Push: ITAE [rad\,s$^2$] & 0.202 & 0.187 & 0.081 & 0.080 & 0.163 & 0.137 \\
+Push: largest $|\theta_1|$ & $6.4^\circ$ & $7.6^\circ$ & $3.6^\circ$ & $4.0^\circ$ & $6.0^\circ$ & $6.3^\circ$ \\
+Push: largest $|\theta_1|$ after 4\,s & $3.17^\circ$ & $3.33^\circ$ & $2.05^\circ$ & $2.19^\circ$ & $2.71^\circ$ & $2.85^\circ$ \\
+Push test passed & no & no & yes & yes & yes & yes \\
+Swing-up: catch [s] & 1.81 & 1.40 & 1.81 & 1.40 & 1.81 & 1.40 \\
+Swing-up: largest $|\theta_1|$, last 3\,s & $3.1^\circ$ & $3.4^\circ$ & $2.1^\circ$ & $2.3^\circ$ & $2.7^\circ$ & $2.8^\circ$ \\
+Swing-up: peak current [A] & 0.80 & 0.82 & 1.43 & 0.82 & 0.80 & 0.82 \\
+Arm step: mean arm error & $16.4^\circ$ & $16.2^\circ$ & $14.6^\circ$ & $14.7^\circ$ & $14.6^\circ$ & $15.1^\circ$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_pid_push.pdf}
+\caption{Push test with the starting PID gains, the LQR and the tuned PID gains, for a pendulum sensor lag of 10\,ms (left) and 15\,ms (right): pendulum angle, arm angle and duty cycle. The tap is applied at 2\,s, and the shaded band is the $\pm 3^\circ$ criterion after 4\,s.}
+\label{fig:pid_push}
+\end{figure}
+
+Since the swing-up law is the same, the pendulum is caught at the same moment as with the LQR, after 1.81\,s with the nominal lag (see Figure~\ref{fig:pid_swingup}), and the tuned PID then holds it within $2.1^\circ$ instead of $2.7^\circ$. The stiffer pendulum loop asks for more current at the moment of the catch, 1.43\,A against 0.80\,A with the nominal lag, which is a peak of 8\,ms well below the 4\,A trip of the firmware. The arm, on the other hand, is not held better than by the LQR: its mean error in the arm step is $14.6^\circ$ for both, since with the friction compensation off the arm sticks and slips around its reference, and the integral, which the search weakened, does not remove it.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_pid_swingup.pdf}
+\caption{Swing-up from the hanging rest with the energy law of section~\ref{sec:swingup} and the catch by the tuned PID, nominal model and 10\,ms lag: pendulum angle (zero upright), arm angle and duty cycle. The dashed line marks the hand-over.}
+\label{fig:pid_swingup}
+\end{figure}
+
+To check how sensitive the design is to each gain, every gain was varied alone between 0.6 and 1.6 times its tuned value (see Figure~\ref{fig:pid_sens}). The push test kept passing for every value of $K_{p1}$, $K_{d1}$, $K_{p0}$ and $K_{i0}$, and the ITAE changed by less than a factor of two. The derivative gain of the arm is the exception: at 0.6 times its value the push test fails, and at 1.6 times the loop is unstable, with a closed-loop pair at $+14.1 \pm 43.4j\,\mathrm{rad/s}$, in agreement with the margins found above. Thus, $K_{d0}$ is the gain to change with most care on the hardware.
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.72\textwidth]{figures/fig_pid_sens.pdf}
+\caption{ITAE of the push test (10\,ms lag) when one gain at a time is scaled between 0.6 and 1.6 times its tuned value. Crosses mark push tests that failed.}
+\label{fig:pid_sens}
+\end{figure}
+
+Finally, the push test was repeated on 10 plants whose parameters were drawn from twice their standard errors (section~\ref{sec:harness_tests}), each with its own sensor noise. The tuned PID passed 9 of them, as did the LQR (9 of 10), and the one plant that failed was the same for both, while the starting gains passed only one, mostly by narrowly missing the $3^\circ$ criterion.
+
+\subsection{Implementation on the ESP32}
+\label{sec:pid_firmware}
+Since the PID is again a linear function of the estimated state plus one sum, it was added to the onboard controller of section~\ref{sec:harness_modes} without any change to the observer or the swing-up. From firmware 1.13 on, the stabilizer is chosen per run (\texttt{stab}~1 for the PID, 3 for the LQR, the default), the five gains are generated into the firmware header from the design file like every other number, and the arm integral and its reset follow the Simulink blocks period by period. The native replay test of section~\ref{sec:harness_modes} was extended with a swing-up and a push test recorded with the PID: over the 3751 periods of the swing-up and the 1501 periods of the push test, the largest difference in the duty cycle was $3.6\times10^{-15}$ with the observer computed in double precision and $7.9\times10^{-7}$ in single precision as on the ESP32, and the supervisor was in the same state in every period, including the reset of the integral one period after the catch. In the lab application, the Onboard control tab offers ``Swing-up + PID balance'' and ``PID balance only'' next to the LQR.
+
+\subsection{Limitations}
+Limitations of the presented design are:
+\begin{enumerate}
+  \item The design is based on simulations of the identified model. The PID has not yet been run on the hardware.
+  \item The cost of equation~\ref{eq:pid_cost} and its weight $w_a$ are a choice:
+  \begin{enumerate}
+    \item a larger weight on the arm error would trade pendulum recovery for arm tracking;
+    \item the local search finds a minimum near the starting point, not necessarily the best gains overall.
+  \end{enumerate}
+  \item Each candidate was simulated with one noise seed and the nominal plant. The robustness against the parameter uncertainty was checked only afterwards, on 10 perturbed plants.
+  \item With the friction compensation off, the arm sticks and slips around its reference, and the integral does not remove it. The arm step criterion of $5^\circ$ is still not met, by the PID as by the LQR.
+  \item The arm integral has no limit other than its reset at each catch, so a long saturation of the duty cycle while balancing could wind it up.
 \end{enumerate}
 
 %======================================================================
