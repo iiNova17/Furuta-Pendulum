@@ -2635,7 +2635,7 @@ Since the PID is again a linear function of the estimated state plus one sum, it
 \subsection{Limitations}
 Limitations of the presented design are:
 \begin{enumerate}
-  \item The design is based on simulations of the identified model. The PID has not yet been run on the hardware.
+  \item The design is based on simulations of the identified model. Its first hardware runs (Section~\ref{sec:pid_rig}) are few: one or two per test.
   \item The cost of equation~\ref{eq:pid_cost} and its weight $w_a$ are a choice:
   \begin{enumerate}
     \item a larger weight on the arm error would trade pendulum recovery for arm tracking;
@@ -2645,6 +2645,48 @@ Limitations of the presented design are:
   \item With the friction compensation off, the arm sticks and slips around its reference, and the integral does not remove it. The arm step criterion of $5^\circ$ is still not met, by the PID as by the LQR.
   \item The arm integral has no limit other than its reset at each catch, so a long saturation of the duty cycle while balancing could wind it up.
 \end{enumerate}
+
+\subsection{Hardware comparison of the stabilizers (2026-11-21)}
+\label{sec:pid_rig}
+The stabilizers were run on the rig with firmware 1.13 onboard at 4\,ms, the model observer, the model of 20 November and the friction compensation off, each after the swing-up. Runs of 20\,s without pushes are compared in Table~\ref{tab:pid_rig}, and runs of 30\,s with 3 to 4 manual taps on the pendulum (about $10^\circ$ to $22^\circ$) in Table~\ref{tab:pid_rig_push}. The metrics are computed by \nolinkurl{desktop/scripts/rig_metrics.py}: the pendulum rms over the whole balance phase, the mean of the arm angle, the catch overshoot (the largest swing past upright after the hand-over, in \% of the hand-over angle of about $22^\circ$), the settling time (until $|\theta_1|$ stays within $5^\circ$ for 1\,s) and the arm peak during the catch. Two values separated by a slash are two runs.
+
+\begin{table}[htbp]
+\centering
+\caption{Balance without pushes on the rig. LQR: $K$ of section~\ref{sec:cu_lqr}. First PID: LQR gains with $K_{i0}=0.1$ and no integrator reset. LQI: the LQR with the arm integral designed jointly ($z_{max}=2\,\mathrm{rad\,s}$; $K_{p0}=0.1983$, $K_{p1}=1.9273$, $K_{d0}=0.1163$, $K_{d1}=0.1377$, $K_{i0}=0.0468$). Tuned PID: gains of this section, with the integrator reset.}
+\label{tab:pid_rig}
+\small
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Controller & Pend.\ rms & Arm mean & Catch overshoot & Settling & Arm peak at catch & Current rms \\
+\midrule
+LQR & $1.48^\circ$ & $-14.7^\circ$ & 79\,\% & 0.51\,s & $74^\circ$ & 0.27\,A \\
+First PID (2 runs) & 1.56 / $1.77^\circ$ & $-1.2$ / $-1.5^\circ$ & 36 / 26\,\% & 0.39 / 0.36\,s & 44 / $37^\circ$ & 0.29\,A \\
+LQI (2 runs) & 1.32 / $1.83^\circ$ & $+0.5$ / $-2.5^\circ$ & 24 / 55\,\% & 0.98 / 0.52\,s & 33 / $59^\circ$ & 0.33 / 0.27\,A \\
+Tuned PID & $1.17^\circ$ & $-3.6^\circ$ & 32\,\% & 0.26\,s & $30^\circ$ & 0.28\,A \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Manual pushes on the pendulum during balance on the rig (30\,s runs).}
+\label{tab:pid_rig_push}
+\small
+\begin{tabular}{@{}lp{0.43\textwidth}p{0.27\textwidth}@{}}
+\toprule
+Controller & Pushes (peak) & Outcome \\
+\midrule
+LQR & 3 recovered ($11^\circ$ to $15^\circ$, back within $5^\circ$ in 0.2 to 0.8\,s) & lost to a $45^\circ$ push \\
+First PID & 4 pushes of $16^\circ$ to $19^\circ$, never back within $5^\circ$ & lost after 6.5\,s of balance \\
+LQI & 4 recovered ($22^\circ$, $19.5^\circ$, $16^\circ$, $13^\circ$; back within $5^\circ$ in 3.3, 1.7, 1.9, 0.2\,s), then continued agitation & lost after about 22\,s \\
+Tuned PID & 4 pushes of $10^\circ$ to $16^\circ$, all recovered (the last one back within $5^\circ$ in 0.18\,s, $0.96^\circ$ rms afterwards) & balanced to the end (27.8\,s), never at the duty limit \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The tuned PID gave the steadiest balance, the fastest settling and the smallest arm swing at the catch, kept the arm centred and survived all the pushes. The integrator reset at the catch and the retuned gains fixed the poor push recovery of the first PID. The LQR leaves the arm about $15^\circ$ off centre, since the pendulum sensor is upright at an offset of $+0.7^\circ$ to $+1^\circ$, multiplied by the gain ratio, while the variants with an arm integral centre it. These results rest on one or two runs per controller and on manual pushes of unequal strength, and a controller with an arm integral winds up while the arm is stuck by static friction (seen in one run, where the duty rose from 4.5 to 9.4\,\% in 12\,s with the arm held), so an integral limit is advisable.
 
 %======================================================================
 \section{Digital Twin}
