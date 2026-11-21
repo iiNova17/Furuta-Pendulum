@@ -70,6 +70,8 @@
 \pagenumbering{arabic}
 
 %======================================================================
+\part{Modeling}
+
 \section{Mathematical Model For Furuta Pendulum}
 %======================================================================
 
@@ -935,6 +937,8 @@ In terms of the PWM duty cycle, equation~\ref{eq:duty} gives $B_d = V_s B$ and $
 The reduced model is valid when the neglected electrical pole $-R_m/L_m$ is at least ten times faster than the fastest closed-loop pole. Otherwise, the five-state model of equation~\ref{eq:ss5} is used.
 
 %======================================================================
+\part{Identification}
+
 \section{Parameter Estimation}
 \label{sec:estimation}
 %======================================================================
@@ -1676,6 +1680,8 @@ Breakaway, 3--10\,\%, 3 & pulses $\pm$, 0.25\,s & 26.6 & test$^{a}$ & $-38.3$ & 
 For the gain of equation~\ref{eq:K_final}, with the controller period of 4\,ms, the hold, the 40\,Hz velocity filter and a pure delay on the pendulum reading, the largest pendulum lag that keeps the loop stable is 8.5\,ms on the model of Table~\ref{tab:params} and \textbf{6.25\,ms} on the new model; above it the loop becomes unstable at 11--14\,Hz. The measured lag of 9--15\,ms is beyond this margin, so the loop is linearly unstable and the duty-cycle limit holds it in a limit cycle, which is the oscillation observed on the rig. A simulation of the new model with a 12\,ms lag reproduced it: pendulum 4.6\,$^\circ$ rms, duty at the limit 56\,\% of the time and 1.54\,A rms, against $4.9^\circ$, 49\,\% and 1.62\,A on the rig. The controller was therefore redesigned (section~\ref{sec:cu}).
 
 %======================================================================
+\part{Control}
+
 \section{Controller Simulation Harness}
 \label{sec:harness}
 %======================================================================
@@ -2888,49 +2894,6 @@ Limitations of the presented design are:
   \item The arm integral has no limit other than its reset at each catch, so a long saturation of the duty cycle while balancing could wind it up.
 \end{enumerate}
 
-\subsection{Hardware Comparison}
-\label{sec:pid_rig}
-The stabilizers were run on the rig with firmware 1.13 onboard at 4\,ms, the model observer, the model of 20 November and the friction compensation off, each after the swing-up. Runs of 20\,s without pushes are compared in Table~\ref{tab:pid_rig}, and runs of 30\,s with 3 to 4 manual taps on the pendulum (about $10^\circ$ to $22^\circ$) in Table~\ref{tab:pid_rig_push}. The metrics are computed by \nolinkurl{desktop/scripts/rig_metrics.py}: the pendulum rms over the whole balance phase, the mean of the arm angle, the catch overshoot (the largest swing past upright after the hand-over, in \% of the hand-over angle of about $22^\circ$), the settling time (until $|\theta_1|$ stays within $5^\circ$ for 1\,s) and the arm peak during the catch. Two values separated by a slash are two runs.
-
-\begin{table}[htbp]
-\centering
-\caption{Balance without pushes on the rig. LQR: $K$ of section~\ref{sec:cu_lqr}. First PID: LQR gains with $K_{i0}=0.1$ and no integrator reset. LQI: the LQR with the arm integral designed jointly ($z_{max}=2\,\mathrm{rad\,s}$; $K_{p0}=0.1983$, $K_{p1}=1.9273$, $K_{d0}=0.1163$, $K_{d1}=0.1377$, $K_{i0}=0.0468$). Tuned PID: gains of this section, with the integrator reset.}
-\label{tab:pid_rig}
-\small
-\footnotesize
-\setlength{\tabcolsep}{3pt}
-\begin{tabular}{@{}lcccccc@{}}
-\toprule
-Controller & Pend.\ rms & Arm mean & Catch overshoot & Settling & Arm peak at catch & Current rms \\
-\midrule
-LQR & $1.48^\circ$ & $-14.7^\circ$ & 79\,\% & 0.51\,s & $74^\circ$ & 0.27\,A \\
-First PID (2 runs) & 1.56 / $1.77^\circ$ & $-1.2$ / $-1.5^\circ$ & 36 / 26\,\% & 0.39 / 0.36\,s & 44 / $37^\circ$ & 0.29\,A \\
-LQI (2 runs) & 1.32 / $1.83^\circ$ & $+0.5$ / $-2.5^\circ$ & 24 / 55\,\% & 0.98 / 0.52\,s & 33 / $59^\circ$ & 0.33 / 0.27\,A \\
-Tuned PID & $1.17^\circ$ & $-3.6^\circ$ & 32\,\% & 0.26\,s & $30^\circ$ & 0.28\,A \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\begin{table}[htbp]
-\centering
-\caption{Manual pushes on the pendulum during balance on the rig (30\,s runs).}
-\label{tab:pid_rig_push}
-\small
-\begin{tabular}{@{}lp{0.43\textwidth}p{0.27\textwidth}@{}}
-\toprule
-Controller & Pushes (peak) & Outcome \\
-\midrule
-LQR & 3 recovered ($11^\circ$ to $15^\circ$, back within $5^\circ$ in 0.2 to 0.8\,s) & lost to a $45^\circ$ push \\
-First PID & 4 pushes of $16^\circ$ to $19^\circ$, never back within $5^\circ$ & lost after 6.5\,s of balance \\
-LQI & 4 recovered ($22^\circ$, $19.5^\circ$, $16^\circ$, $13^\circ$; back within $5^\circ$ in 3.3, 1.7, 1.9, 0.2\,s), then continued agitation & lost after about 22\,s \\
-Tuned PID & 4 pushes of $10^\circ$ to $16^\circ$, all recovered (the last one back within $5^\circ$ in 0.18\,s, $0.96^\circ$ rms afterwards) & balanced to the end (27.8\,s), never at the duty limit \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-The tuned PID gave the steadiest balance, the fastest settling and the smallest arm swing at the catch, kept the arm centred and survived all the pushes. The integrator reset at the catch and the retuned gains fixed the poor push recovery of the first PID. The LQR leaves the arm about $15^\circ$ off centre, since the pendulum sensor is upright at an offset of $+0.7^\circ$ to $+1^\circ$, multiplied by the gain ratio, while the variants with an arm integral centre it. These results rest on one or two runs per controller and on manual pushes of unequal strength, and a controller with an arm integral winds up while the arm is stuck by static friction (seen in one run, where the duty rose from 4.5 to 9.4\,\% in 12\,s with the arm held), so an integral limit is advisable.
-
-%======================================================================
 \section{Controller Comparison}
 \label{sec:ctrl_compare}
 %======================================================================
@@ -3016,6 +2979,49 @@ Tuned PID & 4 & 15.2, 10.0, 13.6, 15.7 & 9.42, 4.70, 1.96, 0.18 & kept & 27.8 \\
 \end{tabular}
 \end{table}
 
+\subsection{Firmware 1.13 Stabilizers}
+\label{sec:pid_rig}
+The stabilizers were run on the rig with firmware 1.13 onboard at 4\,ms, the model observer, the model of 20 November and the friction compensation off, each after the swing-up. Runs of 20\,s without pushes are compared in Table~\ref{tab:pid_rig}, and runs of 30\,s with 3 to 4 manual taps on the pendulum (about $10^\circ$ to $22^\circ$) in Table~\ref{tab:pid_rig_push}. The metrics are computed by \nolinkurl{desktop/scripts/rig_metrics.py}: the pendulum rms over the whole balance phase, the mean of the arm angle, the catch overshoot (the largest swing past upright after the hand-over, in \% of the hand-over angle of about $22^\circ$), the settling time (until $|\theta_1|$ stays within $5^\circ$ for 1\,s) and the arm peak during the catch. Two values separated by a slash are two runs.
+
+\begin{table}[htbp]
+\centering
+\caption{Balance without pushes on the rig. LQR: $K$ of section~\ref{sec:cu_lqr}. First PID: LQR gains with $K_{i0}=0.1$ and no integrator reset. LQI: the LQR with the arm integral designed jointly ($z_{max}=2\,\mathrm{rad\,s}$; $K_{p0}=0.1983$, $K_{p1}=1.9273$, $K_{d0}=0.1163$, $K_{d1}=0.1377$, $K_{i0}=0.0468$). Tuned PID: gains of section~\ref{sec:pid}, with the integrator reset.}
+\label{tab:pid_rig}
+\small
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcccccc@{}}
+\toprule
+Controller & Pend.\ rms & Arm mean & Catch overshoot & Settling & Arm peak at catch & Current rms \\
+\midrule
+LQR & $1.48^\circ$ & $-14.7^\circ$ & 79\,\% & 0.51\,s & $74^\circ$ & 0.27\,A \\
+First PID (2 runs) & 1.56 / $1.77^\circ$ & $-1.2$ / $-1.5^\circ$ & 36 / 26\,\% & 0.39 / 0.36\,s & 44 / $37^\circ$ & 0.29\,A \\
+LQI (2 runs) & 1.32 / $1.83^\circ$ & $+0.5$ / $-2.5^\circ$ & 24 / 55\,\% & 0.98 / 0.52\,s & 33 / $59^\circ$ & 0.33 / 0.27\,A \\
+Tuned PID & $1.17^\circ$ & $-3.6^\circ$ & 32\,\% & 0.26\,s & $30^\circ$ & 0.28\,A \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Manual pushes on the pendulum during balance on the rig (30\,s runs).}
+\label{tab:pid_rig_push}
+\small
+\begin{tabular}{@{}lp{0.43\textwidth}p{0.27\textwidth}@{}}
+\toprule
+Controller & Pushes (peak) & Outcome \\
+\midrule
+LQR & 3 recovered ($11^\circ$ to $15^\circ$, back within $5^\circ$ in 0.2 to 0.8\,s) & lost to a $45^\circ$ push \\
+First PID & 4 pushes of $16^\circ$ to $19^\circ$, never back within $5^\circ$ & lost after 6.5\,s of balance \\
+LQI & 4 recovered ($22^\circ$, $19.5^\circ$, $16^\circ$, $13^\circ$; back within $5^\circ$ in 3.3, 1.7, 1.9, 0.2\,s), then continued agitation & lost after about 22\,s \\
+Tuned PID & 4 pushes of $10^\circ$ to $16^\circ$, all recovered (the last one back within $5^\circ$ in 0.18\,s, $0.96^\circ$ rms afterwards) & balanced to the end (27.8\,s), never at the duty limit \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The tuned PID gave the steadiest balance, the fastest settling and the smallest arm swing at the catch, kept the arm centred and survived all the pushes. The integrator reset at the catch and the retuned gains fixed the poor push recovery of the first PID. The LQR leaves the arm about $15^\circ$ off centre, since the pendulum sensor is upright at an offset of $+0.7^\circ$ to $+1^\circ$, multiplied by the gain ratio, while the variants with an arm integral centre it. These results rest on one or two runs per controller and on manual pushes of unequal strength, and a controller with an arm integral winds up while the arm is stuck by static friction (seen in one run, where the duty rose from 4.5 to 9.4\,\% in 12\,s with the arm held), so an integral limit is advisable.
+
+%======================================================================
 \subsection{Discussion}
 \label{sec:cc_discussion}
 \paragraph{Steadiness.} The tuned PID is the steadiest: $1.19^\circ$ rms in the run without pushes and $0.96^\circ$ rms in the last 5\,s of its push run, against $1.5^\circ$ to $2.0^\circ$ for the other controllers with the observer and $5.2^\circ$ for the LQR before the retune. All controllers with the observer have a duty rms of about 0.08 to 0.12 and a current of 0.27 to 0.32\,A, so their differences in steadiness are not paid for in effort.
@@ -3033,6 +3039,71 @@ Tuned PID & 4 & 15.2, 10.0, 13.6, 15.7 & 9.42, 4.70, 1.96, 0.18 & kept & 27.8 \\
 \paragraph{Caveats.} The groups hold one to five runs, and three of the controllers have a single run without pushes, so a range cannot be given and the difference between controllers of less than the run-to-run spread (about $0.1^\circ$ to $1^\circ$ rms in the groups with several runs) is not established. The pushes are manual taps of unequal strength and timing: the LQI run had 11 excursions against 4 for the tuned PID, so the push runs show which controller survived that particular sequence, not a ranking. The runs with the LQR with observer mix three settings of the friction compensation (on, half, off), which is why their range is wide. An integral controller winds up while the arm sticks (section~\ref{sec:pid_rig}), and none of them has an integral limit yet.
 
 %======================================================================
+\part{Software and Tools}
+
+\section{Desktop Application}
+\label{sec:app}
+%======================================================================
+All measurements of this work were taken, and all models of sections~\ref{sec:estimation} and~\ref{sec:reid} were identified, with one desktop program, Furuta Lab. This section describes what the program does, how it is built and which safety interlocks it relies on. The program is written in Python with PySide6 (Qt) and runs on Windows; it is started with \texttt{python desktop/main.py}. The complete manual is \nolinkurl{docs/FURUTA_LAB.md}.
+
+\subsection{Purpose and Operating Modes}
+\label{sec:app_purpose}
+The program connects to the firmware of the ESP32-S3 through the FTDI USB-serial bridge (460\,800\,baud, binary protocol of \nolinkurl{protocol/SPEC.md}). It has three tasks: it records and analyzes sensor data and identifies the plant model, it starts and records the controllers that run on the ESP32, and it shows the rig next to its models as a three-dimensional twin. Two operating modes of the project are distinguished (section~\ref{sec:harness_modes}). In the hardware-in-the-loop mode, the controller runs on the computer; this mode is not built into the program. In the onboard mode, the controller runs on the ESP32 in the 1\,kHz firmware loop, and the program only starts the run, renews the heartbeat, shows the controller state and records the run. In both modes, the firmware streams 50, 100 or 250 records per second to the computer, but the computer never closes a control loop. Open-loop experiments are uploaded as a finite sequence of segments and are executed by the firmware.
+
+\subsection{Architecture}
+\label{sec:app_architecture}
+Three threads are kept apart so that acquisition and the stop function do not depend on the interface or on MATLAB: the interface thread, a serial thread that is the only owner of the port (it parses the stream, renews the heartbeat every 80\,ms, polls the status every 0.5\,s and keeps a buffer of the last 60\,000 records), and a worker thread that runs one job at a time (connecting, settings, captures and fits). MATLAB, which is needed only for an optional speed-model fit, runs in a separate process. The modules are listed in Table~\ref{tab:app_modules}.
+
+\begin{table}[htbp]
+\centering
+\caption{Modules of the application (\nolinkurl{desktop/furuta_lab/}).}
+\label{tab:app_modules}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}p{5.4cm}p{9.4cm}@{}}
+\toprule
+Module & Role \\
+\midrule
+\texttt{app.py} & main window, tabs, task handling, interlock for powered runs \\
+\texttt{device.py}, \texttt{wire.py} & serial link, session, commands, heartbeat, capture download; COBS framing, CRC-32, record types \\
+\texttt{backend.py} & run and capture files, MATLAB jobs \\
+\texttt{signals.py}, \texttt{viewer.py}, \texttt{analysis.py} & unit conversion, smoothing, plots, noise and filter analysis, dead zone \\
+\texttt{estimate\_page.py}, \texttt{estimation.py} & guided identification, steps~0 to~9, and its numerical code \\
+\texttt{simbench.py} & simulated rig for tests and synthetic sessions \\
+\texttt{onboard\_page.py} & onboard controller: readiness, knobs, start, summary \\
+\texttt{twin\_page.py}, \texttt{twin\_core.py}, \texttt{twin\_view.py} & twin: page, kinematics and ghosts, 3D view \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Pages and Their Use}
+\label{sec:app_pages}
+The window has seven pages. The first three are used to prepare and check the rig:
+\begin{enumerate}
+  \item \textbf{Live \& recordings} shows the signals live (arm and pendulum angle, speeds, current, duty, magnet status, controller state), records runs, opens saved runs and sets the three references: arm centered, pendulum hanging down and current-sensor zero.
+  \item \textbf{Still noise \& filters} records the sensors at rest, shows the noise spectrum and compares low-pass filters by noise and delay; the chosen filter of the current can be sent to the firmware.
+  \item \textbf{Motor tests} marks the safe travel by hand, commissions the limits (duty, travel, run length, current trip, slew rate) and runs finite experiments, among them the breakaway pulses that give the dead zone.
+\end{enumerate}
+The next pages belong to the work of the previous sections:
+\begin{enumerate}
+  \setcounter{enumi}{3}
+  \item \textbf{Parameter estimation} implements the chain of sections~\ref{sec:estimation} and~\ref{sec:estmodels} as ten guided steps (setup, free swing, square-wave runs, electrical, pendulum and arm fits, refinement by simulation, comparison with the hardware, state-space models, physical units). It keeps a session with the recordings and results, marks a step as outdated when its inputs changed, and exports the model files for MATLAB. The re-identification of section~\ref{sec:reid} used the same code from a script.
+  \item \textbf{Onboard control} starts swing-up with LQR or PID balance, or balance only, on the ESP32 (sections~\ref{sec:lqr_impl}, \ref{sec:su_impl} and~\ref{sec:pid_firmware}), with a readiness checklist, the controller period of 4, 2 or 1\,ms, the run length, the maximum duty, the current trip and a table of the controller knobs that can be read and changed in the RAM of the device. The hardware comparison of section~\ref{sec:ctrl_compare} consists of runs recorded with this page or with the scripts of the same package.
+  \item \textbf{Digital twin} draws the rig in three dimensions from the live stream, or from a recording, together with a translucent cyan ghost of the identified model driven by the duty applied on the rig. Three more ghosts can be switched on: orange, the model re-synchronized every 0.2\,s (short-horizon model error); green, the model observer of section~\ref{sec:cu_observer} run on the stream (what the controller acts on); and violet, the model with its own copy of the onboard controller. The page can forward the poses of the rig and of the model as the packet of section~\ref{sec:twin} to the Unreal twin, and it can listen for poses from MATLAB.
+  \item \textbf{Setup \& guide} sets the encoder scale, shows device details, clears faults, cancels a stuck capture and stores the profile in the non-volatile memory.
+\end{enumerate}
+
+\subsection{Safety}
+\label{sec:app_safety}
+A powered run starts only if the device is connected and disarmed, the box ``12\,V connected -- allow motion'' is ticked (it is unticked at every start, and unticking it sends the stop command), the arm is centered, and the maximum duty and the travel are nonzero. A sequence longer than the maximum run time, or with a peak above the maximum duty, is refused. A stop command cancels a run that is still being prepared. The firmware then enforces its own limits, independent of the computer: the heartbeat (the motor is switched off if none arrives within 300\,ms), the travel limit around the centered position, the current trip on the filtered current, the plausibility of the current sensor and of the pendulum reading, clipping and slew limiting of the duty, the run length, and, in the onboard mode, the supervisor that stops the motor when the arm leaves the allowed range (SafeStop) or, in balance-only mode, when the pendulum leaves the catch region. A fault latches until it is cleared. Before a powered run, the center rod is removed, 12\,V is on and the area is clear; the scripts of the package ask for this explicitly. The scripts and the program cannot own the serial port at the same time.
+
+\subsection{Data Format}
+\label{sec:app_data}
+Every recording is a folder in \nolinkurl{data/runs}, named by the time of the start. It holds \texttt{manifest.json} (device profile and status at the start, metadata such as the purpose of the run and the controller knobs, final status and number of samples) and \texttt{samples.bin} (the received packets, with the records of 88 bytes). An onboard run also keeps the high-rate capture of the firmware (500\,Hz records and the current at 2\,kHz) in a subfolder. Still captures are stored as \texttt{capture.npz}, \texttt{capture.json} and a MATLAB file. Estimation sessions are in \nolinkurl{data/estimation}. Any recording can be opened again in the program or read in Python with a single function.
+
+\subsection{Tests}
+\label{sec:app_tests}
+The program is tested without hardware, with \texttt{unittest} and an offscreen Qt platform. \nolinkurl{desktop/test_lab.py} runs 41 tests, 24 of its own and the 17 tests of \nolinkurl{desktop/test_estimation.py}; \nolinkurl{desktop/test_twin_ghosts.py} runs 5 more, which replay recorded rig runs through the ghosts. All 46 distinct tests pass. They check the wire format against the golden vectors generated by the firmware tests, the recovery from damaged frames, the noise and filter analysis, the estimation chain on synthetic data, the interlocks, the onboard page and the twin.
 \section{Digital Twin}
 \label{sec:twin}
 %======================================================================
@@ -3166,67 +3237,4 @@ Limitations of the digital twin are:
   \item The drawn geometry is the CAD model, while the dynamics come from the identified lumped parameters. Since the split between the mass and the length of the pendulum cannot be identified (see section~\ref{sec:harness_plant}), the drawn bodies show where the arm and the pendulum are, not their identified inertia.
 \end{enumerate}
 
-\section{Desktop Application}
-\label{sec:app}
-%======================================================================
-All measurements of this work were taken, and all models of sections~\ref{sec:estimation} and~\ref{sec:reid} were identified, with one desktop program, Furuta Lab. This section describes what the program does, how it is built and which safety interlocks it relies on. The program is written in Python with PySide6 (Qt) and runs on Windows; it is started with \texttt{python desktop/main.py}. The complete manual is \nolinkurl{docs/FURUTA_LAB.md}.
-
-\subsection{Purpose and Operating Modes}
-\label{sec:app_purpose}
-The program connects to the firmware of the ESP32-S3 through the FTDI USB-serial bridge (460\,800\,baud, binary protocol of \nolinkurl{protocol/SPEC.md}). It has three tasks: it records and analyzes sensor data and identifies the plant model, it starts and records the controllers that run on the ESP32, and it shows the rig next to its models as a three-dimensional twin. Two operating modes of the project are distinguished (section~\ref{sec:harness_modes}). In the hardware-in-the-loop mode, the controller runs on the computer; this mode is not built into the program. In the onboard mode, the controller runs on the ESP32 in the 1\,kHz firmware loop, and the program only starts the run, renews the heartbeat, shows the controller state and records the run. In both modes, the firmware streams 50, 100 or 250 records per second to the computer, but the computer never closes a control loop. Open-loop experiments are uploaded as a finite sequence of segments and are executed by the firmware.
-
-\subsection{Architecture}
-\label{sec:app_architecture}
-Three threads are kept apart so that acquisition and the stop function do not depend on the interface or on MATLAB: the interface thread, a serial thread that is the only owner of the port (it parses the stream, renews the heartbeat every 80\,ms, polls the status every 0.5\,s and keeps a buffer of the last 60\,000 records), and a worker thread that runs one job at a time (connecting, settings, captures and fits). MATLAB, which is needed only for an optional speed-model fit, runs in a separate process. The modules are listed in Table~\ref{tab:app_modules}.
-
-\begin{table}[htbp]
-\centering
-\caption{Modules of the application (\nolinkurl{desktop/furuta_lab/}).}
-\label{tab:app_modules}
-\footnotesize
-\setlength{\tabcolsep}{4pt}
-\begin{tabular}{@{}p{5.4cm}p{9.4cm}@{}}
-\toprule
-Module & Role \\
-\midrule
-\texttt{app.py} & main window, tabs, task handling, interlock for powered runs \\
-\texttt{device.py}, \texttt{wire.py} & serial link, session, commands, heartbeat, capture download; COBS framing, CRC-32, record types \\
-\texttt{backend.py} & run and capture files, MATLAB jobs \\
-\texttt{signals.py}, \texttt{viewer.py}, \texttt{analysis.py} & unit conversion, smoothing, plots, noise and filter analysis, dead zone \\
-\texttt{estimate\_page.py}, \texttt{estimation.py} & guided identification, steps~0 to~9, and its numerical code \\
-\texttt{simbench.py} & simulated rig for tests and synthetic sessions \\
-\texttt{onboard\_page.py} & onboard controller: readiness, knobs, start, summary \\
-\texttt{twin\_page.py}, \texttt{twin\_core.py}, \texttt{twin\_view.py} & twin: page, kinematics and ghosts, 3D view \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-\subsection{Pages and Their Use}
-\label{sec:app_pages}
-The window has seven pages. The first three are used to prepare and check the rig:
-\begin{enumerate}
-  \item \textbf{Live \& recordings} shows the signals live (arm and pendulum angle, speeds, current, duty, magnet status, controller state), records runs, opens saved runs and sets the three references: arm centered, pendulum hanging down and current-sensor zero.
-  \item \textbf{Still noise \& filters} records the sensors at rest, shows the noise spectrum and compares low-pass filters by noise and delay; the chosen filter of the current can be sent to the firmware.
-  \item \textbf{Motor tests} marks the safe travel by hand, commissions the limits (duty, travel, run length, current trip, slew rate) and runs finite experiments, among them the breakaway pulses that give the dead zone.
-\end{enumerate}
-The next pages belong to the work of the previous sections:
-\begin{enumerate}
-  \setcounter{enumi}{3}
-  \item \textbf{Parameter estimation} implements the chain of sections~\ref{sec:estimation} and~\ref{sec:estmodels} as ten guided steps (setup, free swing, square-wave runs, electrical, pendulum and arm fits, refinement by simulation, comparison with the hardware, state-space models, physical units). It keeps a session with the recordings and results, marks a step as outdated when its inputs changed, and exports the model files for MATLAB. The re-identification of section~\ref{sec:reid} used the same code from a script.
-  \item \textbf{Onboard control} starts swing-up with LQR or PID balance, or balance only, on the ESP32 (sections~\ref{sec:lqr_impl}, \ref{sec:su_impl} and~\ref{sec:pid_firmware}), with a readiness checklist, the controller period of 4, 2 or 1\,ms, the run length, the maximum duty, the current trip and a table of the controller knobs that can be read and changed in the RAM of the device. The hardware comparison of section~\ref{sec:ctrl_compare} consists of runs recorded with this page or with the scripts of the same package.
-  \item \textbf{Digital twin} draws the rig in three dimensions from the live stream, or from a recording, together with a translucent cyan ghost of the identified model driven by the duty applied on the rig. Three more ghosts can be switched on: orange, the model re-synchronized every 0.2\,s (short-horizon model error); green, the model observer of section~\ref{sec:cu_observer} run on the stream (what the controller acts on); and violet, the model with its own copy of the onboard controller. The page can forward the poses of the rig and of the model as the packet of section~\ref{sec:twin} to the Unreal twin, and it can listen for poses from MATLAB.
-  \item \textbf{Setup \& guide} sets the encoder scale, shows device details, clears faults, cancels a stuck capture and stores the profile in the non-volatile memory.
-\end{enumerate}
-
-\subsection{Safety}
-\label{sec:app_safety}
-A powered run starts only if the device is connected and disarmed, the box ``12\,V connected -- allow motion'' is ticked (it is unticked at every start, and unticking it sends the stop command), the arm is centered, and the maximum duty and the travel are nonzero. A sequence longer than the maximum run time, or with a peak above the maximum duty, is refused. A stop command cancels a run that is still being prepared. The firmware then enforces its own limits, independent of the computer: the heartbeat (the motor is switched off if none arrives within 300\,ms), the travel limit around the centered position, the current trip on the filtered current, the plausibility of the current sensor and of the pendulum reading, clipping and slew limiting of the duty, the run length, and, in the onboard mode, the supervisor that stops the motor when the arm leaves the allowed range (SafeStop) or, in balance-only mode, when the pendulum leaves the catch region. A fault latches until it is cleared. Before a powered run, the center rod is removed, 12\,V is on and the area is clear; the scripts of the package ask for this explicitly. The scripts and the program cannot own the serial port at the same time.
-
-\subsection{Data Format}
-\label{sec:app_data}
-Every recording is a folder in \nolinkurl{data/runs}, named by the time of the start. It holds \texttt{manifest.json} (device profile and status at the start, metadata such as the purpose of the run and the controller knobs, final status and number of samples) and \texttt{samples.bin} (the received packets, with the records of 88 bytes). An onboard run also keeps the high-rate capture of the firmware (500\,Hz records and the current at 2\,kHz) in a subfolder. Still captures are stored as \texttt{capture.npz}, \texttt{capture.json} and a MATLAB file. Estimation sessions are in \nolinkurl{data/estimation}. Any recording can be opened again in the program or read in Python with a single function.
-
-\subsection{Tests}
-\label{sec:app_tests}
-The program is tested without hardware, with \texttt{unittest} and an offscreen Qt platform. \nolinkurl{desktop/test_lab.py} runs 41 tests, 24 of its own and the 17 tests of \nolinkurl{desktop/test_estimation.py}; \nolinkurl{desktop/test_twin_ghosts.py} runs 5 more, which replay recorded rig runs through the ghosts. All 46 distinct tests pass. They check the wire format against the golden vectors generated by the firmware tests, the recovery from damaged frames, the noise and filter analysis, the estimation chain on synthetic data, the interlocks, the onboard page and the twin.
 \end{document}
