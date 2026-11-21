@@ -1643,7 +1643,7 @@ Status & Hardware variant not built & firmware 1.11, used on the rig \\
 \end{tabular}
 \end{table}
 
-Since the onboard mode is a second copy of the controller, both copies must compute the same duty cycle, otherwise the simulation results of sections~\ref{sec:lqr} and~\ref{sec:swingup} would not apply to it. To ensure this, every number of the onboard copy (the gain $K$, the swing-up knobs, the guards of the supervisor, the estimator and the plant constants) is written by the script \texttt{export\_onboard.m} from the design file \texttt{ctrl\_hybrid\_design.m} into a generated header of the firmware, so the design exists only once. Furthermore, the same script records the measured angles that the Simulink controller received in a swing-up test and in a push test, together with the duty cycle it commanded, and a native test of the firmware (\nolinkurl{firmware/test/native_onboard.cpp}) feeds the same angles to the C++ controller. Over the 3751 periods of the swing-up and the 1501 periods of the push test, the largest difference in the duty cycle was $7\times10^{-15}$, and the supervisor was in the same state in every period, which shows that the two copies are the same controller up to the round-off of floating-point arithmetic. Since then, the first hardware runs led to two additions that deal with the breakaway friction of the arm (equation~\ref{eq:stick}): a breakaway feedforward in the swing-up (section~\ref{sec:su_law}) and a breakaway part in the friction compensation of the LQR (section~\ref{sec:lqr_fric}). Their knobs are in the design file and in the generated header as well, but the Simulink blocks do not have them yet, so the replay test runs with both switched off.
+Since the onboard mode is a second copy of the controller, both copies must compute the same duty cycle, otherwise the simulation results of sections~\ref{sec:lqr} and~\ref{sec:swingup} would not apply to it. To ensure this, every number of the onboard copy (the gain $K$, the swing-up knobs, the guards of the supervisor, the estimator and the plant constants) is written by the script \texttt{export\_onboard.m} from the design file \texttt{ctrl\_hybrid\_design.m} into a generated header of the firmware, so the design exists only once. Furthermore, the same script records the measured angles that the Simulink controller received in a swing-up test and in a push test, together with the duty cycle it commanded, and a native test of the firmware (\nolinkurl{firmware/test/native_onboard.cpp}) feeds the same angles to the C++ controller. Over the 3751 periods of the swing-up and the 1501 periods of the push test, the largest difference in the duty cycle was $7\times10^{-15}$, and the supervisor was in the same state in every period, which shows that the two copies are the same controller up to the round-off of floating-point arithmetic. Since then, the first hardware runs led to two additions that deal with the breakaway friction of the arm (equation~\ref{eq:stick}): a breakaway feedforward in the swing-up (section~\ref{sec:su_law}) and a breakaway part in the friction compensation of the LQR (section~\ref{sec:lqr_fric}). Their knobs are in the design file and in the generated header as well; the replay test now runs with the design defaults (section~ef{sec:lqr_impl}).
 
 Before an onboard run starts, the firmware requires, in addition to the arming conditions of the experiments (centered arm, commissioned limits and, with the current trip enabled, a calibrated current zero), the encoder scale, the pendulum-down reference, a fresh pendulum reading, and the arm and pendulum signs of the device profile to be those with which the model was identified ($+1$ and $-1$, see section~\ref{sec:estimation}), since a flipped sign would make the controller push the pendulum the wrong way. During the run, the firmware stops the motor if the pendulum reading is older than 20\,ms, when the supervisor enters SafeStop, and at the end of the run length set in the profile. A balance-only option skips the swing-up and ends the run as soon as the pendulum leaves the catch region, which allows the LQR to be tested on its own first, by releasing the pendulum near upright by hand.
 
@@ -1801,7 +1801,7 @@ Limitations of the harness are:
   \item Only one of the two ways of running the controller has been used on the rig:
   \begin{enumerate}
     \item for the hardware-in-the-loop mode, the Hardware variant of the Rig and a compact duty message in the firmware are not implemented yet;
-    \item the onboard mode has been used on the rig (section~\ref{sec:lqr_hw}), but its equivalence with the harness was shown by replaying recorded inputs with both breakaway terms switched off, since the Simulink blocks do not contain them yet.
+    \item the onboard mode has been used on the rig (section~\ref{sec:lqr_hw}), and its equivalence with the harness is shown by replaying recorded inputs with the design defaults (section~ef{sec:lqr_impl}).
   \end{enumerate}
 \end{enumerate}
 
@@ -2078,6 +2078,51 @@ Repeating the balance with $k_s = 0$ and with $k_f = 0$ would separate the secon
 
 Since the duty cycle is at its limit for so long, the current is much higher than in simulation. Without the breakaway terms, two runs with the 1.5\,A trip of the design and one with a 3\,A trip ended in an overcurrent trip at the moment of the catch, which agrees with the high hand-over currents of Figure~\ref{fig:su_catch}. For the runs of Table~\ref{tab:lqr_hw}, the trip was therefore raised to 4\,A, and three of them ended because the current sensor left the range of the ADC (the ACS712 output exceeds the input range of the ESP32 ADC above about $+3.2\,\mathrm{A}$). Since firmware 1.10, the current checks can be switched off for a run, which was done for the last two runs of the table. Of the remaining runs, one ended when the pendulum sensor reported an invalid reading, and in the last one the pendulum was disturbed by hand: it recovered from two disturbances of $16^\circ$ and $21^\circ$, but the third came while the arm was already at $-85^\circ$, and the arm passed the $100^\circ$ stop of the supervisor with the duty cycle at its limit.
 
+\subsection{Implementation}
+\label{sec:lqr_impl}
+\paragraph{Design path.} The gain is computed in the design file \texttt{ctrl\_hybrid\_design.m} of the folder \texttt{controllers/hybrid}: the upright model of the design model (model 20261120, section~\ref{sec:reid}) is discretized with a zero-order hold at the controller period, $(\Phi, \Gamma) = $ \texttt{c2d}$(A_4, B_d, T_s)$, and \texttt{dlqr}$(\Phi, \Gamma, Q, R)$ gives $K$ with the Bryson weights of equation~\ref{eq:bryson}:
+\begin{equation}
+  Q = \operatorname{diag}\!\left(\frac{1}{(30^\circ)^2},\ \frac{1}{(8^\circ)^2},\ \frac{1}{20^2},\ \frac{1}{30^2}\right) = \operatorname{diag}(3.65,\ 51.3,\ 0.0025,\ 0.0011), \qquad R = \frac{1}{0.10^2} = 100,
+  \label{eq:lqr_impl_Q}
+\end{equation}
+with the angles in radians and the speeds in rad/s. The script \texttt{export\_onboard.m} writes $K$ with 17 significant digits into \nolinkurl{firmware/include/onboard_design.h}, and \nolinkurl{firmware/tools/onboard_rates.py} writes the gain of the same weights for the periods of 1, 2 and 4\,ms into \nolinkurl{onboard_rates.h}; the 4\,ms row equals the design gain to a relative $1.5\times10^{-12}$.
+
+\paragraph{One controller tick.} In the firmware (\nolinkurl{firmware/include/onboard.h}), the controller runs inside the 1\,kHz control task and is called on every fourth tick. The order within a call of \texttt{step} is:
+\begin{enumerate}
+  \item The arm angle is computed from the encoder count, $\theta_0 = s_0 (n - n_c)\,2\pi/N_{rev}$, and the pendulum angle from the AS5600 reading, $\theta_1 = s_1 (a - a_{down})\,2\pi/4096 + \pi$, wrapped to $[-\pi, \pi)$, so that $\theta_1 = 0$ is upright. If the pendulum reading is older than 20\,ms, the run ends with the fault \texttt{PEND\_INVALID}.
+  \item The estimator gives $\hat{\mathbf{x}} = [\theta_0\ \theta_1\ \dot\theta_0\ \dot\theta_1]^T$ (section~\ref{sec:cu_impl}).
+  \item The supervisor decides the state from $\hat{\mathbf{x}}$ (section~\ref{sec:su_impl}), and only the law of the selected state is evaluated.
+  \item In the Stabilize state, the duty request is
+  \begin{equation}
+    d[k] = -K\left(\hat{\mathbf{x}}[k] - \begin{bmatrix} r & 0 & 0 & 0 \end{bmatrix}^T\right) + k_f\left( d_c(\sigma) + k_s\, e^{-(\hat{\dot\theta}_0/\omega_s)^2}\left( d_s(\sigma) - d_c(\sigma) \right) \right),
+    \label{eq:lqr_impl}
+  \end{equation}
+  with $\sigma = \tanh(d_{\mathrm{LQR}}/0.02)$ as in equation~\ref{eq:fric_comp_stick}. Since the retune of 2026-11-20, $k_f = 0$, so the second term vanishes on the rig.
+  \item The request is returned to the firmware, which holds it for the next four ticks. At every 1\,ms tick the safety path clips it to $\pm0.5$, limits its change to 100 per second (0.1 per tick), goes through zero before a reversal with 1\,ms of standby blanking, and checks the arm travel (120$^\circ$), the heartbeat and the current before the PWM output is updated.
+\end{enumerate}
+The data flow is therefore encoder and AS5600 $\rightarrow$ angles $\rightarrow$ observer $\rightarrow$ law $\rightarrow$ clip and slew $\rightarrow$ PWM. The gains are used in double precision; only the model of the observer runs in single precision. The numbers of the LQR are listed in Table~\ref{tab:lqr_impl}. The stabilizer itself costs a few multiplications per tick; before the observer, the whole controller took 143\,$\mu$s on average and 352\,$\mu$s at most per call (section~\ref{sec:harness_modes}), and with the observer 0.55\,ms (section~\ref{sec:cu_firmware}).
+
+\begin{table}[h]
+\centering
+\caption{Parameters of the onboard LQR (generated header \texttt{onboard\_design.h}).}
+\label{tab:lqr_impl}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Item & Value \\
+\midrule
+Controller period $T_s$ & 4\,ms (1 and 2\,ms with their own $K$, without the observer) \\
+$K$ & $[-0.17890,\ -1.89060,\ -0.11319,\ -0.13471]$ \\
+Weights & $Q = \operatorname{diag}(3.65,\,51.3,\,0.0025,\,0.0011)$, $R = 100$ \\
+Friction compensation & $k_f = 0$, band 0.02, $d_{c\pm} = 0.0628,\ 0.0624$, $k_s = 1$, $\omega_s = 0.2\,\mathrm{rad/s}$ \\
+Firmware limits & duty $\pm0.5$, slew 100\,s$^{-1}$, arm travel $120^\circ$ \\
+Filtered differences (\texttt{estKind} 0) & cut-off 40\,Hz, pole $e^{-2\pi\cdot40\cdot0.004} = 0.366$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Verification.} The C++ law is replayed against Simulink: \texttt{export\_onboard.m} records the measured angles that \nolinkurl{ctrl_hybrid.slx} received in a swing-up and a push scenario (3751 and 1501 periods, realistic sensors, the 20 November model) together with its duty, and \nolinkurl{firmware/test/native_onboard.cpp} feeds the same angles to \texttt{OnboardController}. The test requires the duty to agree to $10^{-9}$ with the observer's model in double precision (measured $1.2\times10^{-14}$) and to $10^{-4}$ in single precision as on the ESP32 (measured $3\times10^{-6}$, about 300 times smaller than one PWM step of $1/1023$), and the supervisor to be in the same state in every period. The test also checks the refusal of unsupported settings (a controller period of 3\,ms, the observer at 1 or 2\,ms, the pole-placement stabilizer), and that the friction compensation adds at least the breakaway duty to a small request when it is on.
+
 \subsection{Limitations}
 Limitations of the presented design are:
 \begin{enumerate}
@@ -2309,6 +2354,48 @@ with $e_k = 0.0019$, $\omega_s = \omega_f = 1\,\mathrm{rad/s}$, $i_{\max} = 1.0\
 
 Figure~\ref{fig:su_run} shows the final design with the nominal model. The energy rises from $-1$ to the target in less than 1.5\,s, the pendulum is caught after \textbf{1.47\,s} with a peak current of 0.82\,A over the whole run, and the arm stays within $47^\circ$. After the catch, the pendulum stays within $3^\circ$, while the arm swings by about $\pm 21^\circ$, which is the friction limit cycle of the soft LQR without compensation (see section~\ref{sec:lqr_fric}). In the worst cases, the hand-over states lie between $\theta_1 = -17.6$ and $-16.1^\circ$ with $\dot\theta_1$ between 4.6 and 5.5\,rad/s, inside the held band of Figure~\ref{fig:su_catch}. The law is implemented in the block \texttt{energy law} of \nolinkurl{matlab/simulink_r2026a/controllers/hybrid/swingup_energy.slx}, its knobs are set in \texttt{ctrl\_hybrid\_design.m}, and the tools of this section (\texttt{swingup\_knobs}, \texttt{swingup\_catch\_region}, \texttt{swingup\_workbench}, \texttt{swingup\_sweep} and \texttt{swingup\_corner\_test}) are in the same folder. The complete hybrid controller, swing-up followed by the catch with the LQR of section~\ref{sec:lqr_final}, also runs on the ESP32 in the onboard mode of section~\ref{sec:harness_modes}, where it reproduces the duty cycle of this swing-up run to $7\times10^{-15}$ (with the breakaway terms switched off, since the Simulink blocks do not have them yet).
 
+\subsection{Implementation}
+\label{sec:su_impl}
+\paragraph{Supervisor.} The Stateflow chart of \nolinkurl{ctrl_hybrid.slx} has three states, SwingUp, Stabilize and SafeStop, and the firmware copy (\texttt{supervise} in \nolinkurl{firmware/include/onboard.h}) evaluates the same transitions on the estimate $\hat{\mathbf{x}}$ of the observer in every controller tick, before the law of the new state is computed:
+\begin{itemize}
+  \item at the first tick, Stabilize if the catch condition holds, otherwise SwingUp;
+  \item any state $\rightarrow$ SafeStop if $|\hat\theta_0| > 100^\circ$ (this has priority, and is below the $120^\circ$ travel trip of the firmware); the firmware then stops the motor and the run ends with the notice \texttt{ONBOARD\_SAFE\_STOP}, since the re-arm option is off;
+  \item SwingUp $\rightarrow$ Stabilize if $|\hat\theta_1| < 20^\circ$ and $|\hat{\dot\theta}_1| < 8\,\mathrm{rad/s}$ (the hand-over, the dashed box of Figure~\ref{fig:su_catch});
+  \item Stabilize $\rightarrow$ SwingUp if $|\hat\theta_1| > 35^\circ$. In a balance-only run (no swing-up) the firmware ends the run instead, with \texttt{ONBOARD\_PENDULUM\_LOST}.
+\end{itemize}
+The stabilizer is told that it is active one period after the entry into Stabilize; the PID resets its arm integral on that edge (section~\ref{sec:pid_integral}).
+
+\paragraph{Law as implemented.} In the SwingUp state, a tick evaluates, from $\hat\theta_0, \hat\theta_1, \hat{\dot\theta}_0, \hat{\dot\theta}_1$ and the reference $r = 0$:
+\begin{enumerate}
+  \item the energy $E = \frac{1}{2}\tilde J_p\hat{\dot\theta}_1^2 + \tilde G(\cos\hat\theta_1 - 1)$ and $e = E/2\tilde G$ (equations~\ref{eq:su_E} and~\ref{eq:su_e});
+  \item the pump $a_0 = -a_p\operatorname{sat}(k_E(E_0 - e))\tanh(\hat{\dot\theta}_1\cos\hat\theta_1/\omega_s)$, replaced by $a_0 = a_k$ while $e < -1 + e_k$;
+  \item the centring, $a_0 \leftarrow a_0 - \omega_c^2(\hat\theta_0 - r) - 2\zeta_c\omega_c\hat{\dot\theta}_0$;
+  \item the friction torque $\tilde\tau_f = \tilde\tau_c + k_{st}\,e^{-(\hat{\dot\theta}_0/\omega_{st})^2}(\tilde\tau_s - \tilde\tau_c)$ with $\tilde\tau_c$ from $\tanh(\hat{\dot\theta}_0/\omega_f)$ and $\tilde\tau_s$ from $\tanh(a_0/a_{st})$ (equation~\ref{eq:su_stick});
+  \item the current $i = \operatorname{sat}_{i_{max}}(\tilde J_a a_0 + \tilde B_{eq}\hat{\dot\theta}_0 + \tilde\tau_f)$ and the duty $d = \operatorname{sat}_{d_{max}}((R_m i + K_b\hat{\dot\theta}_0)/V_s)$.
+\end{enumerate}
+Because the law is evaluated from the estimate of the same period, the swing-up needs the observer of section~\ref{sec:cu_impl} as much as the LQR does: its energy $E$ uses the estimated $\dot\theta_1$. The result $d$ is the request of that tick, and it goes through the same clip ($\pm0.5$), slew and reversal logic as the LQR request (section~\ref{sec:lqr_impl}). Only the law of the state selected by the supervisor is evaluated, which saves the time of the unused law; in Simulink both are computed and the duty is the same. The parameters are listed in Table~\ref{tab:su_impl}.
+
+\begin{table}[h]
+\centering
+\caption{Parameters of the onboard swing-up and supervisor (generated header \texttt{onboard\_design.h}).}
+\label{tab:su_impl}
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Group & Values \\
+\midrule
+Pump & $E_0 = 0.048$, $k_E = 21$, $a_p = 80\,\mathrm{rad/s^2}$, $\omega_s = 1\,\mathrm{rad/s}$ \\
+Kick & $a_k = 69\,\mathrm{rad/s^2}$, $e_k = 0.0019$ \\
+Centring & $\omega_c = 6.5\,\mathrm{rad/s}$, $\zeta_c = 0.7$ \\
+Motor inverse & $\omega_f = 1\,\mathrm{rad/s}$, $k_{st} = 1$, $\omega_{st} = 0.2\,\mathrm{rad/s}$, $a_{st} = 5\,\mathrm{rad/s^2}$, $\tilde\tau_{s\pm} = 0.2675$ \\
+Limits & $i_{max} = 1.0$\,A, $d_{max} = 0.45$ \\
+Supervisor & catch $20^\circ$ and $8\,\mathrm{rad/s}$, exit $35^\circ$, SafeStop at $100^\circ$, no re-arm \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Verification.} The design file holds every knob in one place (\texttt{D.swing}, \texttt{D.sup}), and \texttt{export\_onboard.m} writes them into the header, so the Simulink block and the firmware use the same numbers. The replay of section~\ref{sec:lqr_impl} runs the complete controller from the hanging rest through the catch (3751 periods in the swing-up scenario), and requires the same duty and the same supervisor state in every period. The native test also checks the breakaway feedforward directly: the kick from rest must command more than the breakaway duty plus 2\,\% and not less than the law without the feedforward, and at a moving arm the two laws must agree to $10^{-6}$.
+
 \subsection{Limitations}
 Limitations of the presented design are:
 \begin{enumerate}
@@ -2381,6 +2468,42 @@ The harness reproduces the hardware behaviour of the previous controller (oscill
 \subsection{Firmware 1.12}
 \label{sec:cu_firmware}
 The observer was ported to the onboard controller (\nolinkurl{firmware/include/onboard.h}); its numbers are generated by \texttt{export\_onboard.m} as before. The ESP32-S3 has a single-precision floating-point unit only, and with the model in double precision one controller step took 2.65\,ms (3.32\,ms worst) of the 4\,ms period, inside the 1\,ms firmware loop. Computing the observer's model in single precision, with one Runge--Kutta substep per period, and evaluating only the control law that the supervisor selects reduced this to \textbf{0.55\,ms} mean (0.73--0.80\,ms worst). The observer is refused at controller periods of 1 and 2\,ms. An armed 10\,s run with the motor unpowered produced no control overrun. With the model in double precision, the C++ copy commands the same duty cycle as Simulink to $1.2\times10^{-14}$ over 5252 periods; in single precision the largest difference is $3\times10^{-6}$, about 300 times smaller than one step of the PWM.
+
+\subsection{Implementation of the Observer}
+\label{sec:cu_impl}
+\paragraph{Equations as implemented.} The observer exists three times with the same operations: the Simulink block \nolinkurl{est_observer.slx}, its plain MATLAB reference \nolinkurl{est_observer_ref.m} and the method \texttt{observe} of \nolinkurl{firmware/include/onboard.h}. Let $k$ be the current controller tick, $T_s = 4$\,ms and $n_d = 3$, let $d[k-1]$ be the duty request of the previous tick (the one that has just started to act), saturated to $\pm0.5$, and let $F(\mathbf{x}, d)$ be one fourth-order Runge--Kutta step of length $T_s/n_s$ of the nonlinear model with the duty $d$ ($n_s = 1$ substep). The state of the model is $[\theta_0\ \theta_1\ \dot\theta_0\ \dot\theta_1]^T$. The order of operations within a tick is:
+\begin{enumerate}
+  \item Shift the duty history, $u_j \leftarrow u_{j+1}$ for $j = 0 \dots n_d - 1$, and $u_{n_d} \leftarrow d[k-1]$; shift the arm reading into a delay line of $n_d$ places and take its oldest value $\theta_0[k-n_d]$.
+  \item Predict: $\mathbf{x}_p = F(\mathbf{x}_d[k-1]\,\text{with}\ \theta_1\ \text{wrapped},\ u_0)$. In the first tick, $\mathbf{x}_p = [\theta_0\ \theta_1\ 0\ 0]^T$ from the readings.
+  \item Compare: $r_0 = \theta_0[k-n_d] - x_{p,0}$, $r_1 = \operatorname{wrap}(\theta_1[k] - x_{p,1})$, with $r_0 = 0$ for the first $n_d$ ticks.
+  \item Correct: $\mathbf{x}_d[k] = \mathbf{x}_p + [\alpha r_0,\ \alpha r_1,\ (\beta/T_s) r_0,\ (\beta/T_s) r_1]^T$, with $\alpha = 1 - \lambda^2 = 0.395$, $\beta/T_s = (1-\lambda)^2/T_s = 12.3\,\mathrm{s^{-1}}$ and $\lambda = e^{-2\pi f_{ab}T_s}$, $f_{ab} = 10$\,Hz.
+  \item Roll forward: $\hat{\mathbf{x}}[k] = F(\dots F(F(\mathbf{x}_d[k], u_1), u_2) \dots, u_{n_d})$, so the estimate is the state at the present tick. Then wrap $\hat\theta_1$; if a component is not finite, the readings are used with zero velocities.
+  \item In parallel, an alpha--beta tracking loop on the two readings ($f_{trk} = 25$\,Hz, $\alpha = 0.715$, $\beta/T_s = 54.4\,\mathrm{s^{-1}}$ at $T_s = 4$\,ms) is updated in every tick without the model. It is the estimate if \texttt{estKind} is 2, with $\hat\theta_1$ pushed forward by $\dot{\hat\theta}_1 n_d T_s$.
+\end{enumerate}
+Since the controller calls the observer before the law, $d[k-1]$ is still the stored duty when the observer runs. The model input is the duty the controller requested, not the slewed one the firmware applied. A tick needs $1 + n_d = 4$ Runge--Kutta steps, or 16 evaluations of the right-hand side with its \texttt{sin}, \texttt{cos} and \texttt{tanh}. The right-hand side is the identified model with stick--slip (\nolinkurl{matlab/model/furuta_rhs.m}): the arm is held by static friction while $|\dot\theta_0| < 0.05$\,rad/s and the friction needed to hold it is within the breakaway.
+
+\paragraph{Precision and timing.} The state $\mathbf{x}_d$ and the correction are in double precision, and the Runge--Kutta steps are computed in single precision (the type \texttt{ObsT}), since the single-precision FPU of the ESP32-S3 computes double precision in software. One controller step took 2.65\,ms (3.32\,ms worst) in double precision and 0.55\,ms mean (0.73--0.80\,ms worst) in single precision with one substep, measured with the motor unpowered. With two substeps the worst case was 0.93\,ms, too close to the 1\,ms of the firmware loop, so the firmware refuses the observer at periods below 4\,ms and a substep count other than 1 or 2. The observer runs inside the control task, in every fourth tick of the 1\,ms firmware loop, before the safety path of the same tick.
+
+\begin{table}[h]
+\centering
+\caption{Parameters of the onboard observer (\texttt{onboard\_design.h}).}
+\label{tab:obs_impl}
+\small
+\begin{tabular}{@{}lp{0.68\textwidth}@{}}
+\toprule
+Item & Value \\
+\midrule
+Lag compensated & $n_d = 3$ ticks (12\,ms), allowed 1 to 16 \\
+Correction bandwidth & $f_{ab} = 10$\,Hz, critically damped alpha--beta \\
+Fallback bandwidth & $f_{trk} = 25$\,Hz \\
+Runge--Kutta substeps & 1 per tick \\
+Duty input & requested duty, saturated to $\pm0.5$ \\
+Model & identified model of 2026-11-20, e.g.\ $R_m = 2.692\,\Omega$, $K_b = 0.4427$, $V_s = 12$\,V, $\tilde J_a = 5.488\times10^{-3}$, $\tilde J_p = 2.80\times10^{-4}$, $\tilde G = 0.04378$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\paragraph{Verification.} The reference \texttt{est\_observer\_ref.m} gives the same estimate as the Simulink block to the last bit over 1000 periods. The firmware copy is checked by the replay of section~\ref{sec:lqr_impl}, in which the observer is part of the loop: its state depends on the duty history, so any difference in the model or the order of operations would grow over the 5252 periods. The duty agrees to $1.2\times10^{-14}$ with the model in double precision and to $3\times10^{-6}$ in single precision, and the tolerance of the test is $10^{-4}$ in single and $10^{-9}$ in double precision.
 
 \subsection{Hardware Results}
 \label{sec:cu_rig}
@@ -2687,6 +2810,108 @@ Tuned PID & 4 pushes of $10^\circ$ to $16^\circ$, all recovered (the last one ba
 \end{table}
 
 The tuned PID gave the steadiest balance, the fastest settling and the smallest arm swing at the catch, kept the arm centred and survived all the pushes. The integrator reset at the catch and the retuned gains fixed the poor push recovery of the first PID. The LQR leaves the arm about $15^\circ$ off centre, since the pendulum sensor is upright at an offset of $+0.7^\circ$ to $+1^\circ$, multiplied by the gain ratio, while the variants with an arm integral centre it. These results rest on one or two runs per controller and on manual pushes of unequal strength, and a controller with an arm integral winds up while the arm is stuck by static friction (seen in one run, where the duty rose from 4.5 to 9.4\,\% in 12\,s with the arm held), so an integral limit is advisable.
+
+%======================================================================
+\section{Comparison of All Tested Controllers on the Rig}
+\label{sec:ctrl_compare}
+%======================================================================
+The previous sections designed and tested the controllers one by one. The objective of this section is to compare all runs recorded on the rig so far with the same metrics, grouped by controller, so that the effect of the observer, of the integral action and of the integral reset can be read from one place. Section~\ref{sec:pid_rig} compared the stabilizers of firmware 1.13 on the whole balance phase; this section adds the runs before the retune and the runs of the retuned LQR, and it uses the steady state of the last 5\,s of balance, so its values differ slightly from those of Table~\ref{tab:pid_rig}.
+
+All runs are onboard runs at $T_s = 4$\,ms (section~\ref{sec:harness_modes}): swing-up and catch, then balance. The metrics are computed by \nolinkurl{desktop/scripts/rig_metrics.py} from the logged records:
+\begin{itemize}
+  \item \textbf{capture time}: time from the start of the swing-up to the first period in the Stabilize state;
+  \item \textbf{overshoot}: the largest swing of $\theta_1$ past upright in the first 1.5\,s after the hand-over, in \% of the hand-over angle ($19^\circ$ to $24^\circ$ in these runs);
+  \item \textbf{settling}: the time after the hand-over from which $|\theta_1|$ stays within $5^\circ$ for 1\,s;
+  \item \textbf{arm peak at catch}: the largest $|\theta_0|$ in the first 1.5\,s after the hand-over;
+  \item \textbf{steady state}: the last 5\,s of balance, with the rms of $\theta_1$, the mean of $\theta_0$ (the offset from the reference 0), the rms of the requested duty cycle, the share of time at the duty limit (applied duty of at least 0.49) and the rms of the motor current;
+  \item \textbf{pushes}: excursions of $|\theta_1|$ above $9^\circ$ at least 1.5\,s apart, with the time until $|\theta_1|$ is back within $5^\circ$, or lost if the balance ends within 2.5\,s.
+\end{itemize}
+The controllers are:
+\begin{enumerate}
+  \item \textbf{LQR, before the retune}: firmware 1.11, the gain of section~\ref{sec:lqr_final}, filtered differences, friction compensation on or off (3 runs of 2026-11-20);
+  \item \textbf{LQR with observer}: firmware 1.12, the gain of equation~\ref{eq:K_20261120} and the model observer of section~\ref{sec:cu_observer}, with full, half or no friction compensation (5 runs of 2026-11-20);
+  \item \textbf{LQR, firmware 1.13}: the same law, compensation off (1 run);
+  \item \textbf{first PID}: the gains of the LQR and $K_{i0} = 0.1$, no integrator reset (2 runs);
+  \item \textbf{LQI}: the LQR with the arm integral designed jointly, $z_{max} = 2$ (2 runs);
+  \item \textbf{tuned PID}: the gains of section~\ref{sec:pid_final}, with the integrator reset at the catch (1 run).
+\end{enumerate}
+Three runs are excluded: \texttt{20261121\_124955\_b8\_pidtuned}, in which the pendulum was held by hand from about 8\,s, \texttt{20261121\_051008\_b5\_lqr}, which ended in SafeStop after a marginal catch, and the runs with the motor unpowered. Tables~\ref{tab:cc_catch} and~\ref{tab:cc_steady} give the mean over the runs of a group and, in brackets, the smallest and the largest run.
+
+\begin{table}[htbp]
+\centering
+\caption{Capture and catch transient on the rig: mean over the runs (range in brackets).}
+\label{tab:cc_catch}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lcllll@{}}
+\toprule
+Controller & Runs & Capture time [s] & Overshoot [\%] & Settling [s] & Arm peak [$^\circ$] \\
+\midrule
+LQR, firmware 1.11 & 3 & 0.83 & 53 (38--68) & never & 51 (46--58) \\
+LQR with observer & 5 & 1.65 (1.42--2.15) & 75 (38--92) & 0.69 (0.25--1.54) & 74 (39--90) \\
+LQR, firmware 1.13 & 1 & 2.28 & 79 & 0.51 & 74 \\
+First PID & 2 & 2.16 (2.14--2.18) & 31 (26--36) & 0.38 (0.36--0.39) & 41 (37--44) \\
+LQI & 2 & 2.43 (2.14--2.72) & 40 (24--55) & 0.75 (0.52--0.98) & 46 (33--59) \\
+Tuned PID & 1 & 2.20 & 32 & 0.26 & 30 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\centering
+\caption{Steady state of the last 5\,s of balance on the rig: mean over the runs (range in brackets). The arm column is the mean of $|\bar\theta_0|$, the absolute offset of each run.}
+\label{tab:cc_steady}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lccccc@{}}
+\toprule
+Controller & $\theta_1$ rms [$^\circ$] & Arm offset [$^\circ$] & Duty rms & At limit [\%] & Current rms [A] \\
+\midrule
+LQR, firmware 1.11 & 5.18 (4.87--5.44) & 23.8 (19.3--32.0) & 0.710 (0.651--0.755) & 48 (47--49) & 1.61 (1.58--1.64) \\
+LQR with observer & 1.95 (0.98--3.55) & 12.6 (5.4--19.6) & 0.095 (0.076--0.119) & 0.05 (0--0.24) & 0.30 (0.27--0.32) \\
+LQR, firmware 1.13 & 1.53 & 14.8 & 0.095 & 0 & 0.27 \\
+First PID & 1.77 (1.71--1.83) & 4.5 (2.3--6.6) & 0.099 & 0 & 0.28 \\
+LQI & 1.93 (1.79--2.06) & 7.1 (1.9--12.3) & 0.105 (0.101--0.109) & 0 & 0.29 (0.27--0.30) \\
+Tuned PID & 1.19 & 3.9 & 0.090 & 0 & 0.29 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The runs with pushes (Table~\ref{tab:cc_push}) are listed separately, since pushes dominate their last 5\,s. The three runs before the retune are not in it: with the filtered differences the pendulum oscillated at about $5^\circ$ rms with the duty cycle at its limit, so the excursions above $9^\circ$ that the script finds there (5 to 6 per run, 9.1$^\circ$ to $14.8^\circ$) are the oscillation and not pushes. The first run in the table, a retuned run with half friction compensation, shows 3 excursions of $13.5^\circ$, $13.4^\circ$ and $9.4^\circ$ in a 2.9\,Hz wobble that the note of the run mentions, and it is included for completeness.
+
+\begin{table}[htbp]
+\centering
+\caption{Runs with pushes on the pendulum: excursions above $9^\circ$, time until back within $5^\circ$ and outcome. The balance duration is the time in the Stabilize state.}
+\label{tab:cc_push}
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}p{0.17\textwidth}cp{0.14\textwidth}p{0.25\textwidth}cc@{}}
+\toprule
+Run & Excursions & Peaks [$^\circ$] & Recovery time [s] & Outcome & Balance [s] \\
+\midrule
+LQR with observer, half comp.\ & 3 & 13.5, 13.4, 9.4 & 0.36, 0.52, lost & lost & 13.6 \\
+First PID & 4 & 16.5 to 19.3 & none within the run, the 4th lost & lost & 8.2 \\
+LQI & 11 & 9.4 to 25.4 & 3.26, 1.67, 1.90, 0.19, then none (6 excursions), the 11th lost & lost & 23.0 \\
+Tuned PID & 4 & 15.2, 10.0, 13.6, 15.7 & 9.42, 4.70, 1.96, 0.18 & kept & 27.8 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Discussion}
+\label{sec:cc_discussion}
+\paragraph{Steadiness.} The tuned PID is the steadiest: $1.19^\circ$ rms in the run without pushes and $0.96^\circ$ rms in the last 5\,s of its push run, against $1.5^\circ$ to $2.0^\circ$ for the other controllers with the observer and $5.2^\circ$ for the LQR before the retune. All controllers with the observer have a duty rms of about 0.08 to 0.12 and a current of 0.27 to 0.32\,A, so their differences in steadiness are not paid for in effort.
+
+\paragraph{Effect of the observer.} The largest change is between the first and the second group. Before the retune, the lag margin of the LQR (about 6\,ms, section~\ref{sec:reid_lqr}) was smaller than the 9\,ms to 15\,ms lag of the pendulum reading, and the loop oscillated with the duty cycle at its limit about half of the time (1.6\,A). The observer compensates the lag with the model, so the same kind of law holds the pendulum at about 1\,$^\circ$ to $2^\circ$ rms with 0.3\,A. It does not improve the catch itself: the capture takes longer (1.4 to 2.3\,s against 0.83\,s, with the swing-up updated to the new friction values, section~\ref{sec:cu_lqr}), and the overshoot of the LQR stays high (38 to 92\,\%) with the arm travelling up to $90^\circ$ in the catch.
+
+\paragraph{Catch.} The controllers with an arm integral catch more gently. The overshoot is 24 to 55\,\% for the LQI, 26 to 36\,\% for the first PID and 32\,\% for the tuned PID, against 38 to 92\,\% for the LQR, and the arm peak at the catch is $30^\circ$ to $59^\circ$ against $39^\circ$ to $90^\circ$. The tuned PID has the smallest arm peak ($30^\circ$) and the shortest settling (0.26\,s). The overshoot of the tuned PID is 32\,\% in the run without pushes but 70\,\% in its push run, so the catch of a controller varies from run to run by about as much as the difference between most of them, as the ranges show. The capture time is a property of the swing-up (2.1\,s to 2.7\,s in the runs without pushes of firmware 1.13), not of the stabilizer.
+
+\paragraph{Arm centring.} The LQR leaves the arm $5^\circ$ to $20^\circ$ off its reference ($14.8^\circ$ in firmware 1.13), since the offset of the pendulum sensor of about $+1^\circ$ is multiplied by the gain ratio (section~\ref{sec:pid_rig}). The integral action removes most of the offset: $4.5^\circ$ for the first PID, $7.1^\circ$ for the LQI and $3.9^\circ$ for the tuned PID. The standard deviation of $\theta_0$ in the last 5\,s is still $13^\circ$ to $18^\circ$ for these three (and $14^\circ$ for the LQR of firmware 1.13), so the arm does not rest at the reference but moves around it, because the static friction of the arm makes it stick and slip (section~\ref{sec:cu_rig}).
+
+\paragraph{Disturbance rejection.} Only the tuned PID kept the pendulum through all its pushes, 4 pushes of $10^\circ$ to $16^\circ$, balancing to the end of the 27.8\,s run. The first PID lost the pendulum after 8.2\,s, and the LQI after 23\,s of continued agitation. The integral reset at the catch is the difference between the first and the tuned PID: the integral that has accumulated during the swing-up is not carried into the balance, so the controller does not start with a large arm demand. The retuned gains ($K_{p1}$ from 1.89 to 2.60) also stiffen the pendulum loop. The recovery of the tuned PID is not fast for the first two pushes (9.4 and 4.7\,s until back within $5^\circ$), which agrees with the slow arm recentring by the integral.
+
+\paragraph{Ranking.} For the steady pendulum, the order is tuned PID ($1.19^\circ$), LQR 1.13 ($1.53^\circ$), first PID ($1.77^\circ$), LQI ($1.93^\circ$), LQR with observer ($1.95^\circ$), and far behind the LQR before the retune. For arm centring it is tuned PID, first PID, LQI, LQR. For the catch the LQI and the PIDs are ahead of the LQR in overshoot and arm peak, and the tuned PID is ahead in settling. For disturbance rejection the tuned PID is first and the other two controllers with pushes were lost. The ranking in steadiness between the LQR of firmware 1.13, the first PID and the LQI is inside the spread of the runs.
+
+\paragraph{Caveats.} The groups hold one to five runs, and three of the controllers have a single run without pushes, so a range cannot be given and the difference between controllers of less than the run-to-run spread (about $0.1^\circ$ to $1^\circ$ rms in the groups with several runs) is not established. The pushes are manual taps of unequal strength and timing: the LQI run had 11 excursions against 4 for the tuned PID, so the push runs show which controller survived that particular sequence, not a ranking. The runs with the LQR with observer mix three settings of the friction compensation (on, half, off), which is why their range is wide. An integral controller winds up while the arm sticks (section~\ref{sec:pid_rig}), and none of them has an integral limit yet.
 
 %======================================================================
 \section{Digital Twin}
