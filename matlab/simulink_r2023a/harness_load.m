@@ -21,9 +21,9 @@ arguments
     opts.IfMissing (1,1) logical = false
     opts.Open (1,1) logical = true
 end
-% The saved model's PostLoadFcn still names LqrBalance, the example controller the model was saved with;
-% the project's controller is the hybrid one, so that name opens it instead.
-if strcmp(controller, 'LqrBalance'), controller = 'ctrl_hybrid.slx'; end
+% Models saved before 2026-11-21 (the R2026a copy) still call harness_load('LqrBalance', 'balance', 'IfMissing',
+% true) on opening: treat that as the current callback, the hybrid controller on the swing-up from hanging.
+if strcmp(controller, 'LqrBalance'), controller = 'ctrl_hybrid.slx'; scenario = 'swingup'; opts.IfMissing = false; end
 if opts.IfMissing && evalin('base', 'exist(''hcfg'', ''var'') && exist(''hb'', ''var'')')
     return
 end
