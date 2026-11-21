@@ -1,11 +1,11 @@
-% Streams a simulated open-loop run into the Unreal twin. Start the twin first (see twin/README.md).
-% Plant: the identified model of the report (matlab/model/furuta_rhs.m, Table 6). Input: a bang-bang
+% Streams a simulated open-loop run into the Unreal twin. Start the twin first (twin/run_twin.ps1, see README.md).
+% Plant: the identified model (matlab/model/furuta_rhs.m with furuta_params_20261120.m). Input: a bang-bang
 % duty at the pendulum's natural frequency, so the pendulum swings up and over (open loop, no controller).
 % Conventions: furuta_rhs uses theta1 = 0 upright; the twin packet uses q_pend = 0 hanging -> q_pend = theta1 - pi.
 here = fileparts(mfilename('fullpath'));
 model = fullfile(here, '..', '..', 'matlab', 'model');
 addpath(model);
-run(fullfile(model, 'furuta_params.m'));                           % p, x0_hanging
+run(fullfile(model, 'furuta_params_20261120.m'));                  % p, x0_hanging
 w0 = 12.5;                                                         % hanging natural frequency [rad/s]
 ufun = @(t) 0.5*sign(sin(w0*t)).*(t < 2.5);
 opts = odeset('RelTol', 1e-7, 'AbsTol', 1e-9, 'MaxStep', 2e-3);
