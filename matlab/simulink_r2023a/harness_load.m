@@ -1,16 +1,17 @@
 function harness_load(controller, scenario, opts)
 %HARNESS_LOAD Open the harness ready for the Simulink Run button.
-%   harness_load()                               the hybrid controller (ctrl_hybrid.slx) on 'balance'
-%   harness_load('ctrl_hybrid.slx', 'swingup')   any controller / scenario, same options as run_sim
+%   harness_load()                               the hybrid controller (ctrl_hybrid.slx) on 'swingup' (from hanging)
+%   harness_load('ctrl_hybrid.slx', 'push')      any controller / scenario, same options as run_sim
 %   Puts the controller in the slot and every variable the model uses (hcfg, hp, hb, hx0, hT, h_ref,
 %   h_dist, h_noise, ctrlP) in the base workspace, then opens the model. After pressing Run, the
 %   logged signals are in out.logsout (Simulation Data Inspector shows them too).
 %   run_sim does not need this; it passes the same variables to each run directly.
-%   The model's PostLoadFcn calls harness_load('IfMissing', true) so it never opens with
-%   unresolved parameters (red blocks).
+%   The model's PostLoadFcn calls harness_load('ctrl_hybrid.slx', 'swingup') every time the model is
+%   opened, so pressing Run starts from hanging at rest (theta0 = 0, theta1 = pi). For another scenario
+%   call harness_load yourself after opening, e.g. harness_load('ctrl_hybrid.slx', 'push').
 arguments
     controller (1,:) char = 'ctrl_hybrid.slx'
-    scenario = 'balance'
+    scenario = 'swingup'
     opts.Mode (1,:) char = 'realistic'
     opts.Params struct = struct()
     opts.Plant struct = struct()
