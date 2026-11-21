@@ -1,0 +1,20 @@
+# MATLAB / Simulink generated files
+*.asv
+*.slxc
+*.mexw64
+slprj/
+par_mdl_ref/
+
+# Everything outside the model (other branches' files left in a working copy)
+/data/
+/desktop/
+/firmware/
+/report/
+/tools/
+/twin/
+/hardware/
+/protocol/
+/config/
+/docs/
+/.venv/
+/.claude/
