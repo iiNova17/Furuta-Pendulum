@@ -16,8 +16,8 @@
 \definecolor{terra}{HTML}{CC7451}
 \usepackage[labelfont=bf]{caption}
 \usepackage{titlesec}
-\titleformat*{\section}{\large\bfseries\color{navy}}
-\titleformat*{\subsection}{\normalsize\bfseries\color{navy}}
+\titleformat*{\section}{\Large\bfseries\color{navy}}
+\titleformat*{\subsection}{\large\bfseries\color{navy}}
 \titleformat*{\subsubsection}{\normalsize\bfseries\color{steel}}
 \usepackage{fancyhdr}
 \pagestyle{fancy}
@@ -670,7 +670,7 @@ The electrical time constant describes how fast the current follows the voltage,
 \label{sec:full}
 %======================================================================
 
-\subsection{Substituting the Motor Model into the Pendulum Model}
+\subsection{Combined Equations}
 To obtain a single model of our system with the armature voltage as its input, the motor model is combined with the pendulum model. Substituting $T_m$ from equation~\ref{eq:motor} into the arm equation (equation~\ref{eq:arm_nl}), the terms $J_{mo}\ddot\theta_0$, $b_{mo}\dot\theta_0$ and $\tau_c \sgn(\dot\theta_0)$ move to the left-hand side. To keep the equations compact, the following lumped parameters are introduced:
 \begin{equation}
   J_a = J_0 + J_{mo} + m \La^2, \qquad J_p = J_1 + m L_p^2, \qquad h = m \La L_p, \qquad B_{eq} = b_0 + b_{mo} ,
@@ -740,7 +740,7 @@ These equations are used for the nonlinear simulation, the swing-up design and t
 
 In the simulation, the sign functions are replaced by $\tanh(\dot\theta_0/\varepsilon)$ and $\tanh(\dot\theta_1/\varepsilon_1)$ with $\varepsilon = 0.1\,\mathrm{rad/s}$ and $\varepsilon_1 = 0.05\,\mathrm{rad/s}$. This keeps the friction torque continuous through zero speed, so that a fixed-step integrator does not chatter.
 
-\subsection{Linear Model About the Upright Equilibrium}
+\subsection{Linear Upright Model}
 For controller design, the full model is linearized about the upright position. Linearizing equation~\ref{eq:full_explicit} about $\theta_1 = 0$, $\dot\theta_0 = \dot\theta_1 = 0$, $i = 0$, $V = 0$, with the Coulomb friction left out of the linear model, and writing
 \begin{equation}
   \bar\Delta = J_a J_p - h^2 ,
@@ -1459,7 +1459,7 @@ The models also neglect the inductance. With an electrical time constant of the 
 Thus, the four-state models of section~\ref{sec:ssmodels} are suitable for controller design as long as the closed-loop poles remain well below this value.
 
 %======================================================================
-\section{Re-identification after the Rig Was Moved (2026-11-20)}
+\section{Re-identification}
 \label{sec:reid}
 %======================================================================
 After the rig was moved to a different location, the first closed-loop runs with the onboard controller of section~\ref{sec:harness_modes} (firmware 1.9--1.11) balanced the pendulum, but only inside a saturated oscillation at 9--11\,Hz, with the duty cycle at its $\pm 50\,\%$ limit about half of the time and an armature current of about 1.6\,A rms. Since the controller had been designed on the model of section~\ref{sec:estimation}, the question was whether the model still described the rig. The objective of this section is to describe the measurement suite recorded on 2026-11-20, what it showed about the rig, and the model identified from it, which replaces the model of Table~\ref{tab:params} for the controller design from this point on. The model of Table~\ref{tab:params} is kept unchanged as the reference of sections~\ref{sec:estimation} to~\ref{sec:stability}.
@@ -1578,7 +1578,7 @@ Model & Arm angle & Pendulum angle & Arm speed & Current \\
 
 As Table~\ref{tab:reid_validation} shows, the new model predicts the pendulum and the arm speed of the rig much better than the previous one. The current fit is about 72\,\% with both models, which is consistent with the shaft coupling: the current and the encoder are on the motor side, which partly moves on its own within the play. The model is stored in \nolinkurl{matlab/model/furuta_params_20261120.m} with the same fields and linear models as \nolinkurl{furuta_params.m}, and the harness uses it with \texttt{harness\_config(\ldots, 'Model', '20261120')}.
 
-\subsection{Free-Swing and Open-Loop Validation of the 2026-11-20 Model}
+\subsection{Open-Loop Validation}
 \label{sec:reid_val}
 Table~\ref{tab:validation} of section~\ref{sec:estimation} validates the model of 2026-11-15 on the recordings of that day. This subsection validates the model of 2026-11-20 (Table~\ref{tab:reid_params}) in the same way on every open-loop recording of the 2026-11-20 suite. The figures and the numbers are produced by \nolinkurl{report/figures/make_validation_figures.py}, which uses the simulation, the signal preparation and the fit definition of the estimation (\nolinkurl{desktop/furuta_lab/estimation.py}): each run is simulated from its measured state at 0.5\,s with the recorded applied duty cycle, with the parameters of \nolinkurl{export/parameters.json} and the pendulum timing correction of 10.0\,ms, and compared with the filtered measurements through the fit percentage defined in section~\ref{sec:estimation}. All fits of this subsection are open-loop simulations of the whole run, unless stated otherwise; the script also writes them to \nolinkurl{report/figures/val_fits.json} and \nolinkurl{val_fits.csv}, together with the root-mean-square errors and the fits of the simulation restarted every 2\,s.
 
@@ -1797,7 +1797,7 @@ The block \texttt{FurutaSensors} produces what the ESP32 measures: the arm angle
 
 Each of these effects can be switched off for an ideal run (\texttt{'Mode', 'ideal'}), which was used only to separate the effect of the rig from that of a design.
 
-\subsection{The Plant as a Simscape Multibody Model}
+\subsection{Simscape Multibody Plant}
 \label{sec:harness_plant}
 The plant inside the Rig consists of an electrical and a mechanical part. The motor and driver are built from Simulink blocks that evaluate the current of equation~\ref{eq:nl_current}, including the open circuit at zero duty cycle, and the friction torques of equation~\ref{eq:nl_friction} and of the pendulum joint (the breakaway friction of equation~\ref{eq:stick} is not in the Simscape plant yet, so the harness runs the model without it). The resulting joint torques drive a Simscape Multibody model of the arm and the pendulum (see Figure~\ref{fig:harness_plant}).
 
@@ -1996,7 +1996,7 @@ where the angles are in radians. With this choice, every state at its acceptable
 
 The arm tolerance was kept at $\theta_{0,\max} = 30^\circ$, well inside the $\pm 100^\circ$ safety stop of the supervisor. The design of this section is implemented in the MATLAB script \nolinkurl{matlab/simulink_r2026a/controllers/hybrid/lqr_gains.m}, which evaluates equations~\ref{eq:lqr_disc}, \ref{eq:bryson} and~\ref{eq:lqr_K} for a given set of tolerances.
 
-\subsection{Simulation Environment and Constraints of the Rig}
+\subsection{Simulation Environment}
 \label{sec:lqr_sim}
 Every candidate gain was tested in the Simulink controller harness, in which the plant is the Simscape model of equation~\ref{eq:nl_num} with the parameters of Table~\ref{tab:params}. The harness also reproduces what the controller sees and what the firmware does:
 \begin{enumerate}
@@ -2530,7 +2530,7 @@ Limitations of the presented design are:
 \end{enumerate}
 
 %======================================================================
-\section{Controller Update for the Re-identified Rig (2026-11-20)}
+\section{Observer and LQR Update}
 \label{sec:cu}
 %======================================================================
 Section~\ref{sec:reid_lqr} showed that the LQR of section~\ref{sec:lqr_final} tolerates only about 6\,ms of pendulum lag on the rig as it is now, while the shaft coupling adds 9--15\,ms. The objective of this section is to describe the updated controller: a model-based observer that compensates the lag, the LQR redesigned on the model of section~\ref{sec:reid}, the firmware that runs both, and the first hardware results.
@@ -2588,7 +2588,7 @@ The harness reproduces the hardware behaviour of the previous controller (oscill
 \label{sec:cu_firmware}
 The observer was ported to the onboard controller (\nolinkurl{firmware/include/onboard.h}); its numbers are generated by \texttt{export\_onboard.m} as before. The ESP32-S3 has a single-precision floating-point unit only, and with the model in double precision one controller step took 2.65\,ms (3.32\,ms worst) of the 4\,ms period, inside the 1\,ms firmware loop. Computing the observer's model in single precision, with one Runge--Kutta substep per period, and evaluating only the control law that the supervisor selects reduced this to \textbf{0.55\,ms} mean (0.73--0.80\,ms worst). The observer is refused at controller periods of 1 and 2\,ms. An armed 10\,s run with the motor unpowered produced no control overrun. With the model in double precision, the C++ copy commands the same duty cycle as Simulink to $1.2\times10^{-14}$ over 5252 periods; in single precision the largest difference is $3\times10^{-6}$, about 300 times smaller than one step of the PWM.
 
-\subsection{Implementation of the Observer}
+\subsection{Observer Implementation}
 \label{sec:cu_impl}
 \paragraph{Equations as implemented.} The observer exists three times with the same operations: the Simulink block \nolinkurl{est_observer.slx}, its plain MATLAB reference \nolinkurl{est_observer_ref.m} and the method \texttt{observe} of \nolinkurl{firmware/include/onboard.h}. Let $k$ be the current controller tick, $T_s = 4$\,ms and $n_d = 3$, let $d[k-1]$ be the duty request of the previous tick (the one that has just started to act), saturated to $\pm0.5$, and let $F(\mathbf{x}, d)$ be one fourth-order Runge--Kutta step of length $T_s/n_s$ of the nonlinear model with the duty $d$ ($n_s = 1$ substep). The state of the model is $[\theta_0\ \theta_1\ \dot\theta_0\ \dot\theta_1]^T$. The order of operations within a tick is:
 \begin{enumerate}
@@ -2888,7 +2888,7 @@ Limitations of the presented design are:
   \item The arm integral has no limit other than its reset at each catch, so a long saturation of the duty cycle while balancing could wind it up.
 \end{enumerate}
 
-\subsection{Hardware comparison of the stabilizers (2026-11-21)}
+\subsection{Hardware Comparison}
 \label{sec:pid_rig}
 The stabilizers were run on the rig with firmware 1.13 onboard at 4\,ms, the model observer, the model of 20 November and the friction compensation off, each after the swing-up. Runs of 20\,s without pushes are compared in Table~\ref{tab:pid_rig}, and runs of 30\,s with 3 to 4 manual taps on the pendulum (about $10^\circ$ to $22^\circ$) in Table~\ref{tab:pid_rig_push}. The metrics are computed by \nolinkurl{desktop/scripts/rig_metrics.py}: the pendulum rms over the whole balance phase, the mean of the arm angle, the catch overshoot (the largest swing past upright after the hand-over, in \% of the hand-over angle of about $22^\circ$), the settling time (until $|\theta_1|$ stays within $5^\circ$ for 1\,s) and the arm peak during the catch. Two values separated by a slash are two runs.
 
@@ -2931,7 +2931,7 @@ Tuned PID & 4 pushes of $10^\circ$ to $16^\circ$, all recovered (the last one ba
 The tuned PID gave the steadiest balance, the fastest settling and the smallest arm swing at the catch, kept the arm centred and survived all the pushes. The integrator reset at the catch and the retuned gains fixed the poor push recovery of the first PID. The LQR leaves the arm about $15^\circ$ off centre, since the pendulum sensor is upright at an offset of $+0.7^\circ$ to $+1^\circ$, multiplied by the gain ratio, while the variants with an arm integral centre it. These results rest on one or two runs per controller and on manual pushes of unequal strength, and a controller with an arm integral winds up while the arm is stuck by static friction (seen in one run, where the duty rose from 4.5 to 9.4\,\% in 12\,s with the arm held), so an integral limit is advisable.
 
 %======================================================================
-\section{Comparison of All Tested Controllers on the Rig}
+\section{Controller Comparison}
 \label{sec:ctrl_compare}
 %======================================================================
 The previous sections designed and tested the controllers one by one. The objective of this section is to compare all runs recorded on the rig so far with the same metrics, grouped by controller, so that the effect of the observer, of the integral action and of the integral reset can be read from one place. Section~\ref{sec:pid_rig} compared the stabilizers of firmware 1.13 on the whole balance phase; this section adds the runs before the retune and the runs of the retuned LQR, and it uses the steady state of the last 5\,s of balance, so its values differ slightly from those of Table~\ref{tab:pid_rig}.
@@ -3166,7 +3166,7 @@ Limitations of the digital twin are:
   \item The drawn geometry is the CAD model, while the dynamics come from the identified lumped parameters. Since the split between the mass and the length of the pendulum cannot be identified (see section~\ref{sec:harness_plant}), the drawn bodies show where the arm and the pendulum are, not their identified inertia.
 \end{enumerate}
 
-\section{The Furuta Lab Desktop Application}
+\section{Desktop Application}
 \label{sec:app}
 %======================================================================
 All measurements of this work were taken, and all models of sections~\ref{sec:estimation} and~\ref{sec:reid} were identified, with one desktop program, Furuta Lab. This section describes what the program does, how it is built and which safety interlocks it relies on. The program is written in Python with PySide6 (Qt) and runs on Windows; it is started with \texttt{python desktop/main.py}. The complete manual is \nolinkurl{docs/FURUTA_LAB.md}.
