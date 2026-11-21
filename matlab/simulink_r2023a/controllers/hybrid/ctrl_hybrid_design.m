@@ -12,7 +12,7 @@ function P = ctrl_hybrid_design(cfg, P)
 if nargin < 2, P = struct(); end
 
 % ---- which stabilizer runs in the Stabilize state ----------------------------------------------
-D.stab = 3;                          % 1 = PID, 2 = pole placement, 3 = LQR
+D.stab = 1;                          % 1 = PID, 2 = pole placement, 3 = LQR
 
 % ---- model the controller is DESIGNED with (gains, observer model, friction numbers) -------------
 % 20261120: the rig re-identified after it was moved (matlab/model/furuta_params_20261120.m; arm friction
@@ -44,8 +44,12 @@ D.sup.rearm = 0;                     % 1: SafeStop -> SwingUp once the arm is ba
                                      % hangs still; 0: stay stopped (e-stop behaviour)
 
 % ---- PID owner (stab_pid.slx) -------------------------------------------------------------------
-% u = PID(theta1) + Kp0 (theta0 - r) + Kd0 dtheta0. The integrator resets on entering Stabilize.
-D.pid = struct('Kp', 0, 'Ki', 0, 'Kd', 0, 'N', 50, 'Kp0', 0, 'Kd0', 0);   % TODO your gains
+% Two loops added together, on the observer's state xh = [theta0 theta1 w0 w1] (2026-11-21):
+%   u = Kp1 theta1 + Kd1 w1  +  Kp0 (theta0 - r) + Ki0 sum(theta0 - r) Ts + Kd0 w0
+%       PD on the pendulum      PID on the arm (discrete PI block, forward Euler, + Kd0 on the observer's w0)
+% Starting point = the LQR gain (K = [-0.1789 -1.891 -0.1132 -0.1347]: Kp1 = -K(2), Kd1 = -K(4), Kp0 = -K(1),
+% Kd0 = -K(3)), plus the arm integral Ki0. The arm integrator runs from the start of the run (no reset, no limit).
+D.pid = struct('Kp1', 1.891, 'Kd1', 0.1347, 'Kp0', 0.1789, 'Ki0', 0.1, 'Kd0', 0.1132);
 
 % ---- pole-placement owner (stab_pole_placement.slx) ---------------------------------------------
 % Continuous-time closed-loop poles [rad/s], mapped to z = exp(s Ts); K = place(Ad, Bd, z).
