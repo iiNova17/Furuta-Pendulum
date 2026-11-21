@@ -36,12 +36,38 @@
 \pretocmd{\subsection}{\FloatBarrier}{}{}
 \pretocmd{\subsubsection}{\FloatBarrier}{}{}
 \usepackage[colorlinks=true, linkcolor=navy, urlcolor=navy, citecolor=navy]{hyperref}
+\hypersetup{pdftitle={Furuta Pendulum: Modeling, Identification and Control},
+  bookmarksnumbered=true, bookmarksopen=true, bookmarksopenlevel=1, pdfstartview=FitH}
+\usepackage[nameinlink,noabbrev]{cleveref}
+\setcounter{tocdepth}{2}
 \setlength{\emergencystretch}{1.5em}
 
 \newcommand{\La}{L_{\mathrm{arm}}}
 \newcommand{\sgn}{\operatorname{sgn}}
 
 \begin{document}
+
+\pagenumbering{alph}
+\begin{titlepage}
+  \centering
+  \vspace*{5cm}
+  {\Huge\bfseries\color{navy} Furuta Pendulum\par}
+  \vspace{0.8cm}
+  {\Large Modeling, Identification and Control\par}
+  \vfill
+  {\large \today\par}
+\end{titlepage}
+\pagenumbering{roman}
+
+\pdfbookmark[1]{Contents}{toc}
+\tableofcontents
+\clearpage
+\pdfbookmark[1]{List of Figures}{lof}
+\listoffigures
+\pdfbookmark[1]{List of Tables}{lot}
+\listoftables
+\clearpage
+\pagenumbering{arabic}
 
 %======================================================================
 \section{Mathematical Model For Furuta Pendulum}
@@ -2470,7 +2496,7 @@ Because the law is evaluated from the estimate of the same period, the swing-up 
 
 \begin{table}[h]
 \centering
-\caption{Parameters of the onboard swing-up and supervisor (generated header \texttt{onboard\_design.h}).}
+\caption[Parameters of the onboard swing-up and supervisor]{Parameters of the onboard swing-up and supervisor (generated header \texttt{onboard\_design.h}).}
 \label{tab:su_impl}
 \small
 \begin{tabular}{@{}ll@{}}
