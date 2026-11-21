@@ -220,7 +220,7 @@ class LabTests(unittest.TestCase):
         d.status={'state':'DISARMED','centered':True,'centerCount':0}
         d.config={'countsPerRev':1496,'armSign':1,'pendSign':-1,'pendDownRaw':3008,'maxDuty':.5,'travelCounts':498,
                   'slewPerSecond':100,'currentTripA':1.5,'maxDuration':20,'heartbeatMs':300,'streamHz':100,'adcHz':2000}
-        w.power.setChecked(True);p.controller.setCurrentIndex(1);p.period.setCurrentIndex(p.period.findData(.001))   # LQR only, 1 ms
+        w.power.setChecked(True);p.controller.setCurrentIndex([c['key'] for c in __import__('furuta_lab.onboard_page',fromlist=['x']).CONTROLLERS].index('lqr'));p.period.setCurrentIndex(p.period.findData(.001))   # LQR only, 1 ms
         p.start()
         end=_t.monotonic()+5
         while w.busy and _t.monotonic()<end:app.processEvents();_t.sleep(.01)
@@ -269,7 +269,7 @@ class LabTests(unittest.TestCase):
         dv.rpc=rpc2;dv.connected=dv.ready=True;dv.port=type('P',(),{'write':lambda s,b:None,'close':lambda s:None})()
         dv.identity={'onboardControl':True,'onboardPeriods':[.004],'burstCancel':True}
         dv.status={'state':'DISARMED','centered':True};dv.config={'maxDuty':.5,'travelCounts':498,'maxDuration':20,'streamHz':250,'adcHz':2000}
-        w.power.setChecked(True);p.start();end=_t.monotonic()+5
+        w.power.setChecked(True);p.controller.setCurrentIndex([c['key'] for c in __import__('furuta_lab.onboard_page',fromlist=['x']).CONTROLLERS].index('swingup_lqr'));p.start();end=_t.monotonic()+5
         while w.busy and _t.monotonic()<end:QApplication.processEvents();_t.sleep(.01)
         self.assertIn('CAPTURE_BURST',seen);self.assertEqual(seen[-1],'BURST_CANCEL')
         self.assertTrue(dv.inhibit)                                           # motion disabled again

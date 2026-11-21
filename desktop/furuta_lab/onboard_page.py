@@ -20,6 +20,16 @@ from . import wire
 from .backend import save_capture
 
 CONTROLLERS = [
+    {'key': 'swingup_pid', 'label': 'Swing-up + PID balance (recommended)', 'start': {'swingUp': True, 'stab': 1}, 'needs': 'pid',
+     'how': 'Start with the pendulum <b>hanging at rest</b> and the arm centered. The same energy swing-up, then the PID '
+            '(PD on θ1 + PID on θ0, stab_pid.slx, tuned gains) catches and balances it. Simulation: caught after 1.8 s, as with '
+            'the LQR; after a push the pendulum settles about twice as fast as with the LQR (ITAE 0.08 vs 0.16), current about '
+            '1.4 A for a moment at the catch. On the rig (21 Nov) the best of the tested controllers: 1.2 deg pendulum rms, '
+            'settled 0.26 s after the catch, arm centered, all four test pushes recovered. Needs firmware 1.13.'},
+    {'key': 'pid', 'label': 'PID balance only', 'start': {'swingUp': False, 'stab': 1}, 'needs': 'pid',
+     'how': 'Hold the pendulum lightly <b>near upright</b> (catch-region light green), press Start, then let go. The PID '
+            'balances; if the pendulum leaves the catch region the run ends (ONBOARD_PENDULUM_LOST). The arm integral is reset '
+            'one period after the catch, as in Simulink. Needs firmware 1.13.'},
     {'key': 'swingup_lqr', 'label': 'Swing-up + LQR balance', 'start': {'swingUp': True, 'stab': 3},
      'how': 'Start with the pendulum <b>hanging at rest</b> and the arm centered. The energy law swings it up and '
             'the LQR catches it near the top (simulation: caught after about 1.5 s, arm within about ±50°, '
@@ -28,15 +38,6 @@ CONTROLLERS = [
      'how': 'Hold the pendulum lightly <b>near upright</b> (the catch-region light below must be green), press Start, '
             'then let go. If the pendulum leaves the catch region the run ends (ONBOARD_PENDULUM_LOST). '
             'Expected: it stays up and the arm drifts slowly by about ±20° (friction limit cycle with fricGain 0).'},
-    {'key': 'swingup_pid', 'label': 'Swing-up + PID balance', 'start': {'swingUp': True, 'stab': 1}, 'needs': 'pid',
-     'how': 'Start with the pendulum <b>hanging at rest</b> and the arm centered. The same energy swing-up, then the PID '
-            '(PD on θ1 + PID on θ0, stab_pid.slx, tuned gains) catches and balances it. Simulation: caught after 1.8 s, as with '
-            'the LQR; after a push the pendulum settles about twice as fast as with the LQR (ITAE 0.08 vs 0.16), current about '
-            '1.4 A for a moment at the catch. Needs firmware 1.13.'},
-    {'key': 'pid', 'label': 'PID balance only', 'start': {'swingUp': False, 'stab': 1}, 'needs': 'pid',
-     'how': 'Hold the pendulum lightly <b>near upright</b> (catch-region light green), press Start, then let go. The PID '
-            'balances; if the pendulum leaves the catch region the run ends (ONBOARD_PENDULUM_LOST). The arm integral is reset '
-            'one period after the catch, as in Simulink. Needs firmware 1.13.'},
 ]
 
 # knob -> (unit, meaning). Unknown knobs from a newer firmware are still listed and editable.
