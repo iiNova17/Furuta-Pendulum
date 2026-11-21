@@ -225,7 +225,7 @@
   ],
   "info": {
     "identified": "2026-11-20",
-    "method": "desktop/reidentify_variants.py variant E: claude_loop chain, refinement of h, b1, tp, Ja, Beq, tcp, tcn by simulation, fit runs b1_fitA-C, pendulum timing 10 ms",
+    "method": "desktop/reidentify_variants.py variant E: model_20261115 chain, refinement of h, b1, tp, Ja, Beq, tcp, tcn by simulation, fit runs b1_fitA-C, pendulum timing 10 ms",
     "breakaway": "6 % / 6 % duty, first moving pulse, median of three arm positions (b1_breakaway_low)",
     "note": "se are those of the least-squares fit (before refinement)",
     "pend_delay_ms": 10.0152791416749,

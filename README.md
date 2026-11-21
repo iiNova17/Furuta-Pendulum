@@ -1,195 +1,151 @@
-# Furuta Pendulum (Control II project)
+# Furuta Pendulum
 
-Rotary inverted pendulum: hardware, firmware, lab software, identified model and report.
+A rotary inverted pendulum built, modeled and controlled from scratch for the Control II course. A DC gearmotor
+turns a horizontal arm, and a free pendulum at the arm tip is swung up from hanging and balanced upright. The
+project covers the mechanical design, the electronics and firmware, a desktop lab application, a nonlinear model
+identified from measurements, a Simulink/Simscape simulation of the whole system with a hybrid controller, a
+digital twin, and the technical report.
+
+**Final results on the hardware** (onboard controller, 20 November 2026):
+
+| | |
+|---|---|
+| Swing-up from rest to the catch | 1.42–1.43 s |
+| Pendulum while balancing | 1.22–1.33° rms, duty cycle never at its limit |
+| Motor current while balancing | about 0.3 A rms (driver rating 1.2 A continuous) |
+| Recovery from a 13.5° push | back within 3° after 0.70 s |
+| Model validation (open loop, separate recordings) | pendulum angle 84–90 % fit, current 88–89 % |
+
+The full derivation, identification and controller design are in [`report/furuta_model.pdf`](report/furuta_model.pdf).
 
 ## Repository layout
 
 | Folder | Contents |
 |---|---|
-| `report/` | LaTeX report `furuta_model.tex` and its compiled PDF; `figures/make_report_data.py` regenerates all figures and numbers from `data/runs`; `archive/` holds earlier versions |
-| `matlab/model/` | **Final identified model for MATLAB/Simulink**: `furuta_params.m` (parameters, linear models) and `furuta_rhs.m` (nonlinear model). See its README |
-| `matlab/harness/` | **Simulation + controller harness** (Simulink/Simscape/Stateflow): the identified model as a Simscape plant, the rig's firmware and sensors, the hybrid controller template (`controllers/hybrid/`: Stateflow supervisor + PID / pole placement / LQR / swing-up, one file per owner), scenarios, brief-4.7 metrics, Phase-1 validation. See its README |
-| `twin/` | **Digital twin** (Unreal Engine 5.3, C++): renders the rig posed from UDP packets (real rig solid, model as a ghost); MATLAB senders in `twin/matlab/`. See its README |
-| `data/runs/` | Raw hardware recordings (one folder per run) |
-| `data/estimation/` | Furuta Lab estimation sessions; `suite_20261120` is the current model (re-identified after the rig was moved, export in `suite_20261120/export`, MATLAB `matlab/model/furuta_params_20261120.m`); `claude_loop` is the report's Table 6 model |
-| `data/captures`, `data/logs`, `data/matlab-jobs` | Passive captures, app logs and MATLAB backend jobs |
-| `desktop/` | Furuta Lab (Python/Qt) app: live view, experiments, parameter estimation (`furuta_lab/estimation.py`), simulation bench, Onboard control tab, Digital twin tab (`docs/TWIN.md`), tests. Rig acquisition suite of 2026-11-20 (scripts, app closed): `rig_suite.py` (passive), `rig_suite_batch1.py` (open loop), `rig_suite_batch2.py` (onboard closed loop), `rig_suite_dryrun.py`, analyses `rig_suite_analysis.py` / `rig_suite_lag.py` / `rig_suite_backlash.py`; re-identification `reidentify.py`, `reidentify_variants.py`, `export_model_20261120.py`; studies `observer_study.py`, `coupling_model.py` / `coupling_fit.py` |
-| `firmware/` | ESP32-S3 firmware (PlatformIO) |
-| `protocol/` | Serial protocol spec and golden vectors |
-| `config/` | Device profile and schema |
-| `matlab/` (rest) | Older MATLAB workbench app (`FurutaWorkbench`) |
-| `hardware/cad/` | SolidWorks parts and assembly (`rotary_inverted_pendulum.SLDASM`) |
-| `hardware/print/` | STL / 3MF / STEP files for 3D printing |
-| `tools/usb-bench/` | Stand-alone USB bench firmware used to commission the sensors |
-| `docs/` | User guides, hardware notes, experiment and validation notes |
-| `docs/project/` | Course project description, project brief and wiring, original project handoff |
-| `docs/HANDOFF_*.md`, `IMPLEMENTATION_PLAN.md`, `CLAUDE.md` | Implementation plans and notes for AI coding agents |
-| `test-results/` | Early simulator/hardware acceptance results (October 2026) |
+| [`report/`](report) | Technical report (`furuta_model.tex`, compiled `furuta_model.pdf`) and the scripts that regenerate every figure and number from the recordings (`figures/make_report_data.py`) |
+| [`matlab/model/`](matlab/model) | Identified model: `furuta_rhs.m` (nonlinear equations), `furuta_params_20261120.m` (current parameters), `furuta_params.m` (parameters of report Table 6) |
+| [`matlab/simulink_r2026a/`](matlab/simulink_r2026a) | Simulink model of the whole system, saved in MATLAB R2026a |
+| [`matlab/simulink_r2023a/`](matlab/simulink_r2023a) | The same Simulink model saved in R2023a (opens in R2023a and newer); all other files are identical |
+| [`desktop/`](desktop) | Furuta Lab, the Python/Qt lab application (`furuta_lab/`), its tests, and the rig and analysis scripts (`scripts/`) |
+| [`firmware/`](firmware) | ESP32-S3 firmware (PlatformIO): sensors, safety, telemetry and the onboard controller |
+| [`twin/`](twin) | Unreal Engine 5.3 digital twin and its MATLAB senders |
+| [`hardware/`](hardware) | SolidWorks assembly and parts (`cad/`), files for 3D printing (`print/`) |
+| [`data/`](data) | Raw hardware recordings (`runs/`), still captures and the estimation sessions behind both models |
+| [`protocol/`](protocol), [`config/`](config) | Serial protocol specification and golden vectors; device profile and schema |
+| [`docs/`](docs) | Course project description and the in-app guide of Furuta Lab |
 
-## Getting started (teammates)
+## Hardware
 
-1. Clone: `git clone https://github.com/iiNova17/Furuta-Pendulum.git`
-2. Python app: install Python 3.12, run `Setup-Furuta-Lab.ps1` once, then `Start-Furuta-Lab.cmd`.
-3. Model in MATLAB/Simulink: `cd matlab/model`, `run furuta_params.m`, then follow `matlab/model/README.md`.
-4. Controllers / simulation: `cd matlab/harness`, `harness_setup`, then `run_sim('ctrl_hybrid.slx', 'swingup', 'Plot', true)`;
-   fill in your section of `controllers/hybrid/ctrl_hybrid_design.m` (see `matlab/harness/README.md`).
-5. Digital twin: tab **Digital twin** in Furuta Lab (`docs/TWIN.md`), or the Unreal one: `powershell -File twin/run_twin.ps1` (Unreal Engine 5.3), then `twin/matlab/twin_demo.m`.
-6. Report: build `report/furuta_model.tex` with `latexmk -pdf` (MiKTeX or TeX Live).
-7. Firmware: open `firmware/` in VS Code with PlatformIO.
+| Part | Component |
+|---|---|
+| Controller | ESP32-S3-DevKitC-1 (N16R8) |
+| Motor | JGA25-370 DC gearmotor, 34:1, 11-pulse quadrature encoder (1496 counts per arm revolution) |
+| Driver | TB6612FNG H-bridge, 20 kHz PWM, 12 V supply |
+| Pendulum angle | AS5600 12-bit magnetic encoder with a diametric magnet on the pendulum shaft |
+| Current | ACS712-05B Hall sensor on the ESP32 ADC |
+| Mechanics | 3D-printed base, arm and lid; 608ZZ bearings; a removable pin that locks the arm at center |
 
-Motor safety: never command motor motion unless the person at the rig has confirmed that the center rod
-is removed, 12 V is on and the area is clear.
+## Getting started
 
----
+### Furuta Lab (lab application)
 
-# Furuta Lab
+Requires Windows and Python 3.12 or newer.
 
-The primary app is now a focused Python/Qt instrument interface with a
-separate UART worker, NumPy/SciPy measurement tools, and an on-demand MATLAB
-model backend. It uses raster plots rather than the MATLAB web GUI or GPU
-OpenGL rendering.
+```powershell
+.\Setup-Furuta-Lab.ps1      # once: creates .venv and installs desktop/requirements.txt
+.\Start-Furuta-Lab.cmd      # starts the app
+```
 
-## Start the focused app
+Choose the serial port and press **Connect USB**; the motor stays disabled until the 12 V box is ticked and finite
+limits are commissioned. The tabs cover live signals and recordings, sensor noise and filters, motor tests,
+step-by-step parameter estimation, the onboard controller, and the digital twin. Tests:
+`.venv\Scripts\python.exe desktop\test_lab.py`.
 
-Double-click **Start-Furuta-Lab.cmd**, or run **Start-Furuta-Lab.ps1** from
-this folder. This PC's local `.venv` is
-installed. For another PC, use Python 3.12 and run Setup-Furuta-Lab.ps1 once.
-Choose COM11, Connect USB, and leave the 12 V declaration unchecked for USB-only
-sensor work. Open [the focused guide](docs/FOCUSED_GUIDE.md) for the five workflows.
+### Firmware
 
-- Live sensor readings, reference setting and recording.
-- Still-state noise PSDs and bandwidth/delay-constrained filter comparisons.
-- Unpowered travel marking, bounded actuation and breakaway dead-zone pulses.
-- Separate motor-only and assembled-system datasets and parameter estimators.
-- Background MATLAB PT1/tfest validation with saved model artifacts.
+Open `firmware/` with PlatformIO and upload, or from a terminal:
 
-Reduction 34:1 is provisional: with 11 cycles and x4 decoding it implies 1496
-counts/output revolution. Confirm against a measured angle before physical
-assembled-system estimation. Motor-run buttons remain disabled in USB-only mode.
+```powershell
+cd firmware; pio run -t upload --upload-port COM11
+```
 
-The current compatible firmware is 1.1. It advertises faster ADC download chunks;
-old clients remain compatible. Python automatically falls back for firmware 1.0.
-Build/upload still uses the PlatformIO project in `firmware/`.
+Flashing reboots the board, so the arm center, the pendulum-down reference and the current zero are set again in
+the app. The onboard controller can be checked against Simulink without hardware with the replay test
+`firmware/test/native_onboard.cpp` (same duty cycle as the Simulink controller).
 
-Tests: `.venv/Scripts/python.exe desktop/test_lab.py`. The explicit real-USB
-smoke test is `desktop/hardware_smoke.py --port COM11 --seconds 65 --backend`;
-it never arms or commands motion. Its MATLAB backend input is synthetic and
-is labelled separately from the real USB recordings.
+### Simulink model
 
-## Retained MATLAB workbench
+Open MATLAB in the folder that matches your release (`simulink_r2026a` or `simulink_r2023a`) and run:
 
-ESP32-S3 firmware and a MATLAB R2023b desktop app for bounded motor experiments,
-sensor calibration, raw recording/replay, noise spectra, filter comparison,
-and system identification. Start in **Simulator** mode to explore the app.
+```matlab
+harness_setup                                         % paths: model, library, controllers
+open_system('furuta_harness')                         % the whole system: controller + rig
+R = run_sim('ctrl_hybrid.slx', 'swingup', 'Plot', true);
+```
 
-### Launch the older MATLAB interface
+Required toolboxes: Simulink, Simscape, Simscape Multibody, Stateflow, Control System Toolbox.
+Tests: `runtests({'tests/test_harness.m', 'tests/test_observer.m'})`.
 
-From MATLAB, change into this repository and run:
+## The model
 
-    addpath('matlab');
-    app = FurutaWorkbench();
+The state is $x = [\theta_0, \theta_1, \dot\theta_0, \dot\theta_1]$ (arm angle, pendulum angle with $\theta_1 = 0$
+upright) and the input is the PWM duty cycle. The equations come from a Lagrangian derivation of the arm and
+pendulum combined with a DC motor model, with Coulomb, viscous and breakaway friction on the arm and dry and viscous
+friction on the pendulum. All torque-like parameters are identified per unit of the motor torque constant, so they
+are expressed in amperes of motor current. They were identified from a free swing of the pendulum and square-wave
+experiments with the pendulum hanging, followed by a refinement that minimizes the simulation error, and validated
+on recordings not used in the fit. After the rig was moved, the model was identified again on 20 November 2026;
+`furuta_params_20261120.m` is the current model and `furuta_params.m` the one of the report's Table 6.
 
-The app starts disconnected. It has eight tabs: Live & Manual, Experiments,
-Calibration, Time Analysis, Spectrum & Noise, Filters, Identification, and
-Runs & Settings. The source/channel/interval selectors above the tabs apply
-to offline analysis.
+## The Simulink model and controller
 
-Start with the [practical operating guide](docs/QUICK_START.md) for connection,
-zeros, animation calibration, noise analysis, filtering and identification.
-The same guide opens from **Runs & Settings -> Guide / help** in the app.
+`furuta_harness.slx` contains the complete closed loop:
 
-### Try a complete simulated experiment
+- **Controller** (`controllers/hybrid/ctrl_hybrid.slx`): a model-based observer that compensates the 9–15 ms lag of
+  the pendulum reading; the stabilizing laws, each in its own file (`stab_lqr.slx`, `stab_pid.slx`,
+  `stab_pole_placement.slx`); the energy-based swing-up (`swingup_energy.slx`); and a Stateflow supervisor that
+  switches between swing-up, stabilize and safe stop. Every gain and threshold is set in `ctrl_hybrid_design.m`.
+- **Rig**: the firmware's safety and output logic (duty limit, slew limit, travel and current trips, PWM
+  resolution), the identified plant as a Simscape Multibody model, and the sensors (encoder quantization, pendulum
+  lag, current noise and filter).
 
-1. Select **Simulator**, then **Connect**. Wait for DISARMED.
-2. On Live & Manual, click **Simulator setup**. This applies a labelled
-   synthetic profile and centers its encoder; it does not move.
-3. On Experiments, define a waveform, click **Replace sequence**, then
-   **Preview**. Use **Record + run** for an uploaded, armed, finite experiment
-   with recording. Alternatively Upload and validate, Arm, then Run sequence.
-4. After completion, select a recorded/live channel and use the analysis tabs.
-5. In Runs & Settings, **Capture passive burst**, wait until capture completes,
-   then **Download completed burst**. Select ADC burst to inspect individual
-   current samples; Mechanical burst exposes its simultaneous 500 Hz records.
+`run_sim` simulates any scenario (`balance`, `push`, `arm_step`, `swingup`), and `compare_controllers` scores the
+stabilizers side by side, for example PID, pole placement and LQR selected with `struct('stab', 1)`, `2` or `3`.
+The same controller runs on the ESP32 (firmware 1.12), generated from the same design file by
+`controllers/hybrid/export_onboard.m`, so the hardware runs the design that was simulated.
 
-The interactive simulator advances a bounded synthetic clock, so it can run
-slower than wall time on a busy machine. It is not a real-time hardware
-benchmark. Saved simulated runs are explicitly marked synthetic.
+## Digital twin
 
-## Build the firmware
+- **In Furuta Lab** (tab *Digital twin*): a 3D view of the rig posed from the serial stream in real time, with the
+  identified model running next to it as a translucent ghost, and playback of recorded runs.
+- **Unreal Engine 5.3** (`twin/`): a standalone renderer fed by UDP. `twin/run_twin.ps1` builds and opens it,
+  `twin/package_twin.ps1` builds a standalone executable, and `twin/matlab/twin_play.m` streams any simulated or
+  recorded motion. Packets (UDP port 7400, 16 bytes): `RIP1`, source byte (0 rig, 1 model), 3 padding bytes,
+  `float32 q_arm`, `float32 q_pend` (radians, $q_{pend} = \theta_1 - \pi$, zero hanging).
 
-Open the **firmware** folder in PlatformIO IDE, or run:
+## Report
 
-    pio run -d firmware
+```powershell
+python report/figures/make_report_data.py   # figures and numbers from data/runs (numpy, scipy, matplotlib)
+cd report; latexmk -pdf furuta_model.tex
+```
 
-Pinned environment: espressif32 6.12.0, Arduino 2.0.17, ESP32-S3, 16 MB flash
-and octal PSRAM. ArduinoJson 6.21.5 is the only added library.
-No build or MATLAB launch automatically uploads or connects.
+## Safety
 
-This new firmware uses a binary protocol at **460800 baud through COM USB**.
-An older 115200-baud ASCII bench program is incompatible. For a coordinated
-flash, remove motor power, upload from PlatformIO, verify disabled startup,
-then restore motor power for operator-started experiments.
+The arm must never be driven without confirming that the center pin is removed, the 12 V supply is on and the area
+around the arm is clear. The firmware keeps a travel limit, a current trip and a heartbeat from the computer active
+in every powered run.
 
-Hardware starts with duty limit zero and no incremental arm reference.
-In Runs & Settings, deliberately commission maxDuty (fraction), slew,
-maxDuration, raw-count travel and any validated current/velocity limits.
-Then set the arm center in Calibration. An unknown gearbox ratio does not
-prevent count-limited duty experiments; countsPerRev is required for radians.
-Every new MCU boot requires re-centering.
+## Branches
 
-The current circuit has a direct 5 V current-sensor signal to an ESP32 ADC
-and a motor/driver current-rating mismatch documented in
-[hardware notes](docs/HARDWARE.md). Software does not remove those limitations.
-The app preserves the pendulum encoder's weak-field warning.
+| Branch | Contents |
+|---|---|
+| `main` | The complete project as presented here |
+| `onboard-control` | Furuta Lab and the ESP32 firmware only |
+| `r2023-model` | The R2023a Simulink model and its dependencies only, for controller development |
 
-## What is implemented
+Earlier development branches are kept as tags under `archive/`.
 
-- Device-timed hold/step, pulse/doublet, ramp, triangle, sine, square, chirp,
-  multisine, seeded PRBS, arbitrary sample tables, repeated sequences and rest.
-- Explicit arming, highest-priority stop, session challenge/retry handling,
-  MCU heartbeat timeout, finite duration, travel/current/ADC/velocity limits.
-- PCNT quadrature extension, AS5600 diagnostics, same-conversion ADC millivolts,
-  configurable sampling, raw ADC/mechanical burst capture and chunk download.
-- Arm/pendulum/current zeros, encoder-scale and known-current gain fitting,
-  RAM profile readback and explicit NVS save.
-- Time traces, statistics, response metrics, FFT, Welch PSD/ASD, spectrogram,
-  band RMS, autocorrelation, FRF and coherence.
-- Bypass, EMA, moving-average, 2nd-order Butterworth and notch filters:
-  compare traces/PSD/gain/phase/delay, optionally deploy a supported causal
-  filter at the ADC rate. Zero-phase filtering stays offline.
-- ARX, local motor speed PT1, toolbox transfer-function/state-space estimators,
-  pendulum free-decay fitting and bounded nonlinear physical-model fitting.
-- Recording with raw measurements/configuration/events, replay, CSV/MAT export,
-  model/filter export and a parameter registry.
+## License
 
-Heavy offline analysis requires the device to be disarmed. Waveforms run on
-the MCU; MATLAB drawing does not schedule individual actuator updates.
-Acquisition rates are engineering targets until measured on the real hardware.
-At 2 ksample/s, the current spectrum stops at 1 kHz; it cannot inspect a
-20 kHz PWM carrier.
-
-## Tests
-
-From a terminal with g++:
-
-    g++ -std=c++17 -Wall -Wextra -pedantic firmware/test/native_core.cpp -o native_core.exe
-    ./native_core.exe
-
-The checked-in golden vectors were generated by the C++ serializer. MATLAB
-tests compare exact frames, sample records and waveform values against them.
-
-From MATLAB:
-
-    addpath('matlab');
-    results = run_tests();
-    result = visual_smoke();  % Simulator only; renders screenshots under test-results
-
-See [validation](docs/VALIDATION.md), [user guide](docs/USER_GUIDE.md),
-[experiments](docs/EXPERIMENTS.md), and [wire protocol](protocol/SPEC.md).
-The original [implementation plan](IMPLEMENTATION_PLAN.md) remains available.
-
-Raw recordings live under data/ (git-ignored). Live recording uses
-length-prefixed binary sample batches, avoiding HDF5 initialization in a
-heartbeat callback. Open/replay reconstructs typed tables; selected data can
-be exported to MAT v7.3 or CSV with metadata. Older chunked-MAT recordings are
-also readable.
+MIT, see [LICENSE](LICENSE).

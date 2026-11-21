@@ -1,6 +1,6 @@
 """Write firmware/include/onboard_rates.h: the LQR gain for every onboard controller period.
 
-The LQR is the design of matlab/harness/controllers/hybrid/ctrl_hybrid_design.m (sim-harness branch):
+The LQR is the design of matlab/simulink_r2026a/controllers/hybrid/ctrl_hybrid_design.m :
     sysd = c2d(ss(A_up, Bd_up, eye(4), 0), Ts);  K = dlqr(sysd.A, sysd.B, Q, R)
 with Q = diag(1./[30 deg, 8 deg, 20, 30].^2) and R = 1/0.10^2, and A_up / Bd_up of the design model
 (MODEL_FILE: matlab/model/furuta_params_20261120.m since 2026-11-20; furuta_params.m = report Table 6). Only the sample time Ts changes here; the weights are the design file's.

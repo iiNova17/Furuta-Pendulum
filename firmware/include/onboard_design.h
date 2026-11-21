@@ -54,5 +54,5 @@ constexpr double pl_eps1 = 0.050000000000000003;
 constexpr double pl_stick_band = 0.050000000000000003;
 constexpr double pl_stick_T = 0.002;
 constexpr int modelArmSign = 1;    // device profile signs the identified model was fitted with
-constexpr int modelPendSign = -1;  // (data/estimation/claude_loop: pend_sign -1, recordings armSign +1)
+constexpr int modelPendSign = -1;  // (data/estimation/model_20261115: pend_sign -1, recordings armSign +1)
 }}

@@ -87,7 +87,7 @@
     ]
   ],
   "scores": {
-    "A: claude_loop recipe (refine h b1 tp), 7 ms": {
+    "A: model_20261115 recipe (refine h b1 tp), 7 ms": {
       "arm angle": -163.03333333333333,
       "pendulum angle": 79.10000000000001,
       "arm speed": 88.0,

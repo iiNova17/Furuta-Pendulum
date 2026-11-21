@@ -1,6 +1,6 @@
 {
   "created": "2026-11-20 20:38",
-  "method": "desktop/reidentify.py (claude_loop chain and settings)",
+  "method": "desktop/reidentify.py (model_20261115 chain and settings)",
   "options": {
     "Vs": 12.0,
     "polarity": 1,

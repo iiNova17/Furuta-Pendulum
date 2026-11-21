@@ -5,7 +5,7 @@
 % Torque-like parameters are divided by K_tau: torque is expressed in amperes of motor current.
 % State x = [theta0; theta1; dtheta0; dtheta1] in rad and rad/s; theta1 = 0 upright, pi hanging.
 % Input: duty d in [-1, 1] (armature voltage V = d*Vs). Outputs: theta0, theta1, current i (A).
-% Source: data/estimation/suite_20261120 (desktop/reidentify_variants.py, variant E), the claude_loop chain
+% Source: data/estimation/suite_20261120 (desktop/scripts/reidentify_variants.py, variant E), the model_20261115 chain
 % with the arm terms (Ja, Beq, tc+, tc-) also refined by simulation and a 10 ms pendulum timing correction.
 % Validation (3 runs never fitted): arm angle 62.6 %, pendulum 78.8 %,
 % arm speed 90.0 %, current 72.0 % (Table 6 on the same runs: 54.7 / 45.3 / 76.0 / 71.4 %).

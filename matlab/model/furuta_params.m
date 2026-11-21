@@ -5,7 +5,7 @@
 % Torque-like parameters are divided by K_tau: torque is expressed in amperes of motor current.
 % State x = [theta0; theta1; dtheta0; dtheta1] in rad and rad/s; theta1 = 0 upright, pi hanging.
 % Input: duty d in [-1, 1] (armature voltage V = d*Vs). Outputs: theta0, theta1, current i (A).
-% Source: data/estimation/claude_loop (refined h, b1, tp), identified 2026-11-15.
+% Source: data/estimation/model_20261115 (refined h, b1, tp), identified 2026-11-15.
 p = struct();
 p.Rm = 3.425409421;     % ohm, armature resistance incl. driver
 p.Kb = 0.4813691365;    % V*s/rad, back-EMF constant at the arm shaft

@@ -1,12 +1,12 @@
 % Exports the three rig bodies for the Unreal twin (twin/RIPTwin), from the harness's meshes
-% (matlab/harness/plant3d) and the CAD frames in twin_frames.mat (from the SolidWorks export).
+% (matlab/simulink_r2026a/plant3d) and the CAD frames in twin_frames.mat (from the SolidWorks export).
 % Every mesh is written in the assembly's zero pose (q_arm = 0, q_pend = 0 hanging), in Unreal's frame:
 %   UE = (x, -y, z) of the SolidWorks/Simscape world (right-handed -> left-handed), 1 mm -> 1 UE unit
 %   (so the twin is a 10x scale model, which keeps it clear of Unreal's 10-unit near clip plane).
 % File format (.ripmesh, little-endian): uint32 'RIPM', uint32 nTri, then nTri x 3 vertices of float32 xyz,
 % unshared so the twin can shade every CAD face flat.  Also writes twin_geometry.json (pivot + axes).
 here = fileparts(mfilename('fullpath'));
-sim = fullfile(here, '..', '..', 'matlab', 'harness', 'plant3d');
+sim = fullfile(here, '..', '..', 'matlab', 'simulink_r2026a', 'plant3d');
 out = fullfile(here, '..', 'RIPTwin', 'Content', 'RIP');
 if ~exist(out, 'dir'), mkdir(out); end
 S = load(fullfile(here, 'twin_frames.mat')); fr = S.P.frames;

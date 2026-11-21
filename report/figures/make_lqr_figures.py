@@ -1,7 +1,7 @@
 """Figures for the LQR design section (section 9 of furuta_model.tex).
 
 Reads lqr_data.mat, which holds the simulation results of the controller harness
-(matlab/harness: lqr_workbench, lqr_corner_test, corner_plants and the design-space sweeps),
+(matlab/simulink_r2026a: lqr_workbench, lqr_corner_test, corner_plants and the design-space sweeps),
 and writes fig_lqr_map.pdf, fig_lqr_corners.pdf, fig_lqr_delay.pdf and fig_lqr_fric.pdf here.
 Run from the repository root:  python report/figures/make_lqr_figures.py
 """

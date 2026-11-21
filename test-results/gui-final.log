@@ -1,7 +1,0 @@
-           State: 'DISARMED'
-         Samples: 800
-             ADC: 599
-       CoreBurst: 149
-    RunDirectory: 'D:\Study\Senior\Control 2\Furuta Pendulum Project\Repo\Furuta Pendulum\test-results\20261020_223917_844_Simulator'
-            Mode: 'Simulator'
-

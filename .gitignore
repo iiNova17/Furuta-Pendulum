@@ -41,8 +41,16 @@ twin/RIPTwin/*.sln
 # MATLAB workspace dumps
 matlab.mat
 
-# Packaged harness releases (matlab/harness/export_release.m)
+# Packaged builds (Unreal twin)
 dist/
 
 # Unreal packaging output (twin/package_twin.ps1)
 twin/RIPTwin/Build/
+
+# Furuta Lab run-time output (recordings in data/runs and data/captures are committed)
+data/logs/
+data/matlab-jobs/
+data/estimation/last.txt
+
+# Local tool settings
+.claude/

@@ -1,6 +1,6 @@
 """Figures for the swing-up design section (section 10 of furuta_model.tex).
 
-Reads swingup_data.mat, written by matlab/harness/controllers/hybrid/swingup_report_data.m from the
+Reads swingup_data.mat, written by matlab/simulink_r2026a/controllers/hybrid/swingup_report_data.m from the
 harness results (swingup_catch_region, swingup_sweep, swingup_corner_test), and writes
 fig_swingup_catch.pdf, fig_swingup_catch3d.pdf, fig_swingup_run.pdf, fig_swingup_map.pdf, fig_swingup_surface.pdf and
 fig_swingup_corners.pdf here.  Run from the repository root:  python report/figures/make_swingup_figures.py
