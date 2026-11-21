@@ -57,8 +57,12 @@ class RipGeometry(QQuick3DGeometry):
     source = Property(str, _get, _set, notify=sourceChanged)
 
 
+EXTRA_GHOSTS = ('fast', 'observer', 'closed')     # extra ghost bodies in twin.qml (orange, green, violet)
+
+
 class TwinView(QQuickWidget):
-    """set_pose('rig' | 'ghost', q_arm, q_pend) [rad, twin convention], show_ghost(bool), set_hud(text)."""
+    """set_pose('rig' | 'ghost' | 'fast' | 'observer' | 'closed', q_arm, q_pend) [rad, twin convention],
+    show_ghost(bool, which='ghost'), set_hud(text)."""
     def __init__(self, parent=None):
         super().__init__(parent)
         self.setResizeMode(QQuickWidget.SizeRootObjectToView)
@@ -69,11 +73,16 @@ class TwinView(QQuickWidget):
         self.nodes = {}
         if self.ok:
             root = self.rootObject()
-            for n in ('armJoint', 'pendJoint', 'pendModel', 'ghostArm', 'ghostPend', 'ghostPendModel', 'hud', 'camOrigin', 'camera'):
+            names = ['armJoint', 'pendJoint', 'pendModel', 'ghostArm', 'ghostPend', 'ghostPendModel', 'hud', 'camOrigin', 'camera']
+            for g in EXTRA_GHOSTS:
+                names += [f'ghostArm_{g}', f'ghostPend_{g}', f'ghostPendModel_{g}']
+            for n in names:
                 self.nodes[n] = root.findChild(QtCore.QObject, n)
             pivot, axis = T.load_geometry()
             self.axis = QVector3D(*map(float, axis))
-            for joint, model in (('pendJoint', 'pendModel'), ('ghostPend', 'ghostPendModel')):
+            pairs = [('pendJoint', 'pendModel'), ('ghostPend', 'ghostPendModel')]
+            pairs += [(f'ghostPend_{g}', f'ghostPendModel_{g}') for g in EXTRA_GHOSTS if self.nodes.get(f'ghostPend_{g}') is not None]
+            for joint, model in pairs:
                 self.nodes[joint].setProperty('position', QVector3D(*map(float, pivot)))
                 self.nodes[model].setProperty('position', QVector3D(*map(float, -pivot)))
             self.home = (self.nodes['camOrigin'].property('eulerRotation'), self.nodes['camera'].property('position'))
@@ -85,14 +94,25 @@ class TwinView(QQuickWidget):
         if self.pose.get(which) == (q_arm, q_pend):
             return
         self.pose[which] = (q_arm, q_pend)
-        arm, pend = ('armJoint', 'pendJoint') if which == 'rig' else ('ghostArm', 'ghostPend')
+        arm, pend = self._joints(which)
+        if self.nodes.get(arm) is None:
+            return
         sa, sp = T.DISPLAY_SIGN
         self.nodes[arm].setProperty('rotation', QQuaternion.fromAxisAndAngle(QVector3D(0, 0, 1), math.degrees(sa * q_arm)))
         self.nodes[pend].setProperty('rotation', QQuaternion.fromAxisAndAngle(self.axis, math.degrees(sp * q_pend)))
 
-    def show_ghost(self, on):
-        if self.ok and bool(self.nodes['ghostArm'].property('visible')) != bool(on):
-            self.nodes['ghostArm'].setProperty('visible', bool(on))
+    @staticmethod
+    def _joints(which):
+        if which == 'rig':
+            return 'armJoint', 'pendJoint'
+        if which == 'ghost':
+            return 'ghostArm', 'ghostPend'
+        return f'ghostArm_{which}', f'ghostPend_{which}'
+
+    def show_ghost(self, on, which='ghost'):
+        node = self.nodes.get(self._joints(which)[0]) if self.ok else None
+        if node is not None and bool(node.property('visible')) != bool(on):
+            node.setProperty('visible', bool(on))
 
     def set_hud(self, text):
         if self.ok:

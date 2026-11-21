@@ -5,7 +5,9 @@ opened in its own window and shown on the Onboard control tab.
 Rig pose: newest stream record -> theta0, theta1 exactly as the firmware computes them (onboard_page.angles).
 Model ghost: twin_core.ModelGhost (identified model with breakaway, driven by the applied duty, re-synced to the
 measured state every N s), or poses received over UDP (RIP1, e.g. MATLAB twin_send / twin_play).
-Optional: forward both poses over UDP to the Unreal twin (same RIP1 packet).
+Extra ghosts (optional, side by side): orange = model re-synced every 0.2 s, green = the controller's observer
+estimate, violet = closed loop (model + its own copy of the onboard controller); twin_core classes, drawn only.
+Optional: forward both poses (rig + cyan ghost) over UDP to the Unreal twin (same RIP1 packet).
 """
 import math
 import time
@@ -16,6 +18,13 @@ import copy
 from .onboard_page import angles, STREAM_HZ
 
 GHOST_MODES = ['Identified model (driven by the applied duty)', 'UDP packets (MATLAB twin_send / twin_play)', 'Off']
+# Extra ghosts, side by side with the cyan one (classes in twin_core; each optional, the tab works without them):
+# name -> (twin_core class, checkbox text, HUD label)
+EXTRAS = {
+    'fast': ('FastResyncGhost', 'Orange: identified model re-synced every 0.2 s (short-horizon model error)', 're-sync'),
+    'observer': ('ObserverGhost', "Green: the controller's observer estimate (what the controller acts on)", 'observer'),
+    'closed': ('ClosedLoopGhost', 'Violet: closed loop (the model with its own copy of the onboard controller)', 'closed'),
+}
 
 
 class TwinPage:
@@ -23,6 +32,7 @@ class TwinPage:
         self.app = app; self.view = None; self.popout = None; self.error = ''
         self.ghost = None; self.link = T.UdpLink(); self.last_us = None
         self.play = None; self.frames = []; self.hud_at = 0.; self.fps_t = []
+        self.extras = {n: None for n in EXTRAS}; self.extra_pose = {}; self.extra_on = {}
 
     # ------------------------------------------------------------------ layout
     def build(self, v):
@@ -58,18 +68,30 @@ class TwinPage:
         g = a.group(v, '2 · Model ghost')
         self.ghost_mode = W.QComboBox(); self.ghost_mode.addItems(GHOST_MODES); g.addWidget(self.ghost_mode)
         self.resync = a.number(g, 'Re-sync the model to the rig every (s, 0 = never)', 2, 0, 600, 1)
-        self.udp_port = a.number(g, 'UDP port to listen on', T.UDP_PORT, 1, 65535, 0)
+        self.udp_port = a.number(g, 'UDP port to listen on', T.UDP_PORT + 1, 1, 65535, 0)   # 7400 is the Unreal twin's
         a.text(g, 'The model integrates the identified equations (with the measured breakaway friction) from the duty the '
                   'firmware applied, starting from the measured state; the re-sync shows how far it drifts over that horizon.',
                small=True)
         self.ghost_mode.currentIndexChanged.connect(lambda *_: self.ghost_changed())
         self.resync.valueChanged.connect(lambda *_: self.ghost_changed())
+        box = W.QGroupBox('Extra ghosts (side by side, each on its own)'); g.addWidget(box); gx = W.QVBoxLayout(box)
+        for name, (cls, label, _) in EXTRAS.items():
+            cb = W.QCheckBox(label); gx.addWidget(cb); self.extra_on[name] = cb
+            if getattr(T, cls, None) is None:
+                cb.setEnabled(False); cb.setToolTip(f'twin_core.{cls} is not available in this version')
+            cb.toggled.connect(lambda on: self.extras_changed())
+        row = W.QHBoxLayout(); gx.addLayout(row)
+        row.addWidget(W.QLabel('Closed loop stabilizer'), 1)
+        self.closed_stab = W.QComboBox(); self.closed_stab.addItems(['LQR (stab 3)', 'PID (stab 1)']); row.addWidget(self.closed_stab)
+        self.closed_resync = a.number(gx, 'Closed loop re-sync every (s, 0 = never)', 2, 0, 600, 1)
+        self.closed_stab.currentIndexChanged.connect(lambda *_: self.extras_changed())
+        self.closed_resync.valueChanged.connect(lambda *_: self.extras_changed())
 
         g = a.group(v, '3 · Forward to the Unreal twin (optional)')
         self.fwd = W.QCheckBox('Send both poses as RIP1 UDP packets'); g.addWidget(self.fwd)
         row = W.QHBoxLayout(); g.addLayout(row)
         self.fwd_host = W.QLineEdit('127.0.0.1'); row.addWidget(self.fwd_host)
-        self.fwd_port = W.QSpinBox(); self.fwd_port.setRange(1, 65535); self.fwd_port.setValue(T.UDP_PORT + 1); row.addWidget(self.fwd_port)
+        self.fwd_port = W.QSpinBox(); self.fwd_port.setRange(1, 65535); self.fwd_port.setValue(T.UDP_PORT); row.addWidget(self.fwd_port)   # the Unreal twin listens on 7400
         a.text(g, 'Same packet as twin/README.md (UE 5 twin on main). Use a port other than the one listened on above.', small=True)
         self.fwd.toggled.connect(lambda on: self.forward_changed())
 
@@ -88,6 +110,7 @@ class TwinPage:
         self.timer = QtCore.QTimer(self.app); self.timer.setTimerType(QtCore.Qt.PreciseTimer); self.timer.setInterval(8)
         self.timer.timeout.connect(self.tick)
         self.ghost_changed()
+        self.extras_changed()
 
     # ------------------------------------------------------------------ visibility
     def views(self):
@@ -129,6 +152,38 @@ class TwinPage:
         for v in self.views():
             v.show_ghost(mode != 2)
 
+    def _make_extra(self, name):
+        cls = getattr(T, EXTRAS[name][0], None)
+        if cls is None:
+            return None
+        kw = {}
+        if name == 'closed':
+            kw = {'stab': 3 if self.closed_stab.currentIndex() == 0 else 1, 'resync_s': self.closed_resync.value()}
+        try:
+            return cls(**kw)
+        except TypeError:                                        # a class without these keywords: set them afterwards
+            ghost = cls()
+            for k, v in kw.items():
+                if hasattr(ghost, k):
+                    setattr(ghost, k, v)
+            return ghost
+
+    def extras_changed(self):
+        """(Re)create the extra ghosts that are ticked; hide the others."""
+        for name, cb in self.extra_on.items():
+            self.extras[name] = self._make_extra(name) if cb.isChecked() else None
+            if self.extras[name] is None:
+                self.extra_pose.pop(name, None)
+                for v in self.views():
+                    v.show_ghost(False, name)
+        self.last_us = None
+
+    def _reset_extras(self):
+        self.extra_pose = {}
+        for g in self.extras.values():
+            if g is not None:
+                g.reset()
+
     def forward_changed(self):
         if self.fwd.isChecked():
             self.link.forward(self.fwd_host.text().strip() or '127.0.0.1', self.fwd_port.value())
@@ -158,6 +213,7 @@ class TwinPage:
         self.play = None; self.last_us = None
         if self.ghost:
             self.ghost.reset()
+        self._reset_extras()
         if self.src_rec.isChecked():
             self.load_recording()
 
@@ -173,6 +229,7 @@ class TwinPage:
         self.play = {'t': 0., 'running': True, 'wall': time.perf_counter(), 'k': 0}
         if self.ghost:
             self.ghost.reset()
+        self._reset_extras()
 
     def toggle_play(self):
         if not self.src_rec.isChecked():
@@ -186,6 +243,7 @@ class TwinPage:
             self.play.update(t=0., k=0, wall=time.perf_counter(), running=True)
             if self.ghost:
                 self.ghost.reset()
+            self._reset_extras()
 
     def seek(self, pos):
         if self.play and self.frames:
@@ -193,6 +251,7 @@ class TwinPage:
             self.play['k'] = int(np.searchsorted(self.frames[3], self.play['t']))
             if self.ghost:
                 self.ghost.reset()
+            self._reset_extras()
 
     # ------------------------------------------------------------------ frame
     def tick(self):
@@ -239,11 +298,18 @@ class TwinPage:
             for v in views:
                 v.show_ghost(True); v.set_pose('ghost', *ghost)
             self.link.send(1, *ghost)
+        for name, pose in self.extra_pose.items():              # extra ghosts: drawn only, not forwarded over UDP
+            if self.extras.get(name) is not None and pose is not None:
+                for v in views:
+                    v.show_ghost(True, name); v.set_pose(name, *pose)
         if now - self.hud_at > .1:                                # text at 10 Hz, poses every frame
             self.hud_at = now
             hud = [f'rig    arm {self._deg(rig, 0)}   pend {self._deg(rig, 1, True)}']
             if ghost is not None and mode != 2:
                 hud.append(f'model  arm {self._deg(ghost, 0)}   pend {self._deg(ghost, 1, True)}')
+            for name, pose in self.extra_pose.items():
+                if self.extras.get(name) is not None and pose is not None:
+                    hud.append(f'{EXTRAS[name][2]:8s} arm {self._deg(pose, 0)}   pend {self._deg(pose, 1, True)}')
             mode_name = {1: 'SAFE STOP', 2: 'SWING-UP', 3: 'STABILIZE'}.get(ctrl)
             if mode_name:
                 hud.append(f'controller {mode_name}')
@@ -272,6 +338,17 @@ class TwinPage:
                 x = self.ghost.feed(int(r['device_us']) * 1e-6, float(r['applied']), th0, th1)
                 if x is not None:
                     ghost = (x[0], (x[1] % (2 * math.pi)) - math.pi)
+            for name, g in self.extras.items():                  # extra ghosts get every record too
+                if g is None:
+                    continue
+                try:
+                    x = g.feed(int(r['device_us']) * 1e-6, float(r['applied']), th0, th1)
+                except Exception as e:                            # a faulty extra ghost must not stop the twin
+                    self.extras[name] = None; self.extra_pose.pop(name, None)
+                    self.app.report('Digital twin', f'{EXTRAS[name][0]} stopped: {type(e).__name__}: {e}')
+                    continue
+                if x is not None and x[0] is not None and x[1] is not None:
+                    self.extra_pose[name] = (x[0], (x[1] % (2 * math.pi)) - math.pi)
         return rig, ghost, ctrl
 
     @staticmethod

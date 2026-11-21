@@ -361,6 +361,38 @@ class TwinTests(unittest.TestCase):
         self.assertLess(q.z()*q.scalar(),0)
         p.on_onboard.setChecked(False);w.close()
 
+    def test_twin_extra_ghosts(self):
+        # Extra ghosts (orange re-sync 0.2 s, green observer, violet closed loop): all on, fed from a playback,
+        # drawn side by side with the rig and the cyan ghost, hidden again when ticked off.
+        from PySide6.QtWidgets import QApplication
+        from furuta_lab.app import LabApp
+        from furuta_lab import wire, twin_core as T
+        from furuta_lab.twin_page import EXTRAS
+        missing=[c for c,_,_ in EXTRAS.values() if getattr(T,c,None) is None]
+        if missing:self.skipTest(f'twin_core classes not there yet: {missing}')
+        app=QApplication.instance() or QApplication([]);w=LabApp();w.show();p=w.twin
+        w.nav.setCurrentIndex(5)
+        if p.view is None:w.close();self.skipTest(f'3D view unavailable: {p.error}')
+        for n in EXTRAS:self.assertIsNotNone(p.view.nodes[f'ghostArm_{n}'],n)
+        rows=np.zeros(400,dtype=wire.CORE);rows['device_us']=np.arange(400)*4000
+        rows['count']=1000+(20*np.sin(np.arange(400)/40)).astype(int);rows['pend_raw']=(2048+300*np.sin(np.arange(400)/25)).astype(int)
+        rows['validity']=3;rows['applied']=.1*np.sin(np.arange(400)/30);rows['ctrl']=2
+        cfg={'countsPerRev':1496,'pendDownRaw':2048,'armSign':1,'pendSign':1};st={'centered':True,'centerCount':1000}
+        for n in EXTRAS:p.extra_on[n].setChecked(True)
+        self.assertTrue(all(p.extras[n] is not None for n in EXTRAS))
+        p.closed_stab.setCurrentIndex(1);self.assertIsNotNone(p.extras['closed'])          # PID choice rebuilds it
+        w.run_data,w.run_manifest,w.run_path=rows,{'config':cfg,'status':st},Path('fake_run')
+        p.src_rec.setChecked(True)
+        p.play['t']=1.2;p.play['wall']=__import__('time').perf_counter();p.tick()
+        for n in EXTRAS:
+            self.assertIn(n,p.extra_pose,n);self.assertTrue(all(np.isfinite(p.extra_pose[n])),n)
+            self.assertTrue(bool(p.view.nodes[f'ghostArm_{n}'].property('visible')),n)
+            self.assertEqual(p.view.pose[n],p.extra_pose[n])
+        self.assertIsNotNone(p.view.pose.get('ghost'))                                     # the cyan ghost still runs
+        for n in EXTRAS:p.extra_on[n].setChecked(False)
+        for n in EXTRAS:self.assertFalse(bool(p.view.nodes[f'ghostArm_{n}'].property('visible')),n)
+        w.close()
+
 from test_estimation import *  # noqa: E402,F401,F403
 
 if __name__=='__main__':unittest.main(verbosity=2)

@@ -96,6 +96,56 @@ Item {
                     }
                 }
             }
+            // Extra ghosts, side by side with the cyan one (twin_page "Extra ghosts"): orange = model re-synced every
+            // 0.2 s, green = the controller's observer estimate, violet = model + its own copy of the onboard controller.
+            Node {
+                objectName: "ghostArm_fast"
+                visible: false
+                Model {
+                    geometry: RipGeometry { source: "arm" }
+                    materials: PrincipledMaterial { baseColor: "#ff9f1c"; opacity: 0.3; alphaMode: PrincipledMaterial.Blend; roughness: 0.3 }
+                }
+                Node {
+                    objectName: "ghostPend_fast"
+                    Model {
+                        objectName: "ghostPendModel_fast"
+                        geometry: RipGeometry { source: "pendulum" }
+                        materials: PrincipledMaterial { baseColor: "#ff9f1c"; opacity: 0.3; alphaMode: PrincipledMaterial.Blend; roughness: 0.3 }
+                    }
+                }
+            }
+            Node {
+                objectName: "ghostArm_observer"
+                visible: false
+                Model {
+                    geometry: RipGeometry { source: "arm" }
+                    materials: PrincipledMaterial { baseColor: "#2ecc71"; opacity: 0.3; alphaMode: PrincipledMaterial.Blend; roughness: 0.3 }
+                }
+                Node {
+                    objectName: "ghostPend_observer"
+                    Model {
+                        objectName: "ghostPendModel_observer"
+                        geometry: RipGeometry { source: "pendulum" }
+                        materials: PrincipledMaterial { baseColor: "#2ecc71"; opacity: 0.3; alphaMode: PrincipledMaterial.Blend; roughness: 0.3 }
+                    }
+                }
+            }
+            Node {
+                objectName: "ghostArm_closed"
+                visible: false
+                Model {
+                    geometry: RipGeometry { source: "arm" }
+                    materials: PrincipledMaterial { baseColor: "#9b59b6"; opacity: 0.3; alphaMode: PrincipledMaterial.Blend; roughness: 0.3 }
+                }
+                Node {
+                    objectName: "ghostPend_closed"
+                    Model {
+                        objectName: "ghostPendModel_closed"
+                        geometry: RipGeometry { source: "pendulum" }
+                        materials: PrincipledMaterial { baseColor: "#9b59b6"; opacity: 0.3; alphaMode: PrincipledMaterial.Blend; roughness: 0.3 }
+                    }
+                }
+            }
         }
     }
 
@@ -123,6 +173,6 @@ Item {
     Text {
         anchors.right: parent.right; anchors.bottom: parent.bottom; anchors.margins: 8
         color: "#6b7785"; font.pixelSize: 11
-        text: "drag: orbit  ·  wheel: zoom  ·  solid = rig, cyan = model  ·  pend 0° = upright"
+        text: "drag: orbit  ·  wheel: zoom  ·  solid = rig, cyan = model (orange = 0.2 s re-sync, green = observer, violet = closed loop)  ·  pend 0° = upright"
     }
 }

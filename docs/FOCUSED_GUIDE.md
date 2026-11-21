@@ -207,6 +207,19 @@ duty. It saves the MATLAB model to `data/matlab-jobs/.../model.mat`. MATLAB
 startup may take tens of seconds; live acquisition and STOP stay independent.
 Set FURUTA_MATLAB to matlab.exe if MATLAB is installed elsewhere.
 
+## Digital twin tab
+
+The rig in 3D (solid), posed from the newest stream record or from the open recording (section 1 · Source), with the
+identified model as a translucent cyan ghost (section 2, re-synced to the rig every 2 s). Section 3 forwards the rig
+and the cyan ghost to the Unreal twin (UDP 7400). In section 2, **Extra ghosts** adds up to three more, side by side,
+each switchable on its own (off by default; a HUD line each; drawn only, not forwarded):
+
+| Color | Ghost | Shows |
+|---|---|---|
+| orange | model re-synced every 0.2 s (`twin_core.FastResyncGhost`) | the model's short-horizon error, also while balancing (the cyan ghost falls off the unstable upright between its 2 s re-syncs) |
+| green | the controller's observer (`twin_core.ObserverGhost`) | the estimate the onboard controller acts on (12 ms lag compensated) |
+| violet | closed loop (`twin_core.ClosedLoopGhost`) | the model with its own copy of the onboard controller (LQR or PID, chosen in the group; re-sync every N s) |
+
 ## Saving and fault recovery
 
 Run recordings are under `data/runs`, with a manifest and typed sample batches.
