@@ -21,12 +21,13 @@ using namespace fw;
 #define REPLAY_FLOAT_TOL 1e-4
 #endif
 
-static int replay(const std::string& file) {
+static int replay(const std::string& file,double stab) {
   std::ifstream in(file);
   if(!in){std::printf("missing %s\n",file.c_str());return 1;}
   std::string line;std::getline(in,line);
   // The design's defaults, as Simulink ran them: breakaway feedforward (1.8) and balance compensation (1.9) on.
-  OnboardController c;c.reset();
+  // 1.13: the stabilizer the run was recorded with (3 LQR, 1 PID), as START_ONBOARD stab selects it
+  OnboardController c;c.p.stab=stab;c.reset();
   double maxErr=0;size_t n=0,modeErr=0,firstBad=0;
   while(std::getline(in,line)) {
     double t,th0,th1,r,duty;int mode;
@@ -51,8 +52,13 @@ static int replay(const std::string& file) {
 int main(int argc,char**argv) {
   std::string dir=argc>1?argv[1]:".";
   int fails=0;
-  fails+=replay(dir+"/onboard_replay_swingup.csv");
-  fails+=replay(dir+"/onboard_replay_push.csv");
+  fails+=replay(dir+"/onboard_replay_swingup.csv",3);
+  fails+=replay(dir+"/onboard_replay_push.csv",3);
+  fails+=replay(dir+"/onboard_replay_swingup_pid.csv",1);   // 1.13: PID stabilizer (stab_pid.slx)
+  fails+=replay(dir+"/onboard_replay_push_pid.csv",1);
+  // 1.13: stabilizer choice: LQR by default, PID selectable, pole placement refused until it is ported
+  {OnboardParams p;std::string why;assert(p.stab==3&&p.valid(why));p.stab=1;assert(p.valid(why));p.stab=2;assert(!p.valid(why));p.stab=4;assert(!p.valid(why));
+   assert(OnboardParams().Kp1==design::pid_Kp1&&OnboardParams().Ki0==design::pid_Ki0);}
 
   // conversions: hanging reads +-pi, upright 0, a quarter turn of the arm is pi/2
   assert(std::abs(std::abs(pendAngle(2810,2810,-1))-3.14159265358979)<1e-9);

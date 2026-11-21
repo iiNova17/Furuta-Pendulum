@@ -1,6 +1,6 @@
 #pragma once
 // On-board copy of the hybrid controller (matlab/simulink_r2026a/controllers/hybrid/ctrl_hybrid.slx):
-// estimator -> LQR (+ friction compensation) and energy swing-up -> Stateflow supervisor.
+// estimator -> stabilizer (LQR or PID, + friction compensation) and energy swing-up -> Stateflow supervisor.
 // Pure C++ (no Arduino) so the native test can replay harness runs through it and require the
 // same duty as Simulink (test/native_onboard.cpp). Numbers come from onboard_design.h, which
 // export_onboard.m generates from ctrl_hybrid_design.m. The firmware safety path (clip, slew,
@@ -41,6 +41,12 @@ struct OnboardParams {
   int nd() const {return (int)std::lround(estLag/Ts);}
   double r=0;               // arm reference [rad]
   bool swingUp=true;        // false: balance only (start near upright); losing the pendulum ends the run
+  // 1.13: which stabilizer runs in Stabilize, as ctrlP.stab in ctrl_hybrid.slx: 1 = PID (stab_pid.slx), 3 = LQR.
+  // 2 (pole placement) is not in the firmware yet. LQR by default, so a host that does not send stab gets the 1.12 controller.
+  double stab=3;
+  // stab_pid.slx: PD on theta1 + PID on theta0 on the estimated state (u = Kp1 th1 + Kd1 w1 + Kp0 (th0 - r)
+  // + Ki0 sum(th0 - r) Ts + Kd0 w0; the arm integral is forward Euler from the start of the run, no reset, no limit).
+  double Kp1=design::pid_Kp1, Kd1=design::pid_Kd1, Kp0=design::pid_Kp0, Ki0=design::pid_Ki0, Kd0=design::pid_Kd0;
   // Supported controller periods and their LQR gains (same Q, R as the design; onboard_rates.h).
   static int periodIndex(double ts){for(int i=0;i<rates::count;i++)if(std::abs(ts-rates::Ts[i])<1e-9)return i;return -1;}
   // Switch the controller period and load the design's LQR gain for it. False if unsupported.
@@ -48,10 +54,12 @@ struct OnboardParams {
   bool valid(std::string& why) const {
     const double all[]={Ts,velFc,K[0],K[1],K[2],K[3],fricGain,fricBand,fricDutyPos,fricDutyNeg,catchTh1,catchW1,exitTh1,
       safeTh0,E0,kE,aPush,wc,zc,aKick,kickE,wSign,wFric,iMax,uMax,Jp,G,Ja,Beq,tcp,tcn,Rm,Kb,Vs,r,tsp,tsn,stickGain,wStick,aStick,fricStick,
-      estKind,estLag,estFab,estFtrk,estSub,h,b1,tp,eps,eps1,stickBand,stickT};
+      estKind,estLag,estFab,estFtrk,estSub,h,b1,tp,eps,eps1,stickBand,stickT,stab,Kp1,Kd1,Kp0,Ki0,Kd0};
     for(double x:all) if(!std::isfinite(x)){why="Nonfinite onboard parameter";return false;}
     if(periodIndex(Ts)<0){why="Onboard controller period must be 1, 2 or 4 ms (onboard_rates.h)";return false;}
     if(!(estKind==0||estKind==1||estKind==2)){why="estKind must be 0, 1 or 2";return false;}
+    if(stab==2){why="Pole placement (stab 2) is not in this firmware yet";return false;}
+    if(!(stab==1||stab==3)){why="stab must be 1 (PID) or 3 (LQR)";return false;}
     if(estKind>0&&(nd()<1||nd()>kMaxNd)){why="estLag must be 1 to 16 controller ticks";return false;}
     if(!(estSub==1||estSub==2)){why="estSub must be 1 or 2";return false;}
     // the observer step takes about 0.5 ms on the ESP32 (measured 2026-11-20): only the 4 ms period leaves room in the
@@ -87,7 +95,8 @@ struct OnboardController {
   bool obsStarted=false;long obsN=0;double al=0,be=0,alT=0,beT=0;
   bool trkStarted=false;double trkTh[2]{0,0},trkW[2]{0,0};
   // reset() before every run, after setting p (the filter pole and the observer gains are computed once here)
-  void reset(){started=false;mode=SwingUp;prev[0]=prev[1]=w[0]=w[1]=0;for(double&v:x)v=0;E=uStab=uSwing=duty=0;
+  double pidSum=0;       // 1.13: PID arm integral, sum of (theta0 - r) Ts
+  void reset(){started=false;mode=SwingUp;pidSum=0;prev[0]=prev[1]=w[0]=w[1]=0;for(double&v:x)v=0;E=uStab=uSwing=duty=0;
     alpha=std::exp(-2*3.14159265358979323846*p.velFc*p.Ts);
     nd=std::max(1,std::min(OnboardParams::kMaxNd,p.nd()));for(double&v:uh)v=0;for(double&v:th0b)v=0;
     xd[0]=0;xd[1]=3.14159265358979323846;xd[2]=xd[3]=0;obsStarted=false;obsN=0;trkStarted=false;
@@ -172,13 +181,15 @@ struct OnboardController {
     prev[0]=th[0];prev[1]=th[1];
     x[0]=th[0];x[1]=th[1];x[2]=w[0];x[3]=w[1];
   }
-  // LQR block + friction compensation block
+  // Stabilizer (LQR or PID block) + friction compensation block
   // 1.9: the compensation blends from the breakaway duty (arm at rest: Rm tsp / Vs = 13 %, 14 %) to the sliding
   // Coulomb duty (7.4 %, 7.3 %) as the arm speeds up, in the direction of the LQR request. On the rig (firmware 1.8,
   // no compensation) the LQR's small corrections were below the breakaway: the arm stuck for 0.4 s, the pendulum
   // leaned, the arm broke free with a lurch and the LQR saturated. fricStick 0 = the Coulomb-only compensation.
-  double lqr() const {
-    double u0=-(p.K[0]*(x[0]-p.r)+p.K[1]*x[1]+p.K[2]*x[2]+p.K[3]*x[3]);
+  double stabilizer() const {
+    double u0;
+    if(p.stab==1)u0=p.Kp1*x[1]+p.Kd1*x[3]+p.Kp0*(x[0]-p.r)+p.Ki0*pidSum+p.Kd0*x[2];   // stab_pid.slx
+    else u0=-(p.K[0]*(x[0]-p.r)+p.K[1]*x[1]+p.K[2]*x[2]+p.K[3]*x[3]);                    // stab_lqr.slx
     double s=std::tanh(u0/p.fricBand);
     const double coul=p.fricDutyPos*std::max(s,0.)+p.fricDutyNeg*std::min(s,0.);
     const double stat=(p.Rm*p.tsp*std::max(s,0.)+p.Rm*p.tsn*std::min(s,0.))/p.Vs;
@@ -221,9 +232,12 @@ struct OnboardController {
     // 1.12: the supervisor needs only the estimate, so decide the mode first and compute only the law it uses
     // (Simulink computes both; the duty is the same). Saves the unused law's emulated-double time each period.
     supervise(first);
-    if(mode==Stabilize){uStab=lqr();duty=uStab;}
+    if(mode==Stabilize){uStab=stabilizer();duty=uStab;}
     else if(mode==SwingUp){uSwing=energyLaw();duty=uSwing;}
     else duty=0.;
+    // 1.13: the PID's arm integrator runs every period from the start, as in Simulink, where stab_pid.slx is computed
+    // in every mode (forward Euler: the output uses the sum before this period's error is added)
+    if(p.stab==1)pidSum+=p.Ts*(x[0]-p.r);
     return duty;
   }
 };

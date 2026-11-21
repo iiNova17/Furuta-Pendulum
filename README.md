@@ -8,7 +8,7 @@ controller development is on `r2023-model`.
 
 | Folder | Contents |
 |---|---|
-| `firmware/` | ESP32-S3 firmware 1.12 (PlatformIO): sensors, safety, telemetry and the onboard controller (`include/onboard.h`: model observer, LQR, energy swing-up, supervisor). `include/onboard_design.h` is generated on `main` by `matlab/simulink_r2026a/controllers/hybrid/export_onboard.m` (never hand-edit); `test/native_onboard.cpp` replays Simulink runs and requires the same duty |
+| `firmware/` | ESP32-S3 firmware 1.13 (PlatformIO): sensors, safety, telemetry and the onboard controller (`include/onboard.h`: model observer, LQR or PID, energy swing-up, supervisor). `include/onboard_design.h` is generated on `main` by `matlab/simulink_r2026a/controllers/hybrid/export_onboard.m` (never hand-edit); `test/native_onboard.cpp` replays Simulink runs and requires the same duty |
 | `desktop/` | Furuta Lab (Python/Qt): live signals and recordings, noise and filters, motor tests, parameter estimation, Onboard control tab, Digital twin tab; tests `test_lab.py`, `test_estimation.py` |
 | `protocol/`, `config/` | Serial protocol specification and golden vectors; device profile and schema |
 | `matlab/furuta_backend.m`, `matlab/+furuta/` | The MATLAB backend the app calls for its speed-model fit |
