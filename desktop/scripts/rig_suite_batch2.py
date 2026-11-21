@@ -30,6 +30,21 @@ RUNS = {
     # firmware 1.12 (retune 2026-11-20): model observer (estKind 1, 12 ms), LQR on the 20 Nov model, compensation 6 %
     'b3_new': dict(knobs={}, note='firmware 1.12 defaults: model observer, LQR [30 8 20 30]/0.10 on the 20 Nov model'),
     'b3_new_nocomp': dict(knobs={'fricGain': 0}, note='firmware 1.12, friction compensation off'),
+    # firmware 1.13 (2026-11-21): PID stabilizer (stab 1, gains from ctrl_hybrid_design.m) vs the LQR (stab 3), no pushes
+    'b5_pid': dict(knobs={'stab': 1}, seconds=20.0, note='firmware 1.13, swing-up + PID (stab 1), no pushes'),
+    'b5_lqr': dict(knobs={'stab': 3}, seconds=20.0, note='firmware 1.13, swing-up + LQR (stab 3), no pushes, reference'),
+    # LQI (desktop/scripts/lqi_design.py, z_max 2 rad s): the LQR with the arm integral designed jointly, on the
+    # firmware's PID law (stab 1): Kp0 = -K0, Kp1 = -K1, Kd0 = -K2, Kd1 = -K3, Ki0 = -KI. RAM only.
+    'b6_lqi': dict(knobs={'stab': 1, 'Kp0': 0.1983, 'Kp1': 1.9273, 'Kd0': 0.1163, 'Kd1': 0.1377, 'Ki0': 0.0468},
+                   seconds=20.0, note='firmware 1.13, swing-up + LQI z_max 2 (PID law, jointly designed gains), no pushes'),
+    # push tests (2026-11-21): 30 s, the person taps the balanced pendulum 3-4 times (~10-15 deg, ~5 s apart)
+    'b7_lqi_push': dict(knobs={'stab': 1, 'Kp0': 0.1983, 'Kp1': 1.9273, 'Kd0': 0.1163, 'Kd1': 0.1377, 'Ki0': 0.0468},
+                        seconds=30.0, note='firmware 1.13, swing-up + LQI z_max 2, 3-4 manual pushes'),
+    'b7_pid_push': dict(knobs={'stab': 1}, seconds=30.0, note='firmware 1.13, swing-up + PID (design gains), 3-4 manual pushes'),
+    # Nedal's tuned PID (main ac4d569: Kp1 2.60, Kd1 0.1531, Kp0 0.1789, Ki0 0.0488, Kd0 0.1415, integral reset at the
+    # catch) - firmware defaults, so only stab 1 is set
+    'b8_pidtuned': dict(knobs={'stab': 1}, seconds=20.0, note='firmware 1.13 (ac4d569), swing-up + tuned PID, no pushes'),
+    'b8_pidtuned_push': dict(knobs={'stab': 1}, seconds=30.0, note='firmware 1.13 (ac4d569), swing-up + tuned PID, 3-4 manual pushes'),
     'b3_new_fric05': dict(knobs={'fricGain': 0.5}, note='firmware 1.12, half friction compensation (on: 2.9 Hz wobble; off: arm wander)'),
 }
 
@@ -92,7 +107,7 @@ def prepare(d, spec):
     d.onboard_params(defaults=True)
     knobs = d.onboard_params(spec['knobs']) if spec['knobs'] else d.onboard_params()
     run_profile = copy.deepcopy(c)
-    run_profile['maxDuration'] = RUN_S
+    run_profile['maxDuration'] = spec.get('seconds', RUN_S)
     d.apply(run_profile)
     return profile, knobs
 
@@ -159,7 +174,7 @@ def cmd_run(name, confirmed):
     path = None; p = None; profile = copy.deepcopy(d.config)
     try:
         profile, knobs = prepare(d, spec)
-        d.arm_burst(RUN_S + 0.5)
+        d.arm_burst(min(spec.get('seconds', RUN_S) + 0.5, 35.0))
         path = ROOT / 'data' / 'runs' / (time.strftime('%Y%m%d_%H%M%S_') + name)
         meta = {'purpose': 'onboard', 'suite': rs.SUITE, 'run': name, 'note': spec['note'], 'controller': 'swingup_lqr',
                 'start': {'swingUp': True}, 'onboard_params': knobs, 'controller_period_s': knobs['Ts'],
@@ -170,7 +185,7 @@ def cmd_run(name, confirmed):
         r = d.run_onboard(swing_up=True)
         print('started:', r.get('mode'), 'for', r.get('seconds'), 's')
         t0 = time.monotonic()
-        while time.monotonic() - t0 < RUN_S + 2:
+        while time.monotonic() - t0 < spec.get('seconds', RUN_S) + 2:
             if d.status.get('state') not in ('RUNNING', 'ARMED_IDLE', 'STOPPING') and time.monotonic() - t0 > 0.5:
                 break
             time.sleep(0.05)
