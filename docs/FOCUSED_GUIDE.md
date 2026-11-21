@@ -1,3 +1,5 @@
+See [FURUTA_LAB.md](FURUTA_LAB.md) for the complete manual of the desktop application.
+
 # Furuta Lab: start with the measurements
 
 ## Launch

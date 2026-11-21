@@ -1158,7 +1158,7 @@ The pendulum angle, the arm speed and the current are reproduced closely in all 
 
 The open-loop arm angle is the only quantity that varies strongly between runs, from 89\,\% to $-3$\,\%. Since the arm angle is the integral of the arm speed, a small difference between the friction in the two directions makes it drift steadily over a 15\,s simulation. Shifting the current zero by only 0.02\,A, which changes that balance, reduced the arm-angle fit to about 50\,\% even with restarts every 2\,s.
 
-Restarting every 2\,s removes the drift and gives \textbf{86--88\,\%} for the arm angle in every run. A feedback controller corrects a slow drift of this kind, so the short-term accuracy is the relevant measure for controller design.
+Restarting every 2\,s removes the drift and gives \textbf{86--88\,\%} for the arm angle in every run. A feedback controller corrects a slow drift of this kind, so the short-term accuracy is the relevant measure for controller design. The same validation, with the free swing and all the other open-loop runs, is repeated for the model of 2026-11-20 in section~\ref{sec:reid_val}.
 
 Table~\ref{tab:variants} compares the least-squares model with the refinement variants. Refining $\tilde h$ alone improves the pendulum, and refining the pendulum damping as well improves it further in every run. Refining all nine parameters gives a similar pendulum fit, but it moves the open-loop arm drift from one run to another. Therefore, the variant with $\tilde h$, $\tilde b_1$ and $\tilde\tau_p$ refined is taken as the final model.
 
@@ -1551,6 +1551,99 @@ Model & Arm angle & Pendulum angle & Arm speed & Current \\
 \end{table}
 
 As Table~\ref{tab:reid_validation} shows, the new model predicts the pendulum and the arm speed of the rig much better than the previous one. The current fit is about 72\,\% with both models, which is consistent with the shaft coupling: the current and the encoder are on the motor side, which partly moves on its own within the play. The model is stored in \nolinkurl{matlab/model/furuta_params_20261120.m} with the same fields and linear models as \nolinkurl{furuta_params.m}, and the harness uses it with \texttt{harness\_config(\ldots, 'Model', '20261120')}.
+
+\subsection{Free-Swing and Open-Loop Validation of the 2026-11-20 Model}
+\label{sec:reid_val}
+Table~\ref{tab:validation} of section~\ref{sec:estimation} validates the model of 2026-11-15 on the recordings of that day. This subsection validates the model of 2026-11-20 (Table~\ref{tab:reid_params}) in the same way on every open-loop recording of the 2026-11-20 suite. The figures and the numbers are produced by \nolinkurl{report/figures/make_validation_figures.py}, which uses the simulation, the signal preparation and the fit definition of the estimation (\nolinkurl{desktop/furuta_lab/estimation.py}): each run is simulated from its measured state at 0.5\,s with the recorded applied duty cycle, with the parameters of \nolinkurl{export/parameters.json} and the pendulum timing correction of 10.0\,ms, and compared with the filtered measurements through the fit percentage defined in section~\ref{sec:estimation}. All fits of this subsection are open-loop simulations of the whole run, unless stated otherwise; the script also writes them to \nolinkurl{report/figures/val_fits.json} and \nolinkurl{val_fits.csv}, together with the root-mean-square errors and the fits of the simulation restarted every 2\,s.
+
+\paragraph{Which runs were used for the fit.} The model is variant~E of Table~\ref{tab:reid_variants}. The \emph{free swing} (two releases of one recording, 10.0--15.6\,s and 29.8--35.4\,s) gave $\tilde J_p/\tilde G$, $\tilde b_1/\tilde G$ and $\tilde\tau_p/\tilde G$ of equation~\ref{eq:swing}. The three square-wave runs \emph{Fit A, B and C} gave, through the least-squares chain and the simulation-error refinement on 4\,s windows, all the other parameters. The \emph{breakaway} duty of 6\,\% was read from the three low-range breakaway recordings, which fixes $\tilde\tau_{s\pm}$ but is not a simulation fit. Fit~D was recorded but left out of the final fit. Validation runs 1 to 3 were not fitted, but they were used to choose variant~E among the variants A--F, so they are a selection set rather than an untouched one. The sine runs, the slow sine, the chirp, Fit~D and the high-range breakaway run were never used for anything and are the independent test of the model.
+
+\paragraph{Free swing.} Figure~\ref{fig:val_swing} shows the two releases (arm locked, motor off, first peaks of $53^\circ$ and $48^\circ$). Simulated with the free-swing identification itself, equation~\ref{eq:swing} reproduces them with fits of 97.9\,\% and 97.7\,\% over the 5\,s of the swing, and the decay envelope of the peaks, which falls linearly at first (dry friction) and then bends (viscous friction), is followed to within about one degree. The measured period is 0.5064\,s for amplitudes below $20^\circ$ (0.5059 and 0.5068\,s in the two releases), against $2\pi/12.503 = 0.5025$\,s for the small-signal frequency of 1.990\,Hz, and it rises to 0.527\,s for the first half-period at $50^\circ$ amplitude, which the nonlinear $\sin\theta_1$ of the model reproduces. The measured amplitude loss is $3.4^\circ$ per half period, and the damping, expressed as an equivalent viscous ratio from the logarithmic decrement of the peaks, is $\zeta_{\mathrm{eff}} = 0.05$ over this amplitude range, against $\zeta = 0.014$ for the viscous part of the fit, the rest being the dry friction $\tilde\tau_p/\tilde G = 1.04^\circ$.
+
+The final model, however, does not use the free-swing values of the damping: the refinement on the driven runs raised $\tilde b_1$ and lowered $\tilde\tau_p$ (Table~\ref{tab:reid_params}), which gives $\tilde b_1/\tilde G = 6.25\times10^{-3}\,\mathrm{s}$ ($\zeta = 0.039$) and $\tilde\tau_p/\tilde G = 0.41^\circ$ instead of $2.28\times10^{-3}\,\mathrm{s}$ ($\zeta = 0.014$) and $1.04^\circ$. The frequency is unchanged. With these values the free swing is reproduced with fits of only 80.1\,\% and 83.0\,\%, because the oscillation decays too fast (Figure~\ref{fig:val_swing}, lower panel). This is the same finding as in section~\ref{sec:estimation}: the pendulum is damped more strongly while the arm is moving, and the compromise between the free swing and the driven runs favors the driven runs, which are the ones that matter for control.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_val_freeswing.pdf}
+\caption{Free swing of 2026-11-20 (arm locked, motor off). Top: the measured pendulum angle from hanging, and the simulations with the free-swing identification and with the parameters of the final model; the titles give the fit of each. Bottom: peak amplitude of every half swing in log scale (markers: measured; lines: simulated) with the measured period and the identified frequency and damping.}
+\label{fig:val_swing}
+\end{figure}
+
+\paragraph{Open-loop runs.} Table~\ref{tab:openloop} lists all open-loop runs with the fits of the four channels. The duration is the longest span without missing samples that the estimation uses, which is shorter than the recording for Validation~1 (10.5\,s of 13.7\,s) and the large 6\,Hz sine (6.9\,s of 9.9\,s). The means over validation runs 1 to 3 are 62.6, 78.8, 90.1 and 72.0\,\%, the values of Table~\ref{tab:reid_validation}. They differ from Table~\ref{tab:validation} because that table is the model of 2026-11-15 on the recordings of that day (arm angle 89, 42 and $-3$\,\%, pendulum angle 90, 84 and 85\,\%, current about 88\,\%), while this one is the model of 2026-11-20 on the repeats of the same experiments recorded after the rig was moved; the current fit is lower now (72\,\% against 88\,\%), which section~\ref{sec:reid_ident} relates to the shaft coupling.
+
+\begin{table}[h]
+\centering
+\caption{Open-loop runs of 2026-11-20 and the fit (\%) of the model of Table~\ref{tab:reid_params} on each channel. Role: \emph{fit}, used in the identification; \emph{val}, validation (runs 1 to 3 also served to select the variant); \emph{test}, never used. The pendulum fit of the breakaway runs is not meaningful because the pendulum hardly moves (rms error $2$--$3^\circ$).}
+\label{tab:openloop}
+\footnotesize\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llrlrrrr@{}}
+\toprule
+Run & Input & $T$ [s] & Role & Arm angle & Pend. angle & Arm speed & Current \\
+\midrule
+Fit A & square 25\,\%, 1--4.5\,Hz & 18.3 & fit & 88.6 & 87.9 & 92.1 & 72.2 \\
+Fit B & square 20\,\%, 1.8--2.7\,Hz & 14.1 & fit & 82.2 & 89.6 & 89.5 & 69.1 \\
+Fit C & square 30\,\%, 1--4.2\,Hz & 14.0 & fit & 86.4 & 79.5 & 92.0 & 75.3 \\
+Fit D & square 15\,\%, 0.8--6\,Hz & 14.3 & test & 5.0 & 81.8 & 86.4 & 66.4 \\
+Validation 1 & square 22\,\%, 1.1--4\,Hz & 10.5 & val & 81.1 & 87.5 & 90.9 & 69.4 \\
+Validation 2 & square 28\,\%, 1.3--5\,Hz & 17.7 & val & 59.9 & 81.6 & 90.1 & 74.0 \\
+Validation 3 & square 24\,\%, 0.9--4.2\,Hz & 18.5 & val & 46.8 & 67.2 & 89.1 & 72.7 \\
+Sine 6\,Hz small & sine 18\,\%, 6\,Hz & 9.9 & test & 39.2 & 46.4 & 87.6 & 74.5 \\
+Sine 6\,Hz large & sine 35\,\%, 6\,Hz & 6.9 & test & 69.6 & 69.6 & 88.7 & 82.6 \\
+Slow sine & sine 18\,\%, 1\,Hz & 9.9 & test & $-10.5$ & 72.6 & 89.4 & 76.8 \\
+Chirp & log chirp 25\,\%, 1.5--15\,Hz & 21.9 & test & $-145.4$ & 91.2 & 87.4 & 82.2 \\
+Breakaway, 10--16\,\% & pulses $\pm$, 0.25\,s & 17.7 & test & $-28.5$ & 68.1 & 86.8 & 71.0 \\
+Breakaway, 3--10\,\%, 1 & pulses $\pm$, 0.25\,s & 23.9 & test$^{a}$ & $-6.2$ & $-91.4$ & 64.3 & 65.7 \\
+Breakaway, 3--10\,\%, 2 & pulses $\pm$, 0.25\,s & 26.6 & test$^{a}$ & $-20.0$ & $-331.7$ & 37.6 & 72.7 \\
+Breakaway, 3--10\,\%, 3 & pulses $\pm$, 0.25\,s & 26.6 & test$^{a}$ & $-38.3$ & $-21.5$ & 61.8 & 64.6 \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+\raggedright\footnotesize $^{a}$ The 6\,\% breakaway duty of the model was read from these three recordings; they were not fitted.
+\end{table}
+
+\paragraph{Fit runs and validation runs.} On the fit runs the model reaches 82--89\,\% for the arm angle, 80--90\,\% for the pendulum angle, 90--92\,\% for the arm speed and 69--75\,\% for the current (Figure~\ref{fig:val_fit}). The validation runs are almost as good for the pendulum angle and the arm speed (67--88\,\% and 89--91\,\%, Figure~\ref{fig:val_validation}), so the model is not overfitted to the three fit runs. Only the arm angle degrades, from 81\,\% for Validation~1 to 47\,\% for Validation~3. Restarting the simulation from the measured state every 2\,s brings the arm angle of the three validation runs to 84, 87 and 87\,\%, and the pendulum angle to 91, 85 and 82\,\%, so what is lost in the whole-run simulation is the slow drift of the integrated arm speed, as found in section~\ref{sec:estimation}.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_val_fit.pdf}
+\caption{Fit runs A, B and C: measured and simulated arm angle, pendulum angle from hanging and current. The titles give the fit of the arm angle, the pendulum angle and the current.}
+\label{fig:val_fit}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_val_validation.pdf}
+\caption{Validation runs 1 to 3: measured and simulated arm angle, pendulum angle and current. The arm angle of runs 2 and 3 drifts away from the measurement after about 5\,s, while the pendulum follows it.}
+\label{fig:val_validation}
+\end{figure}
+
+\paragraph{Runs never used.} The 6\,Hz sines (Figure~\ref{fig:val_sine}) test the arm-to-pendulum path at a frequency three times that of the pendulum. The model follows the large sine (35\,\% duty, arm motion of $\pm 10^\circ$) with 70\,\% for the arm and the pendulum angles, but the small sine (18\,\%, arm motion of $\pm 5^\circ$) only with 39\,\% and 46\,\%, and when it is restarted every 2\,s the pendulum fit is even negative ($-47$\,\%). With such small arm motions the gear play and the effective lag of the coupling (14.7\,ms against 9.1\,ms for the large sine, section~\ref{sec:reid_findings}) matter most, and one fixed timing correction of 10\,ms cannot fit both. The 1\,Hz sine shows the arm with reversals at a speed below the Coulomb level, where the simulated arm moves further than the real one ($-10.5$\,\% for the arm angle, 89\,\% for its speed). The chirp (Figure~\ref{fig:val_chirp}) is reproduced well in the pendulum (91\,\%, including the resonance sweep through $100^\circ$) and the current (82\,\%), but the arm angle integrates 22\,s of a small asymmetry of the friction and ends $30^\circ$ away, giving $-145$\,\%, while a restart every 2\,s gives 69\,\%. Fit~D (15\,\% duty), which was left out of the fit because the arm moves mostly inside the play and the stiction, is the same: 82\,\% for the pendulum, 86\,\% for the arm speed and 5\,\% for the arm angle, but 78\,\% when restarted every 2\,s.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_val_sine.pdf}
+\caption{Runs never used in the identification: 6\,Hz sine of 18\,\% (small arm motion) and 35\,\% (large arm motion) and 1\,Hz sine of 18\,\%.}
+\label{fig:val_sine}
+\end{figure}
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=0.75\textwidth]{figures/fig_val_chirp.pdf}
+\caption{Runs never used in the identification: logarithmic chirp from 1.5 to 15\,Hz at 25\,\% duty, and Fit~D (15\,\% duty), which was left out of the fit.}
+\label{fig:val_chirp}
+\end{figure}
+
+\paragraph{Breakaway runs.} In the pulse runs (Figure~\ref{fig:val_breakaway}) the duty is just around the breakaway of 6\,\% and the arm moves by only a few degrees. Here the model fails as a predictor of the arm angle: the simulated arm slips more often than the real one, and the error accumulates over the 25\,s of pulses ($-6$ to $-38$\,\%). The arm speed fits 38--64\,\% for the same reason. The stick-slip model of equation~\ref{eq:stick} is deterministic with a single threshold, while the rig, as Table~\ref{tab:reid_breakaway} shows, has a first-move duty of 5--6.5\,\% that depends on the arm position, and the motor shaft creeps through the play before the arm moves. The current is still reproduced at 65--73\,\%. The high-range run (10--16\,\%), where every pulse moves the arm, is closer: 87\,\% for the arm speed and 71\,\% for the current. Since a balancing controller works at small duty cycles of this size, this is the regime in which the model is weakest.
+
+\begin{figure}[h]
+\centering
+\includegraphics[width=\textwidth]{figures/fig_val_breakaway.pdf}
+\caption{Breakaway runs: measured and simulated arm angle, the applied duty cycle and the current for the pulses of 10--16\,\% and for the three recordings of the pulses of 3--10\,\%. The pendulum hardly moves in these runs and is not shown.}
+\label{fig:val_breakaway}
+\end{figure}
+
+\paragraph{Discussion.} The model reproduces the dynamics that matter for stabilization: the pendulum free-swing frequency (to 0.8\,\% in the period), the arm speed (86--92\,\% on every run that moves the arm well above the breakaway) and the pendulum angle (67--91\,\% on the large-amplitude runs, 80\,\% or more on the fit runs). Three effects limit it. First, the arm angle, being an integral, accumulates the asymmetry of the sliding friction and the stick-slip at the reversals: the whole-run fit varies from 89\,\% to $-145$\,\% between runs, while with restarts it is 69--93\,\% on all runs with a normal arm motion. This is not a fault that a feedback controller would see. Second, the pendulum reading lags the arm through the coupling play and the sensor, by an amount that depends on the size of the motion; the pendulum fit is lowest for the small arm motion of the 6\,Hz sine. Third, the current is limited to about 65--83\,\%: the noise of the sensor (0.026\,A rms) is small against the 0.13--0.17\,A rms error of the large runs, which is mostly the sharp current spikes at the duty reversals, whose timing is off by a few milliseconds because the encoder and the current are on the motor side, which partly moves inside the play. Finally, the model of 2026-11-20 is a compromise on the pendulum damping between the free swing (80--83\,\% with the final values against 98\,\% with the free-swing values) and the driven runs. The harness replay of the first validation run on the Simscape plant, in which the arm-angle fit dropped from 89.0 to 86.5\,\% when the breakaway friction was added (section~\ref{sec:lsresults}), was done for the model of 2026-11-15 and was not repeated for the model of 2026-11-20.
 
 \subsection{Consequence for the LQR}
 \label{sec:reid_lqr}
@@ -3047,4 +3140,67 @@ Limitations of the digital twin are:
   \item The drawn geometry is the CAD model, while the dynamics come from the identified lumped parameters. Since the split between the mass and the length of the pendulum cannot be identified (see section~\ref{sec:harness_plant}), the drawn bodies show where the arm and the pendulum are, not their identified inertia.
 \end{enumerate}
 
+\section{The Furuta Lab Desktop Application}
+\label{sec:app}
+%======================================================================
+All measurements of this work were taken, and all models of sections~\ref{sec:estimation} and~\ref{sec:reid} were identified, with one desktop program, Furuta Lab. This section describes what the program does, how it is built and which safety interlocks it relies on. The program is written in Python with PySide6 (Qt) and runs on Windows; it is started with \texttt{python desktop/main.py}. The complete manual is \nolinkurl{docs/FURUTA_LAB.md}.
+
+\subsection{Purpose and Operating Modes}
+\label{sec:app_purpose}
+The program connects to the firmware of the ESP32-S3 through the FTDI USB-serial bridge (460\,800\,baud, binary protocol of \nolinkurl{protocol/SPEC.md}). It has three tasks: it records and analyzes sensor data and identifies the plant model, it starts and records the controllers that run on the ESP32, and it shows the rig next to its models as a three-dimensional twin. Two operating modes of the project are distinguished (section~\ref{sec:harness_modes}). In the hardware-in-the-loop mode, the controller runs on the computer; this mode is not built into the program. In the onboard mode, the controller runs on the ESP32 in the 1\,kHz firmware loop, and the program only starts the run, renews the heartbeat, shows the controller state and records the run. In both modes, the firmware streams 50, 100 or 250 records per second to the computer, but the computer never closes a control loop. Open-loop experiments are uploaded as a finite sequence of segments and are executed by the firmware.
+
+\subsection{Architecture}
+\label{sec:app_architecture}
+Three threads are kept apart so that acquisition and the stop function do not depend on the interface or on MATLAB: the interface thread, a serial thread that is the only owner of the port (it parses the stream, renews the heartbeat every 80\,ms, polls the status every 0.5\,s and keeps a buffer of the last 60\,000 records), and a worker thread that runs one job at a time (connecting, settings, captures and fits). MATLAB, which is needed only for an optional speed-model fit, runs in a separate process. The modules are listed in Table~\ref{tab:app_modules}.
+
+\begin{table}[htbp]
+\centering
+\caption{Modules of the application (\nolinkurl{desktop/furuta_lab/}).}
+\label{tab:app_modules}
+\footnotesize
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}p{5.4cm}p{9.4cm}@{}}
+\toprule
+Module & Role \\
+\midrule
+\texttt{app.py} & main window, tabs, task handling, interlock for powered runs \\
+\texttt{device.py}, \texttt{wire.py} & serial link, session, commands, heartbeat, capture download; COBS framing, CRC-32, record types \\
+\texttt{backend.py} & run and capture files, MATLAB jobs \\
+\texttt{signals.py}, \texttt{viewer.py}, \texttt{analysis.py} & unit conversion, smoothing, plots, noise and filter analysis, dead zone \\
+\texttt{estimate\_page.py}, \texttt{estimation.py} & guided identification, steps~0 to~9, and its numerical code \\
+\texttt{simbench.py} & simulated rig for tests and synthetic sessions \\
+\texttt{onboard\_page.py} & onboard controller: readiness, knobs, start, summary \\
+\texttt{twin\_page.py}, \texttt{twin\_core.py}, \texttt{twin\_view.py} & twin: page, kinematics and ghosts, 3D view \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Pages and Their Use}
+\label{sec:app_pages}
+The window has seven pages. The first three are used to prepare and check the rig:
+\begin{enumerate}
+  \item \textbf{Live \& recordings} shows the signals live (arm and pendulum angle, speeds, current, duty, magnet status, controller state), records runs, opens saved runs and sets the three references: arm centered, pendulum hanging down and current-sensor zero.
+  \item \textbf{Still noise \& filters} records the sensors at rest, shows the noise spectrum and compares low-pass filters by noise and delay; the chosen filter of the current can be sent to the firmware.
+  \item \textbf{Motor tests} marks the safe travel by hand, commissions the limits (duty, travel, run length, current trip, slew rate) and runs finite experiments, among them the breakaway pulses that give the dead zone.
+\end{enumerate}
+The next pages belong to the work of the previous sections:
+\begin{enumerate}
+  \setcounter{enumi}{3}
+  \item \textbf{Parameter estimation} implements the chain of sections~\ref{sec:estimation} and~\ref{sec:estmodels} as ten guided steps (setup, free swing, square-wave runs, electrical, pendulum and arm fits, refinement by simulation, comparison with the hardware, state-space models, physical units). It keeps a session with the recordings and results, marks a step as outdated when its inputs changed, and exports the model files for MATLAB. The re-identification of section~\ref{sec:reid} used the same code from a script.
+  \item \textbf{Onboard control} starts swing-up with LQR or PID balance, or balance only, on the ESP32 (sections~\ref{sec:lqr_impl}, \ref{sec:su_impl} and~\ref{sec:pid_firmware}), with a readiness checklist, the controller period of 4, 2 or 1\,ms, the run length, the maximum duty, the current trip and a table of the controller knobs that can be read and changed in the RAM of the device. The hardware comparison of section~\ref{sec:ctrl_compare} consists of runs recorded with this page or with the scripts of the same package.
+  \item \textbf{Digital twin} draws the rig in three dimensions from the live stream, or from a recording, together with a translucent cyan ghost of the identified model driven by the duty applied on the rig. Three more ghosts can be switched on: orange, the model re-synchronized every 0.2\,s (short-horizon model error); green, the model observer of section~\ref{sec:cu_observer} run on the stream (what the controller acts on); and violet, the model with its own copy of the onboard controller. The page can forward the poses of the rig and of the model as the packet of section~\ref{sec:twin} to the Unreal twin, and it can listen for poses from MATLAB.
+  \item \textbf{Setup \& guide} sets the encoder scale, shows device details, clears faults, cancels a stuck capture and stores the profile in the non-volatile memory.
+\end{enumerate}
+
+\subsection{Safety}
+\label{sec:app_safety}
+A powered run starts only if the device is connected and disarmed, the box ``12\,V connected -- allow motion'' is ticked (it is unticked at every start, and unticking it sends the stop command), the arm is centered, and the maximum duty and the travel are nonzero. A sequence longer than the maximum run time, or with a peak above the maximum duty, is refused. A stop command cancels a run that is still being prepared. The firmware then enforces its own limits, independent of the computer: the heartbeat (the motor is switched off if none arrives within 300\,ms), the travel limit around the centered position, the current trip on the filtered current, the plausibility of the current sensor and of the pendulum reading, clipping and slew limiting of the duty, the run length, and, in the onboard mode, the supervisor that stops the motor when the arm leaves the allowed range (SafeStop) or, in balance-only mode, when the pendulum leaves the catch region. A fault latches until it is cleared. Before a powered run, the center rod is removed, 12\,V is on and the area is clear; the scripts of the package ask for this explicitly. The scripts and the program cannot own the serial port at the same time.
+
+\subsection{Data Format}
+\label{sec:app_data}
+Every recording is a folder in \nolinkurl{data/runs}, named by the time of the start. It holds \texttt{manifest.json} (device profile and status at the start, metadata such as the purpose of the run and the controller knobs, final status and number of samples) and \texttt{samples.bin} (the received packets, with the records of 88 bytes). An onboard run also keeps the high-rate capture of the firmware (500\,Hz records and the current at 2\,kHz) in a subfolder. Still captures are stored as \texttt{capture.npz}, \texttt{capture.json} and a MATLAB file. Estimation sessions are in \nolinkurl{data/estimation}. Any recording can be opened again in the program or read in Python with a single function.
+
+\subsection{Tests}
+\label{sec:app_tests}
+The program is tested without hardware, with \texttt{unittest} and an offscreen Qt platform. \nolinkurl{desktop/test_lab.py} runs 41 tests, 24 of its own and the 17 tests of \nolinkurl{desktop/test_estimation.py}; \nolinkurl{desktop/test_twin_ghosts.py} runs 5 more, which replay recorded rig runs through the ghosts. All 46 distinct tests pass. They check the wire format against the golden vectors generated by the firmware tests, the recovery from damaged frames, the noise and filter analysis, the estimation chain on synthetic data, the interlocks, the onboard page and the twin.
 \end{document}

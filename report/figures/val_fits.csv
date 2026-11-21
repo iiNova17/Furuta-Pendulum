@@ -1,0 +1,16 @@
+run,folder,purpose,input,role,duration_s,fs_hz,fit_arm_angle,fit_pendulum_angle,fit_arm_speed,fit_current,rms_arm_deg,rms_pend_deg,rms_current_A,restart2s_arm_angle,restart2s_pendulum_angle,restart2s_arm_speed,restart2s_current,max_pend_deg,arm_min_deg,arm_max_deg,max_duty
+fitA,20261120_200642_b1_fitA,fit run,"square 25 %, 1, 1.4, 3.5, 4.5 Hz",fit,18.34,249.9,88.57,87.86,92.09,72.16,2.795,2.872,0.1555,92.87,90.79,92.12,72.17,74.18,-67.21,66.72,0.25
+fitB,20261120_200757_b1_fitB,fit run,"square 20 %, 1.8, 2.2, 2.7 Hz",fit,14.06,250,82.18,89.65,89.46,69.11,2.177,4.058,0.1317,81.79,92.45,89.45,69.12,113.6,-28.92,24.1,0.2
+fitC,20261120_200856_b1_fitC,fit run,"square 30 %, 1, 3, 4.2 Hz",fit,14.03,250,86.45,79.53,92.01,75.25,4.028,5.706,0.1729,92.13,90.63,92.11,75.32,79.41,-87.57,80.78,0.3
+fitD,20261120_200956_b1_fitD,"fit run, left out","square 15 %, 0.8, 1.2, 4, 6 Hz",validation,14.28,250,4.971,81.79,86.41,66.44,10.46,1.479,0.127,77.63,83.33,86.47,66.47,29.71,-62.58,20.76,0.15
+validation,20261120_194652_b1_validation,validation 1,"square 22 %, 1.1, 3, 4 Hz",validation,10.53,250,81.14,87.52,90.93,69.37,2.371,2.185,0.1601,84.34,90.56,90.96,69.38,67.02,-93.18,8.639,0.22
+validation2,20261120_201250_b1_validation2,validation 2,"square 28 %, 1.3, 2.6, 3.8, 5 Hz",validation,17.71,250,59.87,81.63,90.09,73.95,7.958,5.423,0.1832,86.9,84.83,90.11,73.97,103.5,-65.36,55.88,0.28
+validation3,20261120_201405_b1_validation3,validation 3,"square 24 %, 0.9, 1.5, 3.3, 4.2 Hz",validation,18.48,250,46.78,67.24,89.14,72.67,13.73,9.614,0.1509,86.84,81.68,89.21,72.71,91.41,-74.84,86,0.24
+sine6_small,20261120_194158_b1_sine6_small,"lag test, small arm motion","sine 18 %, 6 Hz",validation,9.908,250,39.15,46.4,87.58,74.48,1.414,0.9403,0.0805,72.76,-46.67,87.55,74.5,4.553,-2.175,4.858,0.18
+sine6_large,20261120_194320_b1_sine6_large,"lag test, large arm motion","sine 35 %, 6 Hz",validation,6.864,250,69.58,69.64,88.74,82.58,2.221,1.942,0.1217,83.86,60.15,88.78,82.58,12.93,-8.671,14.36,0.35
+slowsine,20261120_194508_b1_slowsine,"slow reversals, play","sine 18 %, 1 Hz",validation,9.868,250,-10.5,72.65,89.36,76.79,21.7,1.733,0.05313,73.12,69.46,89.65,77,16.04,-31.53,34.42,0.18
+chirp,20261120_200513_b1_chirp,frequency response,"log chirp 25 %, 1.5 to 15 Hz",validation,21.87,249.9,-145.4,91.23,87.37,82.17,25.56,2.064,0.08324,69.43,91.39,87.34,82.18,108.8,-14.18,46.71,0.25
+breakaway,20261120_195526_b1_breakaway,"breakaway map, high range",alternating pulses 10 to 16 %,breakaway,17.73,250,-28.5,68.13,86.8,70.98,10.69,4.523,0.0445,83.39,82.2,86.71,71.15,37.75,-19.51,7.471,0.145
+breakaway_low#1,20261120_195829_b1_breakaway_low,"breakaway map, low range (position 1)",alternating pulses 3 to 10 %,breakaway,23.94,250,-6.224,-91.44,64.32,65.75,2.995,2.522,0.04143,58.71,7.853,64.24,66.25,7.217,-6.755,7.237,0.1
+breakaway_low#2,20261120_201647_b1_breakaway_low,"breakaway map, low range (position 2)",alternating pulses 3 to 10 %,breakaway,26.59,250,-19.98,-331.7,37.64,72.74,2.633,3.011,0.03736,43.49,-149.9,37.11,72.69,4.163,-4.824,7.23,0.1
+breakaway_low#3,20261120_202001_b1_breakaway_low,"breakaway map, low range (position 3)",alternating pulses 3 to 10 %,breakaway,26.64,250,-38.3,-21.5,61.81,64.63,6.999,2.011,0.04127,67.17,35.93,62.19,65.09,9.498,-17.34,1.694,0.1
