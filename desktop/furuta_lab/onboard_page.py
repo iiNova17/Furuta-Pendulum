@@ -4,9 +4,10 @@ The ESP32 runs the controller itself (firmware/include/onboard.h, every 1, 2 or 
 starts it, keeps the heartbeat going (Device._loop), shows the controller state from the `ctrl`
 byte of every core record, edits the controller knobs (RAM only) and records the run.
 
-To add a controller (e.g. PID, pole placement): add an entry to CONTROLLERS. `start` is merged into
-the START_ONBOARD command, so a firmware that understands e.g. {'controller': 'pid'} needs nothing
-else here. Its knobs are whatever ONBOARD_GET returns; add descriptions to KNOBS.
+To add a controller (e.g. pole placement): add an entry to CONTROLLERS. `start` is merged into the
+START_ONBOARD command (firmware 1.13: stab 1 = PID, 3 = LQR selects the stabilizer, as ctrlP.stab in Simulink);
+`needs` names the stabilizer the firmware must list in HELLO onboardStabilizers. Its knobs are whatever
+ONBOARD_GET returns; add descriptions to KNOBS.
 """
 import copy
 import math
@@ -19,14 +20,22 @@ from . import wire
 from .backend import save_capture
 
 CONTROLLERS = [
-    {'key': 'swingup_lqr', 'label': 'Swing-up + LQR balance', 'start': {'swingUp': True},
+    {'key': 'swingup_lqr', 'label': 'Swing-up + LQR balance', 'start': {'swingUp': True, 'stab': 3},
      'how': 'Start with the pendulum <b>hanging at rest</b> and the arm centered. The energy law swings it up and '
             'the LQR catches it near the top (simulation: caught after about 1.5 s, arm within about ±50°, '
             'current below 1 A while swinging with one short peak near 1.5 A at the catch).'},
-    {'key': 'lqr', 'label': 'LQR balance only', 'start': {'swingUp': False},
+    {'key': 'lqr', 'label': 'LQR balance only', 'start': {'swingUp': False, 'stab': 3},
      'how': 'Hold the pendulum lightly <b>near upright</b> (the catch-region light below must be green), press Start, '
             'then let go. If the pendulum leaves the catch region the run ends (ONBOARD_PENDULUM_LOST). '
             'Expected: it stays up and the arm drifts slowly by about ±20° (friction limit cycle with fricGain 0).'},
+    {'key': 'swingup_pid', 'label': 'Swing-up + PID balance', 'start': {'swingUp': True, 'stab': 1}, 'needs': 'pid',
+     'how': 'Start with the pendulum <b>hanging at rest</b> and the arm centered. The same energy swing-up, then the PID '
+            '(PD on θ1 + PID on θ0, stab_pid.slx) catches and balances it. Simulation: caught after 1.8 s, as with the LQR. '
+            'Needs firmware 1.13.'},
+    {'key': 'pid', 'label': 'PID balance only', 'start': {'swingUp': False, 'stab': 1}, 'needs': 'pid',
+     'how': 'Hold the pendulum lightly <b>near upright</b> (catch-region light green), press Start, then let go. The PID '
+            'balances; if the pendulum leaves the catch region the run ends (ONBOARD_PENDULUM_LOST). The arm integral starts '
+            'at zero with the run. Needs firmware 1.13.'},
 ]
 
 # knob -> (unit, meaning). Unknown knobs from a newer firmware are still listed and editable.
@@ -60,6 +69,12 @@ KNOBS = {
     'wStick': ('rad/s', 'arm speed over which the breakaway part fades out'),
     'aStick': ('rad/s²', 'smoothing of the sign of the wanted arm acceleration'),
     'fricStick': ('–', 'balance: breakaway duty at rest, fading to Coulomb as the arm moves (1 = on, 0 = Coulomb only)'),
+    'stab': ('–', 'stabilizer in Stabilize: 1 = PID, 3 = LQR (set by the controller choice above)'),
+    'Kp1': ('duty/rad', 'PID: proportional gain on pendulum angle θ1'),
+    'Kd1': ('duty·s/rad', 'PID: gain on pendulum speed θ̇1 (from the estimator)'),
+    'Kp0': ('duty/rad', 'PID: proportional gain on arm error θ0 − r'),
+    'Ki0': ('duty/(rad·s)', 'PID: integral gain on arm error θ0 − r (integral starts at zero with the run)'),
+    'Kd0': ('duty·s/rad', 'PID: gain on arm speed θ̇0 (from the estimator)'),
 }
 READ_ONLY = {'Ts', 'rearm', 'modelArmSign', 'modelPendSign'}
 # Controller periods (firmware 1.7: onboard_rates.h). The LQR gain for each comes from the design's Q and R.
@@ -141,7 +156,7 @@ class OnboardPage:
     # ------------------------------------------------------------------ layout
     def build(self, v):
         a = self.app
-        a.text(v, 'The ESP32 runs the controller itself (firmware 1.11: every 4, 2 or 1 ms, pendulum read at 1 kHz, all firmware trips active). '
+        a.text(v, 'The ESP32 runs the controller itself (firmware 1.13: LQR or PID balance, every 4, 2 or 1 ms, pendulum read at 1 kHz, all firmware trips active). '
                   'This page starts it, keeps the heartbeat, shows its state and records the run. '
                   'STOP / DISABLE, unticking the 12 V box or closing the app stops the motor (heartbeat within 300 ms).', small=True)
 
@@ -375,10 +390,10 @@ class OnboardPage:
                            'modelArmSign': 'arm sign the model was identified with', 'modelPendSign': 'pendulum sign the model was identified with'}.get(name, meaning)
             item = W.QTableWidgetItem(name); item.setFlags(item.flags() & ~QtCore.Qt.ItemIsEditable); self.table.setItem(r, 0, item)
             val = W.QTableWidgetItem(str(value).lower() if isinstance(value, bool) else f'{value:.10g}')
-            if name in READ_ONLY or name == 'swingUp':
+            if name in READ_ONLY or name in ('swingUp', 'stab'):
                 val.setFlags(val.flags() & ~QtCore.Qt.ItemIsEditable)
             self.table.setItem(r, 1, val)
-            for col, text in ((2, unit), (3, meaning if name != 'swingUp' else 'set by the controller choice above')):
+            for col, text in ((2, unit), (3, meaning if name not in ('swingUp', 'stab') else 'set by the controller choice above')):
                 it = W.QTableWidgetItem(text); it.setFlags(it.flags() & ~QtCore.Qt.ItemIsEditable); self.table.setItem(r, col, it)
         self.table.resizeColumnsToContents()
         self.app.report('Controller knobs', f'{len(self.params)} values read from the device.')
@@ -387,7 +402,7 @@ class OnboardPage:
         out = {}
         for r in range(self.table.rowCount()):
             name = self.table.item(r, 0).text()
-            if name in READ_ONLY or name == 'swingUp':
+            if name in READ_ONLY or name in ('swingUp', 'stab'):
                 continue
             text = self.table.item(r, 1).text().strip()
             try:
@@ -418,6 +433,9 @@ class OnboardPage:
         if not self.supported():
             raise RuntimeError('Connect to firmware 1.6 or newer (onboard control)')
         entry = CONTROLLERS[self.controller.currentIndex()]
+        if entry.get('needs') and entry['needs'] not in str(d.identity.get('onboardStabilizers', '')).split(','):
+            raise RuntimeError(f'{entry["label"]} needs firmware 1.13 or newer (this is {d.identity.get("firmware", "?")}); '
+                               'flash firmware/ first')
         a.authorize_run()                                  # DISARMED, 12 V box, centered, finite limits; enables motion
         if a.busy:
             d.inhibit = True; raise RuntimeError('Wait for the current task or cancel it')

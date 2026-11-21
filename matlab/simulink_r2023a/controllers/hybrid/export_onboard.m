@@ -3,17 +3,18 @@ function export_onboard()
 %   export_onboard()
 %
 %   One design, two copies. The knobs live in ctrl_hybrid_design.m only. This writes
-%     firmware/include/onboard_design.h    every number the firmware controller uses (K from dlqr,
+%     firmware/include/onboard_design.h    every number the firmware controller uses (K from dlqr, PID gains,
 %                                          swing-up knobs, supervisor guards, estimator, plant constants)
-%     firmware/test/onboard_replay_<scenario>.csv   controller input y and the duty Simulink commanded
-%   for the 'swingup' and 'push' scenarios (realistic sensors and firmware, nominal plant).
+%     firmware/test/onboard_replay_<scenario>[_pid].csv   controller input y and the duty Simulink commanded
+%   for the 'swingup' and 'push' scenarios with the LQR (stab 3) and with the PID (stab 1) stabilizer
+%   (realistic sensors and firmware, nominal plant). The firmware selects the stabilizer per run (START_ONBOARD stab).
 %   firmware/test/native_onboard.cpp feeds the same inputs to the C++ copy and requires the same duty.
 %   Re-run after any change to ctrl_hybrid_design.m, then rebuild and re-flash the firmware.
 here = fileparts(mfilename('fullpath'));
 fwdir = fullfile(here, '..', '..', '..', '..', 'firmware');
 cfg = harness_config('realistic', 'Model', '20261120');   % replays on the rig as re-identified (the design model)
 P = ctrl_hybrid_design(cfg);
-assert(P.stab == 3, 'export_onboard: the on-board copy implements the LQR stabilizer (ctrlP.stab = 3)');
+% The firmware has the PID (stab 1) and the LQR (stab 3); pole placement (stab 2) is not ported yet.
 
 L = {};
 add = @(name, v, note) sprintf('constexpr double %s = %.17g;%s', name, v, note);
@@ -25,6 +26,9 @@ L{end+1} = 'namespace fw { namespace design {';
 L{end+1} = add('Ts', P.Ts, '              // controller period');
 L{end+1} = add('velFc', P.est.vel_fc, '           // velocity filter cut-off [Hz]');
 L{end+1} = sprintf('constexpr double K[4] = {%.17g, %.17g, %.17g, %.17g};  // duty = -K (x - [r 0 0 0])', P.lqr.K);
+for f = {'Kp1', 'Kd1', 'Kp0', 'Ki0', 'Kd0'}                 % stab_pid.slx (firmware 1.13)
+    L{end+1} = add(['pid_' f{1}], P.pid.(f{1}), ''); %#ok<AGROW>
+end
 L{end+1} = add('fricGain', P.fric.gain, '');
 L{end+1} = add('fricBand', P.fric.band, '');
 L{end+1} = add('fricDutyPos', P.fric.duty(1), '');
@@ -57,11 +61,13 @@ fid = fopen(hfile, 'w'); fprintf(fid, '%s\n', L{:}); fclose(fid);
 fprintf('wrote %s\n', hfile);
 
 w = warning('off', 'all'); c = onCleanup(@() warning(w));
-for sc = {'swingup', 'push'}
-    R = run_sim('ctrl_hybrid.slx', sc{1}, 'Cfg', cfg);
+runs = {'swingup', 3, ''; 'push', 3, ''; 'swingup', 1, '_pid'; 'push', 1, '_pid'};   % scenario, stab, file suffix
+for k = 1:size(runs, 1)
+    sc = runs(k, 1);
+    R = run_sim('ctrl_hybrid.slx', sc{1}, 'Cfg', cfg, 'Params', struct('stab', runs{k, 2}));
     y = R.y; n = min([size(y, 1), numel(R.u), numel(R.r), numel(R.mode)]);
     T = [R.t(1:n), y(1:n, 1), y(1:n, 2), R.r(1:n), R.u(1:n), R.mode(1:n)];
-    f = fullfile(fwdir, 'test', ['onboard_replay_' sc{1} '.csv']);
+    f = fullfile(fwdir, 'test', ['onboard_replay_' sc{1} runs{k, 3} '.csv']);
     fid = fopen(f, 'w'); fprintf(fid, 't,th0,th1,r,duty,mode\n');
     fprintf(fid, '%.6f,%.17g,%.17g,%.17g,%.17g,%d\n', T'); fclose(fid);
     fprintf('wrote %s (%d rows, pass %d, catch %.2f s)\n', f, n, R.pass, R.metrics.t_capture);

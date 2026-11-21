@@ -111,7 +111,7 @@ on recordings not used in the fit. After the rig was moved, the model was identi
 
 `run_sim` simulates any scenario (`balance`, `push`, `arm_step`, `swingup`), and `compare_controllers` scores the
 stabilizers side by side, for example PID, pole placement and LQR selected with `struct('stab', 1)`, `2` or `3`.
-The same controller runs on the ESP32 (firmware 1.12), generated from the same design file by
+The same controller runs on the ESP32 (firmware 1.13, with the LQR or the PID stabilizer chosen per run in Furuta Lab), generated from the same design file by
 `controllers/hybrid/export_onboard.m`, so the hardware runs the design that was simulated.
 
 ## Digital twin

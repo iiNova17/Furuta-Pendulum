@@ -129,7 +129,8 @@ std::vector<NamedValue> onboardFields(OnboardParams&p) {
     {"exitTh1",&p.exitTh1},{"safeTh0",&p.safeTh0},{"E0",&p.E0},{"kE",&p.kE},{"aPush",&p.aPush},{"wc",&p.wc},
     {"zc",&p.zc},{"aKick",&p.aKick},{"kickE",&p.kickE},{"wSign",&p.wSign},{"wFric",&p.wFric},{"iMax",&p.iMax},
     {"uMax",&p.uMax},{"tsp",&p.tsp},{"tsn",&p.tsn},{"stickGain",&p.stickGain},{"wStick",&p.wStick},{"aStick",&p.aStick},{"fricStick",&p.fricStick},
-    {"estKind",&p.estKind},{"estLag",&p.estLag},{"estFab",&p.estFab},{"estFtrk",&p.estFtrk},{"estSub",&p.estSub}};   // 1.12 observer
+    {"estKind",&p.estKind},{"estLag",&p.estLag},{"estFab",&p.estFab},{"estFtrk",&p.estFtrk},{"estSub",&p.estSub},   // 1.12 observer
+    {"stab",&p.stab},{"Kp1",&p.Kp1},{"Kd1",&p.Kd1},{"Kp0",&p.Kp0},{"Ki0",&p.Ki0},{"Kd0",&p.Kd0}};   // 1.13 stabilizer choice, PID
 }
 void onboardJson(JsonObject o,OnboardParams p) {
   for(auto&f:onboardFields(p))o[f.name]=*f.value;
@@ -367,7 +368,7 @@ void dispatch(const Packet&p) {
   else if(op=="HELLO"){
     if(id!=lastHelloId||p.session!=lastHelloSession){challenge=((uint64_t)esp_random()<<32)|esp_random();lastHelloId=id;lastHelloSession=p.session;}
     response["challenge"]=std::to_string(challenge);
-    response["firmware"]="FurutaWorkbench/1.12";response["onboardObserver"]=true;response["streamBatching"]="immediate";response["currentChecksOption"]=true;response["burstCancel"]=true;response["runLengthUnlimited"]=true;response["onboardControl"]=true;response["protocol"]=1;response["coreRecordBytes"]=88;
+    response["firmware"]="FurutaWorkbench/1.13";response["onboardStabilizers"]="pid,lqr";response["onboardObserver"]=true;response["streamBatching"]="immediate";response["currentChecksOption"]=true;response["burstCancel"]=true;response["runLengthUnlimited"]=true;response["onboardControl"]=true;response["protocol"]=1;response["coreRecordBytes"]=88;
     {JsonArray a=response.createNestedArray("onboardPeriods");for(int i=0;i<rates::count;i++)a.add(rates::Ts[i]);}
     response["pendHz"]=1000/kPendPeriodMs;response["as5600Conf"]=as5600Conf;response["as5600SlowFilter"]=kAs5600SlowFilter;
     response["adcChunkMax"]=64;response["coreChunkMax"]=16;
@@ -400,6 +401,7 @@ void dispatch(const Packet&p) {
     // profile signs the model was identified with (a flipped sign would push the wrong way).
     OnboardParams p=onboardParams;
     if(in.containsKey("swingUp")){if(!in["swingUp"].is<bool>())why="swingUp must be true/false";else p.swingUp=in["swingUp"].as<bool>();}
+    if(in.containsKey("stab")){if(!in["stab"].is<double>())why="stab must be 1 (PID) or 3 (LQR)";else p.stab=in["stab"].as<double>();}   // 1.13
     const Config&c=control.cfg;
     if(!why.empty()){}
     else if(control.state!=State::Armed)why="ARM required";
@@ -411,7 +413,8 @@ void dispatch(const Packet&p) {
     else if(p.valid(why)){
       onboard.p=p;onboard.reset();onboardTick=0;onboardEvery=(unsigned)std::lround(p.Ts*1000);
       if(control.startExternal(esp_timer_get_time(),Controller::Source::Onboard,why)){
-        response["mode"]=p.swingUp?"swing-up + LQR":"LQR only";response["seconds"]=c.maxDuration;response["Ts"]=p.Ts;
+        const char* law=p.stab==1?"PID":"LQR";
+        response["mode"]=std::string(p.swingUp?"swing-up + ":"")+law+(p.swingUp?"":" only");response["stab"]=p.stab;response["seconds"]=c.maxDuration;response["Ts"]=p.Ts;
         if(c.slewPerSecond<50)response["warning"]="slewPerSecond is below 50/s; the controller was designed with 100/s";
       }
     }

@@ -185,6 +185,20 @@ class LabTests(unittest.TestCase):
         d.event_count=5;p.event_mark=4;d.last_event={'event':'ONBOARD_SAFE_STOP'};d.status={'state':'DISARMED'}
         p.finished_run();self.assertIn('safeTh0',p.last_end)
         w.close()
+    def test_onboard_pid_choices(self):
+        """Firmware 1.13: the PID entries send stab 1 and are refused on a firmware without the PID; LQR sends stab 3."""
+        from PySide6.QtWidgets import QApplication
+        from furuta_lab.app import LabApp
+        from furuta_lab import onboard_page as O
+        keys={c['key']:c for c in O.CONTROLLERS}
+        self.assertEqual(keys['swingup_pid']['start'],{'swingUp':True,'stab':1});self.assertEqual(keys['pid']['start'],{'swingUp':False,'stab':1})
+        self.assertEqual(keys['swingup_lqr']['start']['stab'],3);self.assertEqual(keys['lqr']['start']['stab'],3)
+        app=QApplication.instance() or QApplication([]);w=LabApp();p=w.onboard;d=w.device
+        d.connected=d.ready=True;d.identity={'onboardControl':True,'firmware':'FurutaWorkbench/1.12'}
+        p.controller.setCurrentIndex([c['key'] for c in O.CONTROLLERS].index('swingup_pid'))
+        with self.assertRaises(RuntimeError) as e:p.start()
+        self.assertIn('1.13',str(e.exception))
+        d.ready=d.connected=False;w.close()
     def test_onboard_start_flow_and_burst_download(self):
         """Start = stream 250 Hz, period, capture armed, then record, ARM, START_ONBOARD; afterwards the capture is saved."""
         import tempfile,time as _t

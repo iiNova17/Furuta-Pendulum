@@ -159,7 +159,7 @@ function test_hybrid_template_plumbing(tc)
 R = run_sim('ctrl_hybrid.slx', 'balance', 'Params', struct('stab', 3, 'lqr', struct('Q', [])));
 tc.verifyEqual(unique(R.mode(:)', 'stable'), [2 1]);     % starts in Stabilize, falls, SwingUp
 for s = 1:3                                               % 1 PID, 2 pole placement, 3 LQR
-    P = struct('stab', s, 'pid', struct('Kp', 1), 'pp', struct('poles', [-5 -6 -7 -8]), ...
+    P = struct('stab', s, 'pid', struct('Kp1', 1), 'pp', struct('poles', [-5 -6 -7 -8]), ...
         'lqr', struct('Q', eye(4), 'R', 1));
     R = run_sim('ctrl_hybrid.slx', 'balance', 'Params', P);
     tc.verifyNotEqual(R.u(2), 0, sprintf('stabilizer %d not wired', s));
