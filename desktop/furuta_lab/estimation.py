@@ -12,7 +12,7 @@ values need one optional absolute reference (scale()).
 
 Estimation chain: free swing -> electrical -> pendulum equation -> arm equation ->
 simulation-error refinement of Ja, Beq, tc+, tc- -> validation on a separate recording.
-Reference prototypes: docs/prototypes/estimation_prototype.py, twin_prototype.py.
+The method is documented in report/furuta_model.tex, sections 4 to 7.
 
 Pure functions, no Qt.
 """

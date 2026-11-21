@@ -1,5 +1,5 @@
 #pragma once
-// On-board copy of the hybrid controller (matlab/harness/controllers/hybrid/ctrl_hybrid.slx):
+// On-board copy of the hybrid controller (matlab/simulink_r2026a/controllers/hybrid/ctrl_hybrid.slx):
 // estimator -> LQR (+ friction compensation) and energy swing-up -> Stateflow supervisor.
 // Pure C++ (no Arduino) so the native test can replay harness runs through it and require the
 // same duty as Simulink (test/native_onboard.cpp). Numbers come from onboard_design.h, which

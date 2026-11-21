@@ -43,3 +43,6 @@ matlab.mat
 
 # Packaged harness releases (matlab/harness/export_release.m)
 dist/
+
+# Furuta Lab run-time output (commit recordings on main)
+data/

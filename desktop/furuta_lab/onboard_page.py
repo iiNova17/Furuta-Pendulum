@@ -195,7 +195,7 @@ class OnboardPage:
         a.button(row, 'Apply edited values', self.apply_params)
         a.button(row, 'Restore design values', self.restore_params)
         a.button(g, 'Measure controller CPU time on the MCU', self.bench)
-        a.text(g, 'Design values come from matlab/harness/controllers/hybrid/ctrl_hybrid_design.m (export_onboard). '
+        a.text(g, 'Design values come from matlab/simulink_r2026a/controllers/hybrid/ctrl_hybrid_design.m (export_onboard). '
                   'Knobs can only be changed while DISARMED.', small=True)
 
     def controller_changed(self, *_):

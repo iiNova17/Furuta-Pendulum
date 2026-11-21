@@ -1,4 +1,4 @@
-"""Parameter estimation tab: guided steps 0-9 (docs/HANDOFF_PARAMETER_ESTIMATION.md).
+"""Parameter estimation tab: guided steps 0-9 (method: report sections 4 to 7).
 
 Every motor run goes through LabApp.start_sequence and its safety gates. Fits run in the
 LabApp worker thread; plots go to the FitView, tables and checks to the Messages pane.
